@@ -1,4 +1,5 @@
-import { formatCurrency } from '../logic/projectionLogic';
+import { CheckCircle2, MessageSquareText, Pencil } from 'lucide-react';
+import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
 
 function getRowClass(type) {
   if (type === 'income') return 'bg-emerald-50';
@@ -15,7 +16,9 @@ function getAmountClass(value) {
   return 'text-slate-300';
 }
 
-function PlannerRow({ row, payPeriods }) {
+function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
+  const editable = ['income', 'expense', 'transfer'].includes(row.type);
+
   return (
     <tr className={getRowClass(row.type)}>
       <th className="sticky left-0 z-10 min-w-64 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
@@ -24,13 +27,55 @@ function PlannerRow({ row, payPeriods }) {
 
       {payPeriods.map((period) => {
         const amount = row.amountsByPeriod[period.date] || 0;
+        const plannedAmount = row.plannedByPeriod?.[period.date] || 0;
+        const entryKey = getEntryKey(row.id, period.date);
+        const entry = plannerEntries[entryKey];
+
+        const changed = Boolean(entry?.useActual);
+        const validated = Boolean(entry?.validated);
+        const hasNote = Boolean(entry?.notes?.trim());
+        const canEdit = editable && (plannedAmount !== 0 || changed);
 
         return (
           <td
             key={period.date}
-            className={`min-w-32 border border-slate-200 px-3 py-2 text-right text-sm ${getAmountClass(amount)}`}
+            className={`min-w-36 border border-slate-200 px-2 py-2 text-right text-sm ${getAmountClass(amount)}`}
           >
-            {amount === 0 ? '—' : formatCurrency(amount)}
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onCellClick({
+                    row,
+                    period,
+                    entryKey,
+                    plannedAmount,
+                    effectiveAmount: amount,
+                  })
+                }
+                className="group flex w-full items-center justify-end gap-2 rounded-lg px-2 py-1 hover:bg-white"
+                title={hasNote ? entry.notes : 'Edit planned amount'}
+              >
+                <span>{amount === 0 ? '—' : formatCurrency(amount)}</span>
+
+                {hasNote ? (
+                  <MessageSquareText size={14} className="text-blue-600" />
+                ) : null}
+
+                {validated ? (
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                ) : changed ? (
+                  <Pencil size={13} className="text-amber-600" />
+                ) : (
+                  <Pencil
+                    size={13}
+                    className="text-slate-300 opacity-0 group-hover:opacity-100"
+                  />
+                )}
+              </button>
+            ) : (
+              <span>{amount === 0 ? '—' : formatCurrency(amount)}</span>
+            )}
           </td>
         );
       })}
@@ -38,7 +83,7 @@ function PlannerRow({ row, payPeriods }) {
   );
 }
 
-export default function Planner({ plannerData }) {
+export default function Planner({ plannerData, plannerEntries, onCellClick }) {
   const incomeRows = plannerData.rows.filter((row) => row.type === 'income');
   const expenseRows = plannerData.rows.filter((row) => row.type === 'expense');
   const transferRows = plannerData.rows.filter((row) => row.type === 'transfer');
@@ -53,7 +98,7 @@ export default function Planner({ plannerData }) {
           Biweekly budget grid
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Planned values are generated from schedules. Editing and validation comes in the next phase.
+          Click a planned amount to enter the actual value, add a note, or mark it as validated.
         </p>
       </div>
 
@@ -69,7 +114,7 @@ export default function Planner({ plannerData }) {
                 {plannerData.payPeriods.map((period) => (
                   <th
                     key={period.date}
-                    className="sticky top-0 z-10 min-w-32 border border-slate-200 bg-slate-900 px-3 py-3 text-right text-sm font-bold text-white"
+                    className="sticky top-0 z-10 min-w-36 border border-slate-200 bg-slate-900 px-3 py-3 text-right text-sm font-bold text-white"
                   >
                     {period.label}
                   </th>
@@ -86,11 +131,14 @@ export default function Planner({ plannerData }) {
                   Income
                 </td>
               </tr>
+
               {incomeRows.map((row) => (
                 <PlannerRow
                   key={row.id}
                   row={row}
                   payPeriods={plannerData.payPeriods}
+                  plannerEntries={plannerEntries}
+                  onCellClick={onCellClick}
                 />
               ))}
 
@@ -102,11 +150,14 @@ export default function Planner({ plannerData }) {
                   Expenses
                 </td>
               </tr>
+
               {expenseRows.map((row) => (
                 <PlannerRow
                   key={row.id}
                   row={row}
                   payPeriods={plannerData.payPeriods}
+                  plannerEntries={plannerEntries}
+                  onCellClick={onCellClick}
                 />
               ))}
 
@@ -118,11 +169,14 @@ export default function Planner({ plannerData }) {
                   Transfers to Savings
                 </td>
               </tr>
+
               {transferRows.map((row) => (
                 <PlannerRow
                   key={row.id}
                   row={row}
                   payPeriods={plannerData.payPeriods}
+                  plannerEntries={plannerEntries}
+                  onCellClick={onCellClick}
                 />
               ))}
 
@@ -134,11 +188,14 @@ export default function Planner({ plannerData }) {
                   Totals and Account Projection
                 </td>
               </tr>
+
               {plannerData.projectionRows.map((row) => (
                 <PlannerRow
                   key={row.id}
                   row={row}
                   payPeriods={plannerData.payPeriods}
+                  plannerEntries={plannerEntries}
+                  onCellClick={onCellClick}
                 />
               ))}
             </tbody>
