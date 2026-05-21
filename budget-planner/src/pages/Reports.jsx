@@ -4,6 +4,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
+  Line,
+  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -15,10 +18,14 @@ import {
   buildIncomeOutflowChartData,
   buildReportRowsFromPlannerData,
   buildSavingsTransferChartData,
+  calculateMonthlyTrendRows,
+  calculatePayPeriodTrendRows,
   calculateBudgetUsedPercentage,
   calculateCategoryTotals,
   calculateMonthlySummary,
   calculateSavingsSummary,
+  calculateSavingsTransferTrendRows,
+  calculateTrendSummary,
   getAvailableMonths,
   getAvailablePayPeriods,
   getCurrentMonthKey,
@@ -33,6 +40,15 @@ const INCOME_OUTFLOW_COLORS = ["#2563eb", "#475569", "#f97316", "#059669"];
 const SAVINGS_COLORS = ["#059669", "#dc2626", "#2563eb"];
 const CATEGORY_COLOR = "#7c3aed";
 const BUCKET_COLOR = "#0f766e";
+const TREND_COLORS = {
+  income: "#2563eb",
+  expenses: "#dc2626",
+  netCashFlow: "#059669",
+  remainingBalance: "#7c3aed",
+  transfersIn: "#059669",
+  transfersOut: "#dc2626",
+  netTransfers: "#2563eb"
+};
 
 function createCurrencyFormatter(currency) {
   return new Intl.NumberFormat("en-CA", {
@@ -88,6 +104,46 @@ function CurrencyTooltip({ active, payload, label, currencyFormatter }) {
       <p className="text-slate-600">
         {currencyFormatter.format(Number(payload[0].value || 0))}
       </p>
+    </div>
+  );
+}
+
+function TrendTooltip({ active, payload, label, currencyFormatter }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const point = payload[0]?.payload || {};
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-lg">
+      <p className="font-semibold text-slate-950">
+        {point.fullLabel || label}
+      </p>
+      <div className="mt-1 space-y-1">
+        {payload.map((entry) => (
+          <p key={entry.dataKey} className="flex items-center gap-2 text-slate-600">
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span>{entry.name}: </span>
+            <span className="font-semibold text-slate-950">
+              {currencyFormatter.format(Number(entry.value || 0))}
+            </span>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendSummaryCard({ label, value, helper }) {
+  return (
+    <div className="rounded-xl border border-slate-200 p-4">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-bold text-slate-950">{value}</p>
+      {helper && <p className="mt-1 text-sm text-slate-500">{helper}</p>}
     </div>
   );
 }
@@ -230,6 +286,26 @@ export default function Reports({
   const bucketBalanceChartData = useMemo(
     () => buildBucketBalanceChartData(savingsSummary),
     [savingsSummary]
+  );
+
+  const monthlyTrendRows = useMemo(
+    () => calculateMonthlyTrendRows(reportRows),
+    [reportRows]
+  );
+
+  const payPeriodTrendRows = useMemo(
+    () => calculatePayPeriodTrendRows(reportRows, 12),
+    [reportRows]
+  );
+
+  const savingsTransferTrendRows = useMemo(
+    () => calculateSavingsTransferTrendRows(savingsTransfers),
+    [savingsTransfers]
+  );
+
+  const trendSummary = useMemo(
+    () => calculateTrendSummary(monthlyTrendRows, payPeriodTrendRows),
+    [monthlyTrendRows, payPeriodTrendRows]
   );
 
   const selectedPayPeriodLabel =
@@ -559,6 +635,275 @@ export default function Reports({
                 </div>
               </div>
             </ChartCard>
+          </section>
+
+          <section className="space-y-5">
+            <div>
+              <h3 className="text-2xl font-bold text-slate-950">
+                Trend Insights
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Follow cash flow, income, expenses, savings transfers, and
+                projected balance changes over time.
+              </p>
+            </div>
+
+            <ChartCard
+              title="Trend Summary"
+              helper="Highlights the strongest and riskiest points in the available report trends."
+            >
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <TrendSummaryCard
+                  label="Best Cash Flow Month"
+                  value={
+                    trendSummary.bestCashFlowMonth
+                      ? formatCurrency(trendSummary.bestCashFlowMonth.netCashFlow)
+                      : "Not enough data"
+                  }
+                  helper={trendSummary.bestCashFlowMonth?.label}
+                />
+
+                <TrendSummaryCard
+                  label="Highest Expense Month"
+                  value={
+                    trendSummary.highestExpenseMonth
+                      ? formatCurrency(
+                          trendSummary.highestExpenseMonth.totalExpenses
+                        )
+                      : "Not enough data"
+                  }
+                  helper={trendSummary.highestExpenseMonth?.label}
+                />
+
+                <TrendSummaryCard
+                  label="Highest Savings Transfer Month"
+                  value={
+                    trendSummary.highestSavingsTransferMonth
+                      ? formatCurrency(
+                          trendSummary.highestSavingsTransferMonth.transfersIn
+                        )
+                      : "Not enough data"
+                  }
+                  helper={trendSummary.highestSavingsTransferMonth?.label}
+                />
+
+                <TrendSummaryCard
+                  label="Lowest Remaining Balance"
+                  value={
+                    trendSummary.lowestRemainingBalance
+                      ? formatCurrency(
+                          trendSummary.lowestRemainingBalance.remainingBalance
+                        )
+                      : "Not enough data"
+                  }
+                  helper={trendSummary.lowestRemainingBalance?.fullLabel}
+                />
+
+                <TrendSummaryCard
+                  label="Average Monthly Net Cash Flow"
+                  value={
+                    trendSummary.averageMonthlyNetCashFlow !== null
+                      ? formatCurrency(trendSummary.averageMonthlyNetCashFlow)
+                      : "Not enough data"
+                  }
+                  helper={
+                    trendSummary.averageMonthlyNetCashFlow !== null
+                      ? "Across available months"
+                      : ""
+                  }
+                />
+              </div>
+            </ChartCard>
+
+            <ChartCard
+              title="Monthly Cash Flow Trend"
+              helper="Shows monthly income, expenses, and net cash flow from oldest to newest."
+            >
+              {monthlyTrendRows.length === 0 ? (
+                <EmptyChartState message="No monthly planner data is available for trends." />
+              ) : (
+                <div
+                  className="h-[320px]"
+                  aria-label="Monthly cash flow trend chart"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyTrendRows}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: "#475569", fontSize: 12 }}
+                        tickFormatter={(value) => truncateLabel(value, 12)}
+                      />
+                      <YAxis
+                        tick={{ fill: "#475569", fontSize: 12 }}
+                        tickFormatter={(value) => formatCurrency(value)}
+                        width={88}
+                      />
+                      <Tooltip
+                        content={
+                          <TrendTooltip
+                            currencyFormatter={currencyFormatter}
+                          />
+                        }
+                      />
+                      <Legend />
+                      <ReferenceLine y={0} stroke="#94a3b8" />
+                      <Line
+                        type="monotone"
+                        dataKey="income"
+                        name="Income"
+                        stroke={TREND_COLORS.income}
+                        strokeWidth={2}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="totalExpenses"
+                        name="Expenses"
+                        stroke={TREND_COLORS.expenses}
+                        strokeWidth={2}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="netCashFlow"
+                        name="Net Cash Flow"
+                        stroke={TREND_COLORS.netCashFlow}
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </ChartCard>
+
+            <section className="grid gap-5 xl:grid-cols-2">
+              <ChartCard
+                title="Pay Period Cash Flow Trend"
+                helper="Shows the first 12 projected pay periods with income, expenses, net cash flow, and remaining balance."
+              >
+                {payPeriodTrendRows.length === 0 ? (
+                  <EmptyChartState message="No dated pay-period planner rows are available for trends." />
+                ) : (
+                  <div
+                    className="h-[320px]"
+                    aria-label="Pay period cash flow trend chart"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={payPeriodTrendRows}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          interval={0}
+                          tick={{ fill: "#475569", fontSize: 12 }}
+                          tickFormatter={(value) => truncateLabel(value, 8)}
+                        />
+                        <YAxis
+                          tick={{ fill: "#475569", fontSize: 12 }}
+                          tickFormatter={(value) => formatCurrency(value)}
+                          width={88}
+                        />
+                        <Tooltip
+                          content={
+                            <TrendTooltip
+                              currencyFormatter={currencyFormatter}
+                            />
+                          }
+                        />
+                        <Legend />
+                        <ReferenceLine y={0} stroke="#94a3b8" />
+                        <Line
+                          type="monotone"
+                          dataKey="income"
+                          name="Income"
+                          stroke={TREND_COLORS.income}
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="totalExpenses"
+                          name="Expenses"
+                          stroke={TREND_COLORS.expenses}
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="netCashFlow"
+                          name="Net Cash Flow"
+                          stroke={TREND_COLORS.netCashFlow}
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="remainingBalance"
+                          name="Remaining Balance"
+                          stroke={TREND_COLORS.remainingBalance}
+                          strokeWidth={2}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </ChartCard>
+
+              <ChartCard
+                title="Savings Transfer Trend"
+                helper="Groups dated savings transfer history by month."
+              >
+                {savingsTransferTrendRows.length === 0 ? (
+                  <EmptyChartState message="Savings transfer trend needs dated transfer history." />
+                ) : (
+                  <div
+                    className="h-[320px]"
+                    aria-label="Savings transfer trend chart"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={savingsTransferTrendRows}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fill: "#475569", fontSize: 12 }}
+                          tickFormatter={(value) => truncateLabel(value, 12)}
+                        />
+                        <YAxis
+                          tick={{ fill: "#475569", fontSize: 12 }}
+                          tickFormatter={(value) => formatCurrency(value)}
+                          width={88}
+                        />
+                        <Tooltip
+                          content={
+                            <TrendTooltip
+                              currencyFormatter={currencyFormatter}
+                            />
+                          }
+                        />
+                        <Legend />
+                        <ReferenceLine y={0} stroke="#94a3b8" />
+                        <Line
+                          type="monotone"
+                          dataKey="transfersIn"
+                          name="Transfers In"
+                          stroke={TREND_COLORS.transfersIn}
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="transfersOut"
+                          name="Transfers Out"
+                          stroke={TREND_COLORS.transfersOut}
+                          strokeWidth={2}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="netTransfers"
+                          name="Net Transfers"
+                          stroke={TREND_COLORS.netTransfers}
+                          strokeWidth={2}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </ChartCard>
+            </section>
           </section>
 
           <ChartCard

@@ -78,6 +78,120 @@ export function getRowsForMonth(rows = [], monthKey) {
   });
 }
 
+function parseReportDate(dateValue) {
+  if (!dateValue) return null;
+
+  if (typeof dateValue === "string") {
+    const dateMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (dateMatch) {
+      return new Date(
+        Number(dateMatch[1]),
+        Number(dateMatch[2]) - 1,
+        Number(dateMatch[3])
+      );
+    }
+  }
+
+  const date = new Date(dateValue);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getRowDateValue(row) {
+  return row.payPeriodDate || row.date || row.payDate || row.startDate || "";
+}
+
+function formatMonthShortLabel(monthKey) {
+  if (!monthKey) return "Unknown";
+
+  const [year, month] = monthKey.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+
+  if (Number.isNaN(date.getTime())) {
+    return monthKey;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function formatShortDateLabel(dateValue) {
+  const date = parseReportDate(dateValue);
+
+  if (!date) {
+    return "Unknown";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "2-digit"
+  });
+}
+
+function formatFullDateLabel(dateValue) {
+  const date = parseReportDate(dateValue);
+
+  if (!date) {
+    return String(dateValue || "Unknown");
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "long",
+    day: "2-digit",
+    year: "numeric"
+  });
+}
+
+export function getIncomeValue(row = {}) {
+  return normalizeNumber(
+    row.income ?? row.totalIncome ?? row.incomeTotal ?? row.payAmount
+  );
+}
+
+export function getExpenseValue(row = {}) {
+  return normalizeNumber(
+    row.expenses ??
+      row.totalExpenses ??
+      row.expenseTotal ??
+      row.fixedExpenses ??
+      row.fixedExpenseTotal ??
+      row.fixedExpensesTotal ??
+      row.billsTotal
+  );
+}
+
+export function getMiscExpensesValue(row = {}) {
+  return normalizeNumber(
+    row.miscExpensesTotal ?? row.miscExpenses ?? row.additionalExpensesTotal
+  );
+}
+
+export function getMiscPaymentsValue(row = {}) {
+  return normalizeNumber(
+    row.miscPaymentsTotal ?? row.miscPayments ?? row.additionalPaymentsTotal
+  );
+}
+
+export function getTransfersInValue(row = {}) {
+  return normalizeNumber(
+    row.savingsTransfersIn ?? row.transfersIn ?? row.totalTransfersIn
+  );
+}
+
+export function getTransfersOutValue(row = {}) {
+  return normalizeNumber(
+    row.savingsTransfersOut ?? row.transfersOut ?? row.totalTransfersOut
+  );
+}
+
+export function getRemainingBalanceValue(row = {}) {
+  return normalizeNumber(
+    row.remainingBalance ?? row.balance ?? row.availableBalance ?? row.chequingBalance
+  );
+}
+
 export function getPayPeriodLabel(row) {
   return (
     row.payPeriodLabel ||
@@ -217,42 +331,13 @@ export function buildReportRowsFromPlannerData(plannerData) {
 export function calculateMonthlySummary(rows = []) {
   return rows.reduce(
     (summary, row) => {
-      const income = normalizeNumber(
-        row.income ?? row.totalIncome ?? row.incomeTotal ?? row.payAmount
-      );
-
-      const expenses = normalizeNumber(
-        row.expenses ??
-          row.totalExpenses ??
-          row.expenseTotal ??
-          row.fixedExpenses ??
-          row.fixedExpenseTotal ??
-          row.fixedExpensesTotal ??
-          row.billsTotal
-      );
-
-      const miscPayments = normalizeNumber(
-        row.miscPaymentsTotal ?? row.miscPayments ?? row.additionalPaymentsTotal
-      );
-
-      const miscExpenses = normalizeNumber(
-        row.miscExpensesTotal ?? row.miscExpenses ?? row.additionalExpensesTotal
-      );
-
-      const transfersIn = normalizeNumber(
-        row.savingsTransfersIn ?? row.transfersIn ?? row.totalTransfersIn
-      );
-
-      const transfersOut = normalizeNumber(
-        row.savingsTransfersOut ?? row.transfersOut ?? row.totalTransfersOut
-      );
-
-      const remainingBalance = normalizeNumber(
-        row.remainingBalance ??
-          row.balance ??
-          row.availableBalance ??
-          row.chequingBalance
-      );
+      const income = getIncomeValue(row);
+      const expenses = getExpenseValue(row);
+      const miscPayments = getMiscPaymentsValue(row);
+      const miscExpenses = getMiscExpensesValue(row);
+      const transfersIn = getTransfersInValue(row);
+      const transfersOut = getTransfersOutValue(row);
+      const remainingBalance = getRemainingBalanceValue(row);
 
       summary.income += income;
       summary.expenses += expenses;
@@ -345,6 +430,235 @@ export function buildBucketBalanceChartData(savingsSummary = {}) {
       name: bucket.name,
       value: normalizeNumber(bucket.balance)
     }));
+}
+
+export function groupRowsByMonth(rows = []) {
+  const groups = new Map();
+
+  rows.forEach((row) => {
+    const monthKey =
+      row.monthKey ||
+      formatMonthKey(row.date) ||
+      formatMonthKey(row.payDate) ||
+      formatMonthKey(row.startDate) ||
+      formatMonthKey(row.payPeriodDate);
+
+    if (!monthKey) {
+      return;
+    }
+
+    if (!groups.has(monthKey)) {
+      groups.set(monthKey, []);
+    }
+
+    groups.get(monthKey).push(row);
+  });
+
+  return Array.from(groups.entries())
+    .sort(([leftMonth], [rightMonth]) => leftMonth.localeCompare(rightMonth))
+    .map(([monthKey, monthRows]) => ({
+      monthKey,
+      label: formatMonthShortLabel(monthKey),
+      rows: monthRows
+    }));
+}
+
+export function calculateMonthlyTrendRows(rows = []) {
+  return groupRowsByMonth(rows).map((group) => {
+    const sortedRows = [...group.rows].sort((left, right) =>
+      String(getRowDateValue(left)).localeCompare(String(getRowDateValue(right)))
+    );
+    const summary = calculateMonthlySummary(sortedRows);
+    const lastRow = sortedRows[sortedRows.length - 1] || {};
+    const expenses = normalizeNumber(summary.expenses);
+    const miscExpenses = normalizeNumber(summary.miscExpenses);
+    const totalExpenses = expenses + miscExpenses;
+    const transfersIn = normalizeNumber(summary.transfersIn);
+    const transfersOut = normalizeNumber(summary.transfersOut);
+
+    return {
+      monthKey: group.monthKey,
+      label: group.label,
+      income: normalizeNumber(summary.income),
+      expenses,
+      miscExpenses,
+      totalExpenses,
+      transfersIn,
+      transfersOut,
+      netCashFlow:
+        normalizeNumber(summary.income) - totalExpenses - transfersIn + transfersOut,
+      remainingBalance: getRemainingBalanceValue(lastRow)
+    };
+  });
+}
+
+export function calculatePayPeriodTrendRows(rows = [], limit = 12) {
+  return [...rows]
+    .filter((row) => getRowDateValue(row))
+    .sort((left, right) =>
+      String(getRowDateValue(left)).localeCompare(String(getRowDateValue(right)))
+    )
+    .slice(0, limit)
+    .map((row) => {
+      const expenses = getExpenseValue(row);
+      const miscExpenses = getMiscExpensesValue(row);
+      const totalExpenses = expenses + miscExpenses;
+      const transfersIn = getTransfersInValue(row);
+      const transfersOut = getTransfersOutValue(row);
+      const dateValue = getRowDateValue(row);
+
+      return {
+        id: dateValue,
+        label: getPayPeriodLabel(row) || formatShortDateLabel(dateValue),
+        fullLabel: formatFullDateLabel(dateValue),
+        income: getIncomeValue(row),
+        expenses,
+        miscExpenses,
+        totalExpenses,
+        transfersIn,
+        transfersOut,
+        netCashFlow: getIncomeValue(row) - totalExpenses - transfersIn + transfersOut,
+        remainingBalance: getRemainingBalanceValue(row)
+      };
+    });
+}
+
+function getSavingsTransferDateValue(transfer = {}) {
+  return (
+    transfer.transferDate ||
+    transfer.payPeriodDate ||
+    transfer.periodDate ||
+    transfer.payDate ||
+    transfer.date ||
+    ""
+  );
+}
+
+function getSavingsTransferAmounts(transfer = {}) {
+  const amount = normalizeNumber(transfer.amount ?? transfer.value ?? transfer.total);
+  const transferType = String(
+    transfer.type || transfer.direction || transfer.transferType || ""
+  ).toLowerCase();
+  const adjustmentType = String(
+    transfer.adjustmentType || transfer.category || ""
+  ).toLowerCase();
+  const hasToBucket =
+    transfer.toBucketId ||
+    transfer.toBucket ||
+    transfer.destinationBucketId ||
+    transfer.bucketToId;
+  const hasFromBucket =
+    transfer.fromBucketId ||
+    transfer.fromBucket ||
+    transfer.sourceBucketId ||
+    transfer.bucketFromId;
+
+  const isTransferIn =
+    Boolean(hasToBucket) ||
+    transferType === "in" ||
+    transferType === "transfer_in" ||
+    adjustmentType === "transfer_in" ||
+    (!hasFromBucket && !transferType && amount > 0);
+
+  const isTransferOut =
+    Boolean(hasFromBucket) ||
+    transferType === "out" ||
+    transferType === "transfer_out" ||
+    adjustmentType === "transfer_out" ||
+    (!hasToBucket && !transferType && amount < 0);
+
+  return {
+    transfersIn: isTransferIn ? Math.abs(amount) : 0,
+    transfersOut: isTransferOut ? Math.abs(amount) : 0
+  };
+}
+
+export function calculateSavingsTransferTrendRows(transfers = []) {
+  const groups = new Map();
+
+  transfers.forEach((transfer) => {
+    const dateValue = getSavingsTransferDateValue(transfer);
+    const monthKey = formatMonthKey(dateValue);
+
+    if (!monthKey) {
+      return;
+    }
+
+    const current = groups.get(monthKey) || {
+      monthKey,
+      label: formatMonthShortLabel(monthKey),
+      transfersIn: 0,
+      transfersOut: 0,
+      netTransfers: 0
+    };
+    const amounts = getSavingsTransferAmounts(transfer);
+
+    current.transfersIn += amounts.transfersIn;
+    current.transfersOut += amounts.transfersOut;
+    current.netTransfers = current.transfersIn - current.transfersOut;
+    groups.set(monthKey, current);
+  });
+
+  return Array.from(groups.values()).sort((left, right) =>
+    left.monthKey.localeCompare(right.monthKey)
+  );
+}
+
+function getMaxRow(rows, getValue) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return rows.reduce((best, row) => {
+    return getValue(row) > getValue(best) ? row : best;
+  }, rows[0]);
+}
+
+function getMinRow(rows, getValue) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return rows.reduce((best, row) => {
+    return getValue(row) < getValue(best) ? row : best;
+  }, rows[0]);
+}
+
+export function calculateTrendSummary(
+  monthlyTrendRows = [],
+  payPeriodTrendRows = []
+) {
+  const bestCashFlowMonth = getMaxRow(
+    monthlyTrendRows,
+    (row) => row.netCashFlow
+  );
+  const highestExpenseMonth = getMaxRow(
+    monthlyTrendRows,
+    (row) => row.totalExpenses
+  );
+  const highestSavingsTransferMonth = getMaxRow(
+    monthlyTrendRows,
+    (row) => row.transfersIn
+  );
+  const lowestRemainingBalance = getMinRow(
+    payPeriodTrendRows.filter((row) => Number.isFinite(row.remainingBalance)),
+    (row) => row.remainingBalance
+  );
+  const averageMonthlyNetCashFlow =
+    monthlyTrendRows.length === 0
+      ? null
+      : monthlyTrendRows.reduce(
+          (total, row) => total + normalizeNumber(row.netCashFlow),
+          0
+        ) / monthlyTrendRows.length;
+
+  return {
+    bestCashFlowMonth,
+    highestExpenseMonth,
+    highestSavingsTransferMonth,
+    lowestRemainingBalance,
+    averageMonthlyNetCashFlow
+  };
 }
 
 export function calculateBucketTransferTotals(bucketId, transfers = []) {

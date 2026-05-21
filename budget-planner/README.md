@@ -17,6 +17,23 @@ Known limitation:
 - Charts are local-only and based on current app data.
 - Advanced trend charts and forecast analytics are not included yet.
 
+## Phase 1N: Advanced Report Trends
+
+Completed:
+
+- Added monthly cash flow trend reporting.
+- Added pay-period cash flow trend reporting.
+- Added savings transfer trend reporting where dated transfer data exists.
+- Added trend summary cards.
+- Added trend empty states.
+- Reused existing report calculations for accuracy.
+
+Known limitation:
+
+- Trends are based on local planner and transfer data only.
+- Savings transfer trends require dated transfer history.
+- Advanced forecasting and PDF reports are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
