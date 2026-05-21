@@ -5,39 +5,59 @@ import {
   accounts,
   appSettings,
   manualAdjustments,
-  scheduledItems,
+  scheduledItems as seedScheduledItems,
 } from './data/seedData';
 import {
   deletePlannerEntry,
   getAllPlannerEntries,
+  getAllScheduledItems,
   savePlannerEntry,
+  saveScheduledItem,
 } from './data/db';
 import { buildPlannerRows } from './logic/projectionLogic';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
+import ScheduledItems from './pages/ScheduledItems';
 import Settings from './pages/Settings';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [plannerEntries, setPlannerEntries] = useState({});
+  const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
-    async function loadPlannerEntries() {
+    async function loadSavedData() {
       try {
-        const savedEntries = await getAllPlannerEntries();
-        setPlannerEntries(savedEntries);
+        const [savedPlannerEntries, savedScheduledItems] = await Promise.all([
+          getAllPlannerEntries(),
+          getAllScheduledItems(),
+        ]);
+
+        setPlannerEntries(savedPlannerEntries);
+
+        if (savedScheduledItems.length > 0) {
+          const savedItemsById = new Map(
+            savedScheduledItems.map((item) => [item.id, item])
+          );
+
+          const mergedItems = seedScheduledItems.map((seedItem) => {
+            return savedItemsById.get(seedItem.id) || seedItem;
+          });
+
+          setScheduledItems(mergedItems);
+        }
       } catch (error) {
         console.error(error);
-        setStatusMessage('Could not load saved planner entries.');
+        setStatusMessage('Could not load saved planner data.');
       } finally {
         setLoading(false);
       }
     }
 
-    loadPlannerEntries();
+    loadSavedData();
   }, []);
 
   const plannerData = useMemo(() => {
@@ -48,7 +68,7 @@ export default function App() {
       manualAdjustments,
       plannerEntries,
     });
-  }, [plannerEntries]);
+  }, [plannerEntries, scheduledItems]);
 
   async function handleSaveCell(entryKey, entry) {
     try {
@@ -60,7 +80,7 @@ export default function App() {
       }));
 
       setSelectedCell(null);
-      setStatusMessage('Saved.');
+      setStatusMessage('Planner entry saved.');
     } catch (error) {
       console.error(error);
       setStatusMessage('Could not save planner entry.');
@@ -78,10 +98,27 @@ export default function App() {
       });
 
       setSelectedCell(null);
-      setStatusMessage('Entry cleared.');
+      setStatusMessage('Planner entry cleared.');
     } catch (error) {
       console.error(error);
       setStatusMessage('Could not clear planner entry.');
+    }
+  }
+
+  async function handleSaveScheduledItem(updatedItem) {
+    try {
+      const savedItem = await saveScheduledItem(updatedItem);
+
+      setScheduledItems((currentItems) =>
+        currentItems.map((item) =>
+          item.id === savedItem.id ? savedItem : item
+        )
+      );
+
+      setStatusMessage('Scheduled item saved.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save scheduled item.');
     }
   }
 
@@ -118,6 +155,13 @@ export default function App() {
             plannerData={plannerData}
             plannerEntries={plannerEntries}
             onCellClick={setSelectedCell}
+          />
+        ) : null}
+
+        {currentPage === 'scheduled-items' ? (
+          <ScheduledItems
+            scheduledItems={scheduledItems}
+            onSaveScheduledItem={handleSaveScheduledItem}
           />
         ) : null}
 

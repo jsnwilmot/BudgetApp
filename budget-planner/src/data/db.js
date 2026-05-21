@@ -1,8 +1,9 @@
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   plannerEntries: 'plannerEntries',
+  scheduledItems: 'scheduledItems',
 };
 
 function openDatabase() {
@@ -23,6 +24,12 @@ function openDatabase() {
       if (!db.objectStoreNames.contains(STORES.plannerEntries)) {
         db.createObjectStore(STORES.plannerEntries, {
           keyPath: 'entryKey',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.scheduledItems)) {
+        db.createObjectStore(STORES.scheduledItems, {
+          keyPath: 'id',
         });
       }
     };
@@ -122,6 +129,56 @@ export async function clearPlannerEntries() {
 
     request.onsuccess = () => {
       resolve();
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function getAllScheduledItems() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.scheduledItems, 'readonly');
+    const store = transaction.objectStore(STORES.scheduledItems);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load scheduled items.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveScheduledItem(item) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.scheduledItems, 'readwrite');
+    const store = transaction.objectStore(STORES.scheduledItems);
+
+    const record = {
+      ...item,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save scheduled item.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
     };
 
     transaction.oncomplete = () => {

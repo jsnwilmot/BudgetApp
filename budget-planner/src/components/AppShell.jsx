@@ -1,4 +1,10 @@
-import { BarChart3, CalendarDays, LayoutDashboard, Settings } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarClock,
+  CalendarDays,
+  LayoutDashboard,
+  Settings,
+} from 'lucide-react';
 
 const navItems = [
   {
@@ -10,6 +16,11 @@ const navItems = [
     id: 'planner',
     label: 'Pay Period Planner',
     icon: CalendarDays,
+  },
+  {
+    id: 'scheduled-items',
+    label: 'Scheduled Items',
+    icon: CalendarClock,
   },
   {
     id: 'reports',
@@ -60,9 +71,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
         </nav>
       </aside>
 
-      <main className="ml-72 min-h-screen p-6">
-        {children}
-      </main>
+      <main className="ml-72 min-h-screen p-6">{children}</main>
     </div>
   );
 }
