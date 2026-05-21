@@ -101,11 +101,21 @@ export default function App() {
             savedSavingsBuckets.map((bucket) => [bucket.id, bucket])
           );
 
-          const mergedBuckets = seedSavingsBuckets.map((seedBucket) => {
+          const mergedSeedBuckets = seedSavingsBuckets.map((seedBucket) => {
             return savedBucketsById.get(seedBucket.id) || seedBucket;
           });
 
-          setSavingsBuckets(mergedBuckets);
+          const seedBucketIds = new Set(seedSavingsBuckets.map((bucket) => bucket.id));
+
+          const customBuckets = savedSavingsBuckets.filter((bucket) => {
+            return !seedBucketIds.has(bucket.id);
+          });
+
+          const allBuckets = [...mergedSeedBuckets, ...customBuckets].filter(
+            (bucket) => !bucket.deletedAt
+          );
+
+          setSavingsBuckets(allBuckets);
         }
 
         setManualAdjustments(savedManualAdjustments);
@@ -257,16 +267,64 @@ export default function App() {
     try {
       const savedBucket = await saveSavingsBucket(updatedBucket);
 
-      setSavingsBuckets((currentBuckets) =>
-        currentBuckets.map((bucket) =>
-          bucket.id === savedBucket.id ? savedBucket : bucket
-        )
-      );
+      setSavingsBuckets((currentBuckets) => {
+        const exists = currentBuckets.some((bucket) => bucket.id === savedBucket.id);
+
+        if (exists) {
+          return currentBuckets.map((bucket) =>
+            bucket.id === savedBucket.id ? savedBucket : bucket
+          );
+        }
+
+        return [...currentBuckets, savedBucket];
+      });
 
       setStatusMessage('Savings bucket saved.');
     } catch (error) {
       console.error(error);
       setStatusMessage('Could not save savings bucket.');
+    }
+  }
+
+  async function handleDeleteSavingsBucket({ bucketId, moveToBucketId, amountToMove }) {
+    try {
+      const bucketToDelete = savingsBuckets.find((bucket) => bucket.id === bucketId);
+      const targetBucket = savingsBuckets.find((bucket) => bucket.id === moveToBucketId);
+
+      if (!bucketToDelete || !targetBucket) {
+        setStatusMessage('Could not delete savings bucket.');
+        return;
+      }
+
+      const deletedBucketRecord = {
+        ...bucketToDelete,
+        deletedAt: new Date().toISOString(),
+        active: false,
+      };
+
+      const updatedTargetBucket = {
+        ...targetBucket,
+        startingAmount:
+          (Number(targetBucket.startingAmount) || 0) + (Number(amountToMove) || 0),
+      };
+
+      const [savedDeletedBucket, savedTargetBucket] = await Promise.all([
+        saveSavingsBucket(deletedBucketRecord),
+        saveSavingsBucket(updatedTargetBucket),
+      ]);
+
+      setSavingsBuckets((currentBuckets) =>
+        currentBuckets
+          .filter((bucket) => bucket.id !== savedDeletedBucket.id)
+          .map((bucket) =>
+            bucket.id === savedTargetBucket.id ? savedTargetBucket : bucket
+          )
+      );
+
+      setStatusMessage('Savings bucket deleted and funds moved.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not delete savings bucket.');
     }
   }
 
@@ -368,8 +426,10 @@ export default function App() {
           <SavingsBuckets
             savingsBuckets={savingsBuckets}
             savingsBucketAdjustments={savingsBucketAdjustments}
+            scheduledItems={scheduledItems}
             plannerData={plannerData}
             onSaveSavingsBucket={handleSaveSavingsBucket}
+            onDeleteSavingsBucket={handleDeleteSavingsBucket}
             onSaveSavingsBucketAdjustment={handleSaveSavingsBucketAdjustment}
             onDeleteSavingsBucketAdjustment={handleDeleteSavingsBucketAdjustment}
           />

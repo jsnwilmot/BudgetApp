@@ -5,52 +5,257 @@ import {
   formatCurrency,
 } from '../logic/projectionLogic';
 
-function BucketForm({ bucket, onSave }) {
-  const [startingAmount, setStartingAmount] = useState(bucket.startingAmount);
+function createNewBucket() {
+  return {
+    id: `bucket-${crypto.randomUUID()}`,
+    name: '',
+    linkedAccountId: 'acct-savings',
+    startingAmount: 0,
+    targetAmount: 0,
+    active: true,
+    notes: '',
+    isCustom: true,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function BucketEditor({ bucket, onCancel, onSave }) {
+  const [formState, setFormState] = useState({
+    ...bucket,
+    name: bucket.name || '',
+    startingAmount: bucket.startingAmount ?? 0,
+    targetAmount: bucket.targetAmount ?? '',
+    notes: bucket.notes ?? '',
+  });
+
+  function updateField(fieldName, value) {
+    setFormState((current) => ({
+      ...current,
+      [fieldName]: value,
+    }));
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
 
-    onSave({
-      ...bucket,
-      startingAmount: Number(startingAmount) || 0,
+    const cleanedBucket = {
+      ...formState,
+      name: String(formState.name || '').trim(),
+      startingAmount: Number(formState.startingAmount) || 0,
+      targetAmount:
+        formState.targetAmount === '' ? undefined : Number(formState.targetAmount) || 0,
+      notes: String(formState.notes || '').trim(),
+      active: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (!cleanedBucket.name) {
+      return;
+    }
+
+    onSave(cleanedBucket);
+  }
+
+  return (
+    <div className="fixed inset-y-0 right-0 z-50 w-[460px] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {bucket.isCustom && !bucket.updatedAt ? 'Add Savings Bucket' : 'Edit Savings Bucket'}
+          </p>
+          <h3 className="mt-1 text-xl font-bold text-slate-950">
+            {bucket.name || 'New Savings Bucket'}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Buckets divide your savings account into planned purposes.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+        >
+          Close
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Bucket name</span>
+          <input
+            type="text"
+            value={formState.name}
+            onChange={(event) => updateField('name', event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+            placeholder="Example: Vehicle Repairs"
+            required
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            Starting amount
+          </span>
+          <input
+            type="number"
+            step="0.01"
+            value={formState.startingAmount}
+            onChange={(event) => updateField('startingAmount', event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            Target amount, optional
+          </span>
+          <input
+            type="number"
+            step="0.01"
+            value={formState.targetAmount}
+            onChange={(event) => updateField('targetAmount', event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
+            placeholder="Optional"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Notes</span>
+          <textarea
+            rows="4"
+            value={formState.notes}
+            onChange={(event) => updateField('notes', event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+            placeholder="Optional note"
+          />
+        </label>
+
+        <button
+          type="submit"
+          className="w-full rounded-xl bg-slate-950 px-4 py-2 font-semibold text-white hover:bg-slate-800"
+        >
+          Save Bucket
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function DeleteBucketDialog({
+  bucket,
+  bucketProjectedAmount,
+  savingsBuckets,
+  bucketIsUsedByTransfer,
+  onCancel,
+  onDelete,
+}) {
+  const availableTargetBuckets = savingsBuckets.filter((item) => item.id !== bucket.id);
+  const [targetBucketId, setTargetBucketId] = useState(
+    availableTargetBuckets[0]?.id || ''
+  );
+  const [confirmText, setConfirmText] = useState('');
+
+  const canDelete =
+    !bucketIsUsedByTransfer &&
+    targetBucketId &&
+    confirmText.trim().toUpperCase() === 'DELETE';
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!canDelete) {
+      return;
+    }
+
+    onDelete({
+      bucketId: bucket.id,
+      moveToBucketId: targetBucketId,
+      amountToMove: bucketProjectedAmount,
     });
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-slate-500">Savings bucket</p>
-          <h3 className="text-xl font-bold text-slate-950">{bucket.name}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-6">
+      <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
+            Delete Savings Bucket
+          </p>
+          <h3 className="mt-1 text-2xl font-bold text-slate-950">
+            Delete {bucket.name}
+          </h3>
+          <p className="mt-2 text-sm text-slate-600">
+            This removes the bucket from the app. Any projected funds in this bucket must be moved to another bucket.
+          </p>
         </div>
 
-        <Pencil size={18} className="text-slate-400" />
+        {bucketIsUsedByTransfer ? (
+          <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            This bucket is used by a scheduled transfer. Change or remove that transfer before deleting this bucket.
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-500">Funds to move</p>
+            <p className="mt-1 text-2xl font-bold text-slate-950">
+              {formatCurrency(bucketProjectedAmount)}
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              Move funds to
+            </span>
+            <select
+              value={targetBucketId}
+              onChange={(event) => setTargetBucketId(event.target.value)}
+              disabled={bucketIsUsedByTransfer}
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 disabled:bg-slate-100"
+            >
+              {availableTargetBuckets.map((targetBucket) => (
+                <option key={targetBucket.id} value={targetBucket.id}>
+                  {targetBucket.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              Type DELETE to confirm
+            </span>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(event) => setConfirmText(event.target.value)}
+              disabled={bucketIsUsedByTransfer}
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-red-600 disabled:bg-slate-100"
+              placeholder="DELETE"
+            />
+          </label>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={!canDelete}
+              className="flex-1 rounded-xl bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-200"
+            >
+              Delete Bucket
+            </button>
+          </div>
+        </form>
       </div>
-
-      <label className="block">
-        <span className="text-sm font-medium text-slate-700">
-          Starting amount
-        </span>
-        <input
-          type="number"
-          step="0.01"
-          value={startingAmount}
-          onChange={(event) => setStartingAmount(event.target.value)}
-          className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
-        />
-      </label>
-
-      <button
-        type="submit"
-        className="mt-4 w-full rounded-xl bg-slate-950 px-4 py-2 font-semibold text-white hover:bg-slate-800"
-      >
-        Save Bucket
-      </button>
-    </form>
+    </div>
   );
 }
 
@@ -225,12 +430,16 @@ function BucketAdjustmentForm({
 export default function SavingsBuckets({
   savingsBuckets,
   savingsBucketAdjustments,
+  scheduledItems,
   plannerData,
   onSaveSavingsBucket,
+  onDeleteSavingsBucket,
   onSaveSavingsBucketAdjustment,
   onDeleteSavingsBucketAdjustment,
 }) {
   const [selectedAdjustment, setSelectedAdjustment] = useState(null);
+  const [selectedBucket, setSelectedBucket] = useState(null);
+  const [deleteBucket, setDeleteBucket] = useState(null);
 
   const bucketProjection = useMemo(() => {
     return buildSavingsBucketProjection({
@@ -276,9 +485,33 @@ export default function SavingsBuckets({
     return savingsBuckets.find((bucket) => bucket.id === bucketId)?.name || bucketId;
   }
 
+  function getProjectedBucketAmount(bucketId) {
+    const projection = bucketProjection.find((item) => item.bucket.id === bucketId);
+    return projection?.balanceByPeriod[finalPeriod?.date] || 0;
+  }
+
+  function bucketIsUsedByTransfer(bucketId) {
+    return scheduledItems.some(
+      (item) =>
+        item.type === 'transfer' &&
+        item.bucketId === bucketId &&
+        item.active !== false
+    );
+  }
+
   async function handleSaveAdjustment(adjustment) {
     await onSaveSavingsBucketAdjustment(adjustment);
     setSelectedAdjustment(null);
+  }
+
+  async function handleSaveBucket(bucket) {
+    await onSaveSavingsBucket(bucket);
+    setSelectedBucket(null);
+  }
+
+  async function handleDeleteBucket(payload) {
+    await onDeleteSavingsBucket(payload);
+    setDeleteBucket(null);
   }
 
   return (
@@ -296,18 +529,29 @@ export default function SavingsBuckets({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setSelectedAdjustment(
-              createNewBucketAdjustment(savingsBuckets, plannerData.payPeriods)
-            )
-          }
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-        >
-          <Plus size={16} />
-          Add Bucket Adjustment
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setSelectedBucket(createNewBucket())}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            <Plus size={16} />
+            Add Bucket
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSelectedAdjustment(
+                createNewBucketAdjustment(savingsBuckets, plannerData.payPeriods)
+              )
+            }
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            <Plus size={16} />
+            Add Bucket Adjustment
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -354,16 +598,6 @@ export default function SavingsBuckets({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {savingsBuckets.map((bucket) => (
-          <BucketForm
-            key={bucket.id}
-            bucket={bucket}
-            onSave={onSaveSavingsBucket}
-          />
-        ))}
-      </div>
-
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
           <h3 className="text-lg font-bold text-slate-950">
@@ -384,6 +618,7 @@ export default function SavingsBuckets({
               <th className="px-4 py-3 text-right text-sm font-bold">
                 Projected End
               </th>
+              <th className="px-4 py-3 text-right text-sm font-bold">Actions</th>
             </tr>
           </thead>
 
@@ -399,10 +634,17 @@ export default function SavingsBuckets({
                 0
               );
 
+              const usedByTransfer = bucketIsUsedByTransfer(item.bucket.id);
+
               return (
                 <tr key={item.bucket.id} className="border-t border-slate-200">
                   <td className="px-4 py-3 text-sm font-semibold text-slate-950">
-                    {item.bucket.name}
+                    <div>{item.bucket.name}</div>
+                    {usedByTransfer ? (
+                      <div className="mt-1 text-xs font-medium text-slate-500">
+                        Used by scheduled transfer
+                      </div>
+                    ) : null}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
@@ -419,6 +661,26 @@ export default function SavingsBuckets({
 
                   <td className="px-4 py-3 text-right text-sm font-bold text-slate-950">
                     {formatCurrency(item.balanceByPeriod[finalPeriod.date])}
+                  </td>
+
+                  <td className="px-4 py-3 text-right text-sm">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBucket(item.bucket)}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteBucket(item.bucket)}
+                        className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -509,6 +771,25 @@ export default function SavingsBuckets({
           </tbody>
         </table>
       </section>
+
+      {selectedBucket ? (
+        <BucketEditor
+          bucket={selectedBucket}
+          onCancel={() => setSelectedBucket(null)}
+          onSave={handleSaveBucket}
+        />
+      ) : null}
+
+      {deleteBucket ? (
+        <DeleteBucketDialog
+          bucket={deleteBucket}
+          bucketProjectedAmount={getProjectedBucketAmount(deleteBucket.id)}
+          savingsBuckets={savingsBuckets}
+          bucketIsUsedByTransfer={bucketIsUsedByTransfer(deleteBucket.id)}
+          onCancel={() => setDeleteBucket(null)}
+          onDelete={handleDeleteBucket}
+        />
+      ) : null}
 
       {selectedAdjustment ? (
         <BucketAdjustmentForm
