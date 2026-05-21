@@ -6,6 +6,14 @@ export function normalizeNumber(value) {
 export function formatMonthKey(dateValue) {
   if (!dateValue) return "";
 
+  if (typeof dateValue === "string") {
+    const dateMatch = dateValue.match(/^(\d{4})-(\d{2})-\d{2}/);
+
+    if (dateMatch) {
+      return `${dateMatch[1]}-${dateMatch[2]}`;
+    }
+  }
+
   const date = new Date(dateValue);
 
   if (Number.isNaN(date.getTime())) {
@@ -67,6 +75,142 @@ export function getRowsForMonth(rows = [], monthKey) {
       formatMonthKey(row.payPeriodDate);
 
     return rowMonthKey === monthKey;
+  });
+}
+
+export function getPayPeriodLabel(row) {
+  return (
+    row.payPeriodLabel ||
+    row.label ||
+    row.payPeriodName ||
+    row.name ||
+    row.payPeriodDate ||
+    row.date ||
+    "Pay period"
+  );
+}
+
+export function getAvailablePayPeriods(rows = []) {
+  return rows
+    .filter((row) => row.payPeriodDate || row.date)
+    .map((row) => ({
+      date: row.payPeriodDate || row.date,
+      label: getPayPeriodLabel(row)
+    }));
+}
+
+export function getRowsForPayPeriod(rows = [], payPeriodDate) {
+  return rows.filter((row) => {
+    const rowPayPeriodDate = row.payPeriodDate || row.date;
+    return rowPayPeriodDate === payPeriodDate;
+  });
+}
+
+export function getItemPayPeriodDate(item) {
+  return (
+    item.payPeriodDate ||
+    item.periodDate ||
+    item.payDate ||
+    item.date ||
+    item.createdAt ||
+    ""
+  );
+}
+
+export function getItemsForMonth(items = [], monthKey) {
+  return items.filter((item) => {
+    return formatMonthKey(getItemPayPeriodDate(item)) === monthKey;
+  });
+}
+
+export function getItemsForPayPeriod(items = [], payPeriodDate) {
+  return items.filter((item) => getItemPayPeriodDate(item) === payPeriodDate);
+}
+
+function isMiscExpenseRow(row) {
+  const rowId = String(row.id || "").toLowerCase();
+  const rowName = String(row.name || "").toLowerCase();
+
+  return (
+    rowId.includes("misc-expense") ||
+    rowName === "misc expenses" ||
+    rowName === "misc expense"
+  );
+}
+
+function isMiscPaymentRow(row) {
+  const rowId = String(row.id || "").toLowerCase();
+  const rowName = String(row.name || "").toLowerCase();
+
+  return (
+    rowId.includes("misc-payment") ||
+    rowName === "misc payments" ||
+    rowName === "misc payment"
+  );
+}
+
+function getProjectedAmount(row, periodDate) {
+  return normalizeNumber(row?.amountsByPeriod?.[periodDate]);
+}
+
+export function buildReportRowsFromPlannerData(plannerData) {
+  const payPeriods = plannerData?.payPeriods || [];
+  const plannerRows = plannerData?.rows || [];
+  const projectionRows = plannerData?.projectionRows || [];
+  const projectedChequingRow = projectionRows.find(
+    (row) => row.id === "projected-chequing"
+  );
+
+  return payPeriods.map((period) => {
+    const income = plannerRows
+      .filter((row) => row.type === "income")
+      .reduce(
+        (total, row) => total + getProjectedAmount(row, period.date),
+        0
+      );
+
+    const expenses = plannerRows
+      .filter((row) => row.type === "expense")
+      .filter((row) => !isMiscExpenseRow(row) && !isMiscPaymentRow(row))
+      .reduce(
+        (total, row) => total + getProjectedAmount(row, period.date),
+        0
+      );
+
+    const miscPayments = plannerRows
+      .filter(isMiscPaymentRow)
+      .reduce(
+        (total, row) => total + getProjectedAmount(row, period.date),
+        0
+      );
+
+    const miscExpenses = plannerRows
+      .filter(isMiscExpenseRow)
+      .reduce(
+        (total, row) => total + getProjectedAmount(row, period.date),
+        0
+      );
+
+    const transfersIn = plannerRows
+      .filter((row) => row.type === "transfer")
+      .reduce(
+        (total, row) => total + getProjectedAmount(row, period.date),
+        0
+      );
+
+    return {
+      date: period.date,
+      payPeriodDate: period.date,
+      payPeriodLabel: period.label,
+      monthKey: formatMonthKey(period.date),
+      income,
+      expenses,
+      miscPayments,
+      miscExpenses,
+      transfersIn,
+      transfersOut: 0,
+      remainingBalance: getProjectedAmount(projectedChequingRow, period.date)
+    };
   });
 }
 
@@ -171,6 +315,38 @@ export function calculateCategoryTotals(items = []) {
     .sort((a, b) => b.total - a.total);
 }
 
+export function buildIncomeOutflowChartData(summary = {}) {
+  return [
+    { name: "Income", value: normalizeNumber(summary.income) },
+    { name: "Expenses", value: normalizeNumber(summary.expenses) },
+    {
+      name: "Misc Expenses",
+      value: normalizeNumber(summary.miscExpenses)
+    },
+    { name: "Transfers In", value: normalizeNumber(summary.transfersIn) }
+  ];
+}
+
+export function buildSavingsTransferChartData(savingsSummary = {}) {
+  const totals = savingsSummary.totals || {};
+
+  return [
+    { name: "Transfers In", value: normalizeNumber(totals.transfersIn) },
+    { name: "Transfers Out", value: normalizeNumber(totals.transfersOut) },
+    { name: "Net Transfers", value: normalizeNumber(totals.netTransfers) }
+  ];
+}
+
+export function buildBucketBalanceChartData(savingsSummary = {}) {
+  return [...(savingsSummary.buckets || [])]
+    .sort((a, b) => normalizeNumber(b.balance) - normalizeNumber(a.balance))
+    .slice(0, 8)
+    .map((bucket) => ({
+      name: bucket.name,
+      value: normalizeNumber(bucket.balance)
+    }));
+}
+
 export function calculateBucketTransferTotals(bucketId, transfers = []) {
   return transfers.reduce(
     (totals, transfer) => {
@@ -192,21 +368,49 @@ export function calculateBucketTransferTotals(bucketId, transfers = []) {
 
       const transferType =
         transfer.type || transfer.direction || transfer.transferType;
+      const adjustmentType = transfer.adjustmentType || transfer.category;
+      const normalizedTransferType = String(transferType || "").toLowerCase();
+      const normalizedAdjustmentType = String(adjustmentType || "").toLowerCase();
+      const isDirectBucketTransfer = directBucketId === bucketId;
 
       if (toBucketId === bucketId) {
-        totals.transfersIn += amount;
+        totals.transfersIn += Math.abs(amount);
       }
 
       if (fromBucketId === bucketId) {
-        totals.transfersOut += amount;
+        totals.transfersOut += Math.abs(amount);
       }
 
-      if (directBucketId === bucketId && transferType === "in") {
-        totals.transfersIn += amount;
+      if (
+        isDirectBucketTransfer &&
+        (normalizedTransferType === "in" ||
+          normalizedTransferType === "transfer_in")
+      ) {
+        totals.transfersIn += Math.abs(amount);
       }
 
-      if (directBucketId === bucketId && transferType === "out") {
-        totals.transfersOut += amount;
+      if (
+        isDirectBucketTransfer &&
+        (normalizedTransferType === "out" ||
+          normalizedTransferType === "transfer_out")
+      ) {
+        totals.transfersOut += Math.abs(amount);
+      }
+
+      if (
+        isDirectBucketTransfer &&
+        !transferType &&
+        (normalizedAdjustmentType === "transfer_in" || amount > 0)
+      ) {
+        totals.transfersIn += Math.abs(amount);
+      }
+
+      if (
+        isDirectBucketTransfer &&
+        !transferType &&
+        (normalizedAdjustmentType === "transfer_out" || amount < 0)
+      ) {
+        totals.transfersOut += Math.abs(amount);
       }
 
       totals.netTransfers = totals.transfersIn - totals.transfersOut;
@@ -238,7 +442,11 @@ export function calculateSavingsSummary(buckets = [], transfers = []) {
       id: bucketId,
       name: bucket.name || bucket.bucketName || bucket.label || "Unnamed bucket",
       balance: normalizeNumber(
-        bucket.balance ?? bucket.currentBalance ?? bucket.amount ?? 0
+        bucket.balance ??
+          bucket.currentBalance ??
+          bucket.startingAmount ??
+          bucket.amount ??
+          0
       ),
       transfersIn,
       transfersOut,

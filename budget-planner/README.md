@@ -1,5 +1,22 @@
 # React + Vite
 
+## Phase 1M: Charts and Report Visuals
+
+Completed:
+
+- Added income vs outflow chart.
+- Added top spending categories chart.
+- Added savings transfers chart.
+- Added savings bucket balances chart.
+- Charts respond to monthly and pay period filters.
+- Added chart empty states.
+- Kept report tables and summary cards for clarity.
+
+Known limitation:
+
+- Charts are local-only and based on current app data.
+- Advanced trend charts and forecast analytics are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

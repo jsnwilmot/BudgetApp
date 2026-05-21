@@ -454,6 +454,7 @@ export default function App() {
         {currentPage === 'reports' ? (
           <Reports
             settings={appSettings}
+            plannerData={plannerData}
             plannerRows={plannerData.payPeriods}
             miscExpenses={manualAdjustments.filter(
               (adjustment) => adjustment.type === 'misc-expense'
