@@ -24,6 +24,24 @@ function getTypeClass(type) {
   return 'bg-slate-100 text-slate-700';
 }
 
+function getCategoryTypesForItemType(type) {
+  if (type === 'income') return ['income', 'general'];
+  if (type === 'expense') return ['expense', 'debt', 'general'];
+  if (type === 'transfer') return ['transfer', 'savings', 'general'];
+  return ['general'];
+}
+
+function getCategoryName(categoryId, categories = []) {
+  if (!categoryId) {
+    return 'Uncategorized';
+  }
+
+  return (
+    categories.find((category) => category.id === categoryId)?.name ||
+    'Missing category'
+  );
+}
+
 function createNewScheduledItem() {
   return {
     id: `scheduled-${crypto.randomUUID()}`,
@@ -53,16 +71,45 @@ function getAssignmentRuleLabel(rule) {
   return 'previous pay period before the due date';
 }
 
-function ScheduledItemForm({ item, settings, onCancel, onSave }) {
+function ScheduledItemForm({ item, categories, settings, onCancel, onSave }) {
   const [formState, setFormState] = useState({
     ...item,
     amount: item.amount ?? 0,
     dueDay: item.dueDay ?? '',
     dueMonth: item.dueMonth ?? '',
     notes: item.notes ?? '',
+    categoryId: item.categoryId ?? '',
     active: item.active ?? true,
     allowLineItems: item.allowLineItems ?? false,
   });
+
+  const categoryOptions = useMemo(() => {
+    const allowedTypes = getCategoryTypesForItemType(formState.type);
+    const selectedCategory = categories.find(
+      (category) => category.id === formState.categoryId
+    );
+    const options = categories
+      .filter((category) => {
+        return (
+          allowedTypes.includes(category.type) &&
+          (category.active !== false || category.id === formState.categoryId)
+        );
+      })
+      .sort(
+        (left, right) =>
+          Number(left.sortOrder || 0) - Number(right.sortOrder || 0) ||
+          left.name.localeCompare(right.name)
+      );
+
+    if (
+      selectedCategory &&
+      !options.some((category) => category.id === selectedCategory.id)
+    ) {
+      return [...options, selectedCategory];
+    }
+
+    return options;
+  }, [categories, formState.categoryId, formState.type]);
 
   function updateField(fieldName, value) {
     setFormState((current) => ({
@@ -81,6 +128,7 @@ function ScheduledItemForm({ item, settings, onCancel, onSave }) {
       dueDay: formState.dueDay === '' ? undefined : Number(formState.dueDay),
       dueMonth: formState.dueMonth === '' ? undefined : Number(formState.dueMonth),
       notes: String(formState.notes || '').trim(),
+      categoryId: formState.categoryId || undefined,
       active: Boolean(formState.active),
       allowLineItems: Boolean(formState.allowLineItems),
       updatedAt: new Date().toISOString(),
@@ -158,6 +206,23 @@ function ScheduledItemForm({ item, settings, onCancel, onSave }) {
             </select>
           </label>
         </div>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Category</span>
+          <select
+            value={formState.categoryId}
+            onChange={(event) => updateField('categoryId', event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-900"
+          >
+            <option value="">Uncategorized</option>
+            {categoryOptions.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+                {category.active === false ? ' (archived)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
@@ -274,6 +339,7 @@ function ScheduledItemForm({ item, settings, onCancel, onSave }) {
 
 export default function ScheduledItems({
   scheduledItems,
+  categories = [],
   settings,
   onSaveScheduledItem,
 }) {
@@ -406,6 +472,7 @@ export default function ScheduledItems({
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Name</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Type</th>
+              <th className="px-4 py-3 text-left text-sm font-bold">Category</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Frequency</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Amount</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Due</th>
@@ -429,6 +496,12 @@ export default function ScheduledItems({
                     )}`}
                   >
                     {formatType(item.type)}
+                  </span>
+                </td>
+
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  <span className="block max-w-[160px] truncate">
+                    {getCategoryName(item.categoryId, categories)}
                   </span>
                 </td>
 
@@ -498,6 +571,7 @@ export default function ScheduledItems({
       {selectedItem ? (
         <ScheduledItemForm
           item={selectedItem}
+          categories={categories}
           settings={settings}
           onCancel={() => setSelectedItem(null)}
           onSave={handleSave}

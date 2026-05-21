@@ -376,16 +376,34 @@ export function calculateBudgetUsedPercentage(summary) {
   return Math.round((used / income) * 100);
 }
 
-export function calculateCategoryTotals(items = []) {
+function buildCategoryNameMap(categories = []) {
+  return new Map(
+    categories
+      .filter((category) => category?.id)
+      .map((category) => [category.id, category.name || "Uncategorized"])
+  );
+}
+
+function resolveCategoryName(item = {}, categoryNameMap = new Map()) {
+  if (item.categoryId && categoryNameMap.has(item.categoryId)) {
+    return categoryNameMap.get(item.categoryId);
+  }
+
+  return (
+    item.category ||
+    item.categoryName ||
+    item.name ||
+    item.label ||
+    "Uncategorized"
+  );
+}
+
+export function calculateCategoryTotals(items = [], categories = []) {
   const totals = new Map();
+  const categoryNameMap = buildCategoryNameMap(categories);
 
   items.forEach((item) => {
-    const category =
-      item.category ||
-      item.categoryName ||
-      item.name ||
-      item.label ||
-      "Uncategorized";
+    const category = resolveCategoryName(item, categoryNameMap);
 
     const amount = normalizeNumber(item.amount ?? item.value ?? item.total);
 

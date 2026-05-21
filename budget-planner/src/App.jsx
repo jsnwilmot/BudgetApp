@@ -4,17 +4,20 @@ import CellEditor from './components/CellEditor';
 import {
   accounts as seedAccounts,
   appSettings,
+  categories as seedCategories,
   manualAdjustments as seedManualAdjustments,
   savingsBuckets as seedSavingsBuckets,
   scheduledItems as seedScheduledItems,
 } from './data/seedData';
 import {
   clearAllSavedData,
+  archiveCategory,
   deleteManualAdjustment,
   deletePlannerEntry,
   deleteSavingsBucketAdjustment,
   getAppSettings,
   getAllAccounts,
+  getAllCategories,
   getAllManualAdjustments,
   getAllPlannerEntries,
   getAllSavingsBucketAdjustments,
@@ -22,15 +25,18 @@ import {
   getAllScheduledItems,
   normalizeAppSettings,
   replaceAccounts,
+  replaceCategories,
   replaceManualAdjustments,
   replacePlannerEntries,
   replaceSavingsBucketAdjustments,
   replaceSavingsBuckets,
   replaceScheduledItems,
   resetAppSettings,
+  resetCategoriesToDefaults,
   saveAccount,
   saveAppSettings,
   saveManualAdjustment,
+  saveCategory,
   savePlannerEntry,
   saveSavingsBucket,
   saveSavingsBucketAdjustment,
@@ -39,6 +45,7 @@ import {
 } from './data/db';
 import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
 import Accounts from './pages/Accounts';
+import Categories from './pages/Categories';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
 import Reports from './pages/Reports';
@@ -87,6 +94,7 @@ function getArrayValue(value) {
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [settings, setSettings] = useState(appSettings);
+  const [categories, setCategories] = useState(seedCategories);
   const [plannerEntries, setPlannerEntries] = useState({});
   const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
   const [accounts, setAccounts] = useState(seedAccounts);
@@ -104,6 +112,7 @@ export default function App() {
       try {
         const [
           savedSettings,
+          savedCategories,
           savedPlannerEntries,
           savedScheduledItems,
           savedAccounts,
@@ -112,6 +121,7 @@ export default function App() {
           savedSavingsBucketAdjustments,
         ] = await Promise.all([
           getAppSettings(),
+          getAllCategories(),
           getAllPlannerEntries(),
           getAllScheduledItems(),
           getAllAccounts(),
@@ -121,6 +131,7 @@ export default function App() {
         ]);
 
         setSettings(savedSettings);
+        setCategories(savedCategories);
         setPlannerEntries(savedPlannerEntries);
 
         if (savedScheduledItems.length > 0) {
@@ -211,6 +222,7 @@ export default function App() {
   const appData = useMemo(
     () => ({
       settings,
+      categories,
       plannerEntries,
       scheduledItems,
       accounts,
@@ -236,6 +248,7 @@ export default function App() {
       savingsBuckets,
       scheduledItems,
       settings,
+      categories,
     ]
   );
 
@@ -470,6 +483,70 @@ export default function App() {
     }
   }
 
+  async function handleSaveCategory(updatedCategory) {
+    try {
+      const savedCategory = await saveCategory(updatedCategory);
+
+      setCategories((currentCategories) => {
+        const exists = currentCategories.some(
+          (category) => category.id === savedCategory.id
+        );
+
+        const nextCategories = exists
+          ? currentCategories.map((category) =>
+              category.id === savedCategory.id ? savedCategory : category
+            )
+          : [...currentCategories, savedCategory];
+
+        return nextCategories.sort(
+          (left, right) =>
+            left.type.localeCompare(right.type) ||
+            Number(left.sortOrder || 0) - Number(right.sortOrder || 0) ||
+            left.name.localeCompare(right.name)
+        );
+      });
+
+      setStatusMessage('Category saved.');
+      return savedCategory;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save category.');
+      throw error;
+    }
+  }
+
+  async function handleArchiveCategory(categoryId) {
+    try {
+      const archivedCategory = await archiveCategory(categoryId);
+
+      setCategories((currentCategories) =>
+        currentCategories.map((category) =>
+          category.id === archivedCategory.id ? archivedCategory : category
+        )
+      );
+
+      setStatusMessage('Category archived.');
+      return archivedCategory;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not archive category.');
+      throw error;
+    }
+  }
+
+  async function handleResetCategories() {
+    try {
+      const defaultCategories = await resetCategoriesToDefaults();
+      setCategories(defaultCategories);
+      setStatusMessage('Categories reset to defaults.');
+      return defaultCategories;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not reset categories.');
+      throw error;
+    }
+  }
+
   async function handleSaveSettings(updatedSettings) {
     const validation = validateAppSettings(updatedSettings);
 
@@ -495,6 +572,9 @@ export default function App() {
     const importedPlannerEntries = normalizePlannerEntries(
       importedData?.plannerEntries || importedData?.planner?.entries || {}
     );
+    const importedCategories = Array.isArray(importedData?.categories)
+      ? importedData.categories
+      : seedCategories;
     const importedScheduledItems = Array.isArray(importedData?.scheduledItems)
       ? importedData.scheduledItems
       : [];
@@ -515,8 +595,9 @@ export default function App() {
       ? importedData.savingsBucketAdjustments
       : getArrayValue(importedData?.savings?.transfers);
 
-    await Promise.all([
+    const [, savedImportedCategories] = await Promise.all([
       saveAppSettings(importedSettings),
+      replaceCategories(importedCategories),
       replacePlannerEntries(importedPlannerEntries),
       replaceScheduledItems(importedScheduledItems),
       replaceAccounts(importedAccounts),
@@ -526,6 +607,7 @@ export default function App() {
     ]);
 
     setSettings(importedSettings);
+    setCategories(savedImportedCategories);
     setPlannerEntries(importedPlannerEntries);
     setScheduledItems(
       importedScheduledItems.length > 0
@@ -546,6 +628,7 @@ export default function App() {
   async function handleResetLocalData() {
     await clearAllSavedData();
     setSettings(appSettings);
+    setCategories(seedCategories);
     setPlannerEntries({});
     setScheduledItems(seedScheduledItems);
     setAccounts(seedAccounts);
@@ -595,6 +678,7 @@ export default function App() {
         {currentPage === 'scheduled-items' ? (
           <ScheduledItems
             scheduledItems={scheduledItems}
+            categories={categories}
             settings={settings}
             onSaveScheduledItem={handleSaveScheduledItem}
           />
@@ -603,6 +687,7 @@ export default function App() {
         {currentPage === 'accounts' ? (
           <Accounts
             accounts={accounts}
+            categories={categories}
             manualAdjustments={manualAdjustments}
             payPeriods={plannerData.payPeriods}
             settings={settings}
@@ -626,9 +711,19 @@ export default function App() {
           />
         ) : null}
 
+        {currentPage === 'categories' ? (
+          <Categories
+            categories={categories}
+            onSaveCategory={handleSaveCategory}
+            onArchiveCategory={handleArchiveCategory}
+            onResetCategories={handleResetCategories}
+          />
+        ) : null}
+
         {currentPage === 'reports' ? (
           <Reports
             settings={settings}
+            categories={categories}
             plannerData={plannerData}
             plannerRows={plannerData.payPeriods}
             miscExpenses={manualAdjustments.filter(

@@ -179,6 +179,7 @@ function formatGeneratedDate(date) {
 
 export default function Reports({
   settings,
+  categories = [],
   plannerData,
   plannerRows = [],
   miscExpenses = [],
@@ -268,8 +269,8 @@ export default function Reports({
   );
 
   const categoryTotals = useMemo(
-    () => calculateCategoryTotals(scopedMiscExpenses).slice(0, 5),
-    [scopedMiscExpenses]
+    () => calculateCategoryTotals(scopedMiscExpenses, categories).slice(0, 5),
+    [categories, scopedMiscExpenses]
   );
 
   const savingsSummary = useMemo(

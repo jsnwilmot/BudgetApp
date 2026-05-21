@@ -269,6 +269,7 @@ export function buildPlannerRows({
         id: item.id,
         name: item.name,
         type: item.type,
+        categoryId: item.categoryId,
         item,
         plannedByPeriod,
         amountsByPeriod,

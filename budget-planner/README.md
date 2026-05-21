@@ -84,6 +84,25 @@ Known limitation:
 - Manual entries outside the current projection range remain stored but may not appear until the projection range or anchor date includes them again.
 - Advanced pay schedules, such as twice monthly fixed dates, are not included yet.
 
+## Phase 1R: Category Management
+
+Completed:
+
+- Added local category model.
+- Added default income, expense, savings, transfer, and general categories.
+- Added category persistence.
+- Added Categories page.
+- Added category create, edit, and archive workflows.
+- Added category assignment support for scheduled items.
+- Updated report category resolution.
+- Preserved backup/restore compatibility.
+
+Known limitation:
+
+- Category budget limits are not included yet.
+- Drag-and-drop category sorting is not included yet.
+- Category icons are stored as simple text for now.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

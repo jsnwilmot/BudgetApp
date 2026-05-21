@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   PiggyBank,
   Settings,
+  Tags,
 } from 'lucide-react';
 
 const navItems = [
@@ -33,6 +34,11 @@ const navItems = [
     id: 'savings-buckets',
     label: 'Savings Buckets',
     icon: PiggyBank,
+  },
+  {
+    id: 'categories',
+    label: 'Categories',
+    icon: Tags,
   },
   {
     id: 'reports',

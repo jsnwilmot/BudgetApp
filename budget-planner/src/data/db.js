@@ -1,11 +1,16 @@
-import { appSettings as defaultAppSettings } from './seedData';
+import {
+  appSettings as defaultAppSettings,
+  categories as defaultCategories,
+} from './seedData';
 
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const SETTINGS_ID = 'app-settings';
+const CATEGORY_TYPES = ['income', 'expense', 'transfer', 'savings', 'debt', 'general'];
 
 const STORES = {
   appSettings: 'appSettings',
+  categories: 'categories',
   plannerEntries: 'plannerEntries',
   scheduledItems: 'scheduledItems',
   accounts: 'accounts',
@@ -41,6 +46,12 @@ function openDatabase() {
         });
       }
 
+      if (!db.objectStoreNames.contains(STORES.categories)) {
+        db.createObjectStore(STORES.categories, {
+          keyPath: 'id',
+        });
+      }
+
       if (!db.objectStoreNames.contains(STORES.scheduledItems)) {
         db.createObjectStore(STORES.scheduledItems, {
           keyPath: 'id',
@@ -71,6 +82,47 @@ function openDatabase() {
         });
       }
     };
+  });
+}
+
+function normalizeCategoryType(type) {
+  return CATEGORY_TYPES.includes(type) ? type : 'general';
+}
+
+function normalizeCategory(category = {}, fallbackSortOrder = 0) {
+  const timestamp = new Date().toISOString();
+  const name = String(category.name || '').trim();
+  const id =
+    category.id ||
+    `cat-${normalizeCategoryType(category.type)}-${crypto.randomUUID()}`;
+
+  return {
+    id,
+    name,
+    type: normalizeCategoryType(category.type),
+    color: String(category.color || '#64748b').trim() || '#64748b',
+    icon: String(category.icon || 'tag').trim() || 'tag',
+    active: category.active !== false,
+    sortOrder: Number.isFinite(Number(category.sortOrder))
+      ? Number(category.sortOrder)
+      : fallbackSortOrder,
+    createdAt: category.createdAt || timestamp,
+    updatedAt: category.updatedAt || timestamp,
+  };
+}
+
+function sortCategories(categories = []) {
+  return [...categories].sort((left, right) => {
+    const typeCompare = left.type.localeCompare(right.type);
+
+    if (typeCompare !== 0) {
+      return typeCompare;
+    }
+
+    return (
+      Number(left.sortOrder || 0) - Number(right.sortOrder || 0) ||
+      left.name.localeCompare(right.name)
+    );
   });
 }
 
@@ -287,6 +339,14 @@ export async function replaceScheduledItems(items = []) {
   return replaceStoreRecords(STORES.scheduledItems, items);
 }
 
+export async function replaceCategories(categories = []) {
+  const records = categories.map((category, index) =>
+    normalizeCategory(category, index + 1)
+  );
+
+  return replaceStoreRecords(STORES.categories, records);
+}
+
 export async function replaceAccounts(accounts = []) {
   return replaceStoreRecords(STORES.accounts, accounts);
 }
@@ -306,6 +366,7 @@ export async function replaceSavingsBucketAdjustments(adjustments = []) {
 export async function clearAllSavedData() {
   await Promise.all([
     clearStore(STORES.plannerEntries),
+    clearStore(STORES.categories),
     clearStore(STORES.scheduledItems),
     clearStore(STORES.accounts),
     clearStore(STORES.manualAdjustments),
@@ -313,7 +374,115 @@ export async function clearAllSavedData() {
     clearStore(STORES.savingsBucketAdjustments),
   ]);
 
+  await resetCategoriesToDefaults();
   return resetAppSettings();
+}
+
+export async function getAllCategories() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.categories, 'readonly');
+    const store = transaction.objectStore(STORES.categories);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load categories.'));
+    };
+
+    request.onsuccess = () => {
+      const records = request.result || [];
+
+      if (records.length === 0) {
+        resolve(null);
+        return;
+      }
+
+      resolve(sortCategories(records.map((category) => normalizeCategory(category))));
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  }).then(async (records) => {
+    if (records) {
+      return records;
+    }
+
+    return resetCategoriesToDefaults();
+  });
+}
+
+export async function saveCategory(category) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.categories, 'readwrite');
+    const store = transaction.objectStore(STORES.categories);
+    const record = normalizeCategory({
+      ...category,
+      updatedAt: new Date().toISOString(),
+    });
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save category.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function archiveCategory(categoryId) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.categories, 'readwrite');
+    const store = transaction.objectStore(STORES.categories);
+    const request = store.get(categoryId);
+
+    request.onerror = () => {
+      reject(new Error('Failed to load category.'));
+    };
+
+    request.onsuccess = () => {
+      const category = request.result;
+
+      if (!category) {
+        reject(new Error('Category was not found.'));
+        return;
+      }
+
+      const record = normalizeCategory({
+        ...category,
+        active: false,
+        updatedAt: new Date().toISOString(),
+      });
+      const saveRequest = store.put(record);
+
+      saveRequest.onerror = () => {
+        reject(new Error('Failed to archive category.'));
+      };
+
+      saveRequest.onsuccess = () => {
+        resolve(record);
+      };
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function resetCategoriesToDefaults() {
+  return replaceCategories(defaultCategories);
 }
 
 export async function getAllPlannerEntries() {
