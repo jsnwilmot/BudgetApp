@@ -2,19 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import AppShell from './components/AppShell';
 import CellEditor from './components/CellEditor';
 import {
-  accounts,
+  accounts as seedAccounts,
   appSettings,
-  manualAdjustments,
+  manualAdjustments as seedManualAdjustments,
   scheduledItems as seedScheduledItems,
 } from './data/seedData';
 import {
+  deleteManualAdjustment,
   deletePlannerEntry,
+  getAllAccounts,
+  getAllManualAdjustments,
   getAllPlannerEntries,
   getAllScheduledItems,
+  saveAccount,
+  saveManualAdjustment,
   savePlannerEntry,
   saveScheduledItem,
 } from './data/db';
 import { buildPlannerRows } from './logic/projectionLogic';
+import Accounts from './pages/Accounts';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
 import ScheduledItems from './pages/ScheduledItems';
@@ -24,6 +30,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [plannerEntries, setPlannerEntries] = useState({});
   const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
+  const [accounts, setAccounts] = useState(seedAccounts);
+  const [manualAdjustments, setManualAdjustments] = useState(seedManualAdjustments);
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
@@ -31,9 +39,16 @@ export default function App() {
   useEffect(() => {
     async function loadSavedData() {
       try {
-        const [savedPlannerEntries, savedScheduledItems] = await Promise.all([
+        const [
+          savedPlannerEntries,
+          savedScheduledItems,
+          savedAccounts,
+          savedManualAdjustments,
+        ] = await Promise.all([
           getAllPlannerEntries(),
           getAllScheduledItems(),
+          getAllAccounts(),
+          getAllManualAdjustments(),
         ]);
 
         setPlannerEntries(savedPlannerEntries);
@@ -55,6 +70,20 @@ export default function App() {
 
           setScheduledItems([...mergedSeedItems, ...customItems]);
         }
+
+        if (savedAccounts.length > 0) {
+          const savedAccountsById = new Map(
+            savedAccounts.map((account) => [account.id, account])
+          );
+
+          const mergedAccounts = seedAccounts.map((seedAccount) => {
+            return savedAccountsById.get(seedAccount.id) || seedAccount;
+          });
+
+          setAccounts(mergedAccounts);
+        }
+
+        setManualAdjustments(savedManualAdjustments);
       } catch (error) {
         console.error(error);
         setStatusMessage('Could not load saved planner data.');
@@ -74,7 +103,7 @@ export default function App() {
       manualAdjustments,
       plannerEntries,
     });
-  }, [plannerEntries, scheduledItems]);
+  }, [plannerEntries, scheduledItems, accounts, manualAdjustments]);
 
   async function handleSaveCell(entryKey, entry) {
     try {
@@ -134,6 +163,63 @@ export default function App() {
     }
   }
 
+  async function handleSaveAccount(updatedAccount) {
+    try {
+      const savedAccount = await saveAccount(updatedAccount);
+
+      setAccounts((currentAccounts) =>
+        currentAccounts.map((account) =>
+          account.id === savedAccount.id ? savedAccount : account
+        )
+      );
+
+      setStatusMessage('Account balance saved.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save account balance.');
+    }
+  }
+
+  async function handleSaveManualAdjustment(adjustment) {
+    try {
+      const savedAdjustment = await saveManualAdjustment(adjustment);
+
+      setManualAdjustments((currentAdjustments) => {
+        const exists = currentAdjustments.some(
+          (item) => item.id === savedAdjustment.id
+        );
+
+        if (exists) {
+          return currentAdjustments.map((item) =>
+            item.id === savedAdjustment.id ? savedAdjustment : item
+          );
+        }
+
+        return [...currentAdjustments, savedAdjustment];
+      });
+
+      setStatusMessage('Manual adjustment saved.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save manual adjustment.');
+    }
+  }
+
+  async function handleDeleteManualAdjustment(id) {
+    try {
+      await deleteManualAdjustment(id);
+
+      setManualAdjustments((currentAdjustments) =>
+        currentAdjustments.filter((adjustment) => adjustment.id !== id)
+      );
+
+      setStatusMessage('Manual adjustment deleted.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not delete manual adjustment.');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-700">
@@ -174,6 +260,17 @@ export default function App() {
           <ScheduledItems
             scheduledItems={scheduledItems}
             onSaveScheduledItem={handleSaveScheduledItem}
+          />
+        ) : null}
+
+        {currentPage === 'accounts' ? (
+          <Accounts
+            accounts={accounts}
+            manualAdjustments={manualAdjustments}
+            payPeriods={plannerData.payPeriods}
+            onSaveAccount={handleSaveAccount}
+            onSaveManualAdjustment={handleSaveManualAdjustment}
+            onDeleteManualAdjustment={handleDeleteManualAdjustment}
           />
         ) : null}
 

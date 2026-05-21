@@ -2,6 +2,7 @@ import {
   BarChart3,
   CalendarClock,
   CalendarDays,
+  Landmark,
   LayoutDashboard,
   Settings,
 } from 'lucide-react';
@@ -21,6 +22,11 @@ const navItems = [
     id: 'scheduled-items',
     label: 'Scheduled Items',
     icon: CalendarClock,
+  },
+  {
+    id: 'accounts',
+    label: 'Accounts',
+    icon: Landmark,
   },
   {
     id: 'reports',

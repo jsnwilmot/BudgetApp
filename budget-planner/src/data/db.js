@@ -1,9 +1,11 @@
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
   plannerEntries: 'plannerEntries',
   scheduledItems: 'scheduledItems',
+  accounts: 'accounts',
+  manualAdjustments: 'manualAdjustments',
 };
 
 function openDatabase() {
@@ -29,6 +31,18 @@ function openDatabase() {
 
       if (!db.objectStoreNames.contains(STORES.scheduledItems)) {
         db.createObjectStore(STORES.scheduledItems, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.accounts)) {
+        db.createObjectStore(STORES.accounts, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.manualAdjustments)) {
+        db.createObjectStore(STORES.manualAdjustments, {
           keyPath: 'id',
         });
       }
@@ -179,6 +193,130 @@ export async function saveScheduledItem(item) {
 
     request.onsuccess = () => {
       resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function getAllAccounts() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.accounts, 'readonly');
+    const store = transaction.objectStore(STORES.accounts);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load accounts.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveAccount(account) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.accounts, 'readwrite');
+    const store = transaction.objectStore(STORES.accounts);
+
+    const record = {
+      ...account,
+      startingBalance: Number(account.startingBalance) || 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save account.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function getAllManualAdjustments() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.manualAdjustments, 'readonly');
+    const store = transaction.objectStore(STORES.manualAdjustments);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load manual adjustments.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveManualAdjustment(adjustment) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.manualAdjustments, 'readwrite');
+    const store = transaction.objectStore(STORES.manualAdjustments);
+
+    const record = {
+      ...adjustment,
+      amount: Number(adjustment.amount) || 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save manual adjustment.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function deleteManualAdjustment(id) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.manualAdjustments, 'readwrite');
+    const store = transaction.objectStore(STORES.manualAdjustments);
+    const request = store.delete(id);
+
+    request.onerror = () => {
+      reject(new Error('Failed to delete manual adjustment.'));
+    };
+
+    request.onsuccess = () => {
+      resolve();
     };
 
     transaction.oncomplete = () => {
