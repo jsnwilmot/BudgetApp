@@ -1,3 +1,5 @@
+import DataManagement from "../components/DataManagement";
+
 export default function Settings({ settings }) {
   return (
     <div className="space-y-6">
@@ -56,6 +58,8 @@ export default function Settings({ settings }) {
           </div>
         </dl>
       </section>
+
+      <DataManagement />
     </div>
   );
 }
