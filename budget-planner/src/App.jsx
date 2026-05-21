@@ -29,6 +29,7 @@ import { buildPlannerRows } from './logic/projectionLogic';
 import Accounts from './pages/Accounts';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
+import Reports from './pages/Reports';
 import SavingsBuckets from './pages/SavingsBuckets';
 import ScheduledItems from './pages/ScheduledItems';
 import Settings from './pages/Settings';
@@ -38,7 +39,9 @@ export default function App() {
   const [plannerEntries, setPlannerEntries] = useState({});
   const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
   const [accounts, setAccounts] = useState(seedAccounts);
-  const [manualAdjustments, setManualAdjustments] = useState(seedManualAdjustments);
+  const [manualAdjustments, setManualAdjustments] = useState(
+    seedManualAdjustments
+  );
   const [savingsBuckets, setSavingsBuckets] = useState(seedSavingsBuckets);
   const [savingsBucketAdjustments, setSavingsBucketAdjustments] = useState([]);
   const [selectedCell, setSelectedCell] = useState(null);
@@ -105,7 +108,9 @@ export default function App() {
             return savedBucketsById.get(seedBucket.id) || seedBucket;
           });
 
-          const seedBucketIds = new Set(seedSavingsBuckets.map((bucket) => bucket.id));
+          const seedBucketIds = new Set(
+            seedSavingsBuckets.map((bucket) => bucket.id)
+          );
 
           const customBuckets = savedSavingsBuckets.filter((bucket) => {
             return !seedBucketIds.has(bucket.id);
@@ -268,7 +273,9 @@ export default function App() {
       const savedBucket = await saveSavingsBucket(updatedBucket);
 
       setSavingsBuckets((currentBuckets) => {
-        const exists = currentBuckets.some((bucket) => bucket.id === savedBucket.id);
+        const exists = currentBuckets.some(
+          (bucket) => bucket.id === savedBucket.id
+        );
 
         if (exists) {
           return currentBuckets.map((bucket) =>
@@ -286,10 +293,18 @@ export default function App() {
     }
   }
 
-  async function handleDeleteSavingsBucket({ bucketId, moveToBucketId, amountToMove }) {
+  async function handleDeleteSavingsBucket({
+    bucketId,
+    moveToBucketId,
+    amountToMove,
+  }) {
     try {
-      const bucketToDelete = savingsBuckets.find((bucket) => bucket.id === bucketId);
-      const targetBucket = savingsBuckets.find((bucket) => bucket.id === moveToBucketId);
+      const bucketToDelete = savingsBuckets.find(
+        (bucket) => bucket.id === bucketId
+      );
+      const targetBucket = savingsBuckets.find(
+        (bucket) => bucket.id === moveToBucketId
+      );
 
       if (!bucketToDelete || !targetBucket) {
         setStatusMessage('Could not delete savings bucket.');
@@ -305,7 +320,8 @@ export default function App() {
       const updatedTargetBucket = {
         ...targetBucket,
         startingAmount:
-          (Number(targetBucket.startingAmount) || 0) + (Number(amountToMove) || 0),
+          (Number(targetBucket.startingAmount) || 0) +
+          (Number(amountToMove) || 0),
       };
 
       const [savedDeletedBucket, savedTargetBucket] = await Promise.all([
@@ -436,7 +452,15 @@ export default function App() {
         ) : null}
 
         {currentPage === 'reports' ? (
-          <Dashboard plannerData={plannerData} />
+          <Reports
+            settings={appSettings}
+            plannerRows={plannerData.payPeriods}
+            miscExpenses={manualAdjustments.filter(
+              (adjustment) => adjustment.type === 'misc-expense'
+            )}
+            savingsBuckets={savingsBuckets}
+            savingsTransfers={savingsBucketAdjustments}
+          />
         ) : null}
 
         {currentPage === 'settings' ? (
