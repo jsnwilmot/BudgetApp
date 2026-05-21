@@ -45,7 +45,15 @@ function createNewScheduledItem() {
   };
 }
 
-function ScheduledItemForm({ item, onCancel, onSave }) {
+function getAssignmentRuleLabel(rule) {
+  if (rule === 'same-pay-period') {
+    return 'same pay period as the due date';
+  }
+
+  return 'previous pay period before the due date';
+}
+
+function ScheduledItemForm({ item, settings, onCancel, onSave }) {
   const [formState, setFormState] = useState({
     ...item,
     amount: item.amount ?? 0,
@@ -212,7 +220,9 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
             Timing guide
           </p>
           <p className="mt-1 text-sm text-slate-600">
-            Biweekly items appear every 14 days from the start date. Monthly and annual items use the due day and are placed in the previous pay period before the due date.
+            Recurring items appear every {settings?.payFrequencyDays || 14} days
+            from the start date. Monthly items use the due day and are placed in
+            the {getAssignmentRuleLabel(settings?.monthlyBillAssignmentRule)}.
           </p>
         </div>
 
@@ -262,9 +272,14 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
   );
 }
 
-export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) {
+export default function ScheduledItems({
+  scheduledItems,
+  settings,
+  onSaveScheduledItem,
+}) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
+  const currency = settings?.currency || 'CAD';
 
   const filteredItems = useMemo(() => {
     return scheduledItems
@@ -353,7 +368,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             Active Income Items
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totals.income)}
+            {formatCurrency(totals.income, currency)}
           </p>
           <p className="mt-1 text-sm text-slate-500">
             Sum of configured item amounts.
@@ -365,7 +380,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             Active Expense Items
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totals.expenses)}
+            {formatCurrency(totals.expenses, currency)}
           </p>
           <p className="mt-1 text-sm text-slate-500">
             Sum of configured item amounts.
@@ -377,7 +392,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             Active Transfer Items
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totals.transfers)}
+            {formatCurrency(totals.transfers, currency)}
           </p>
           <p className="mt-1 text-sm text-slate-500">
             Chequing to savings transfers.
@@ -422,7 +437,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm font-semibold text-slate-950">
-                  {formatCurrency(item.amount)}
+                  {formatCurrency(item.amount, currency)}
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm text-slate-600">
@@ -483,6 +498,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
       {selectedItem ? (
         <ScheduledItemForm
           item={selectedItem}
+          settings={settings}
           onCancel={() => setSelectedItem(null)}
           onSave={handleSave}
         />

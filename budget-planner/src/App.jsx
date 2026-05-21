@@ -35,8 +35,9 @@ import {
   saveSavingsBucket,
   saveSavingsBucketAdjustment,
   saveScheduledItem,
+  validateAppSettings,
 } from './data/db';
-import { buildPlannerRows } from './logic/projectionLogic';
+import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
 import Accounts from './pages/Accounts';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
@@ -57,6 +58,30 @@ function normalizePlannerEntries(entries) {
   }
 
   return entries && typeof entries === 'object' ? entries : {};
+}
+
+function buildExportPlannerRows(plannerData) {
+  const projectedChequingRow = plannerData.projectionRows.find(
+    (row) => row.id === 'projected-chequing'
+  );
+
+  return plannerData.payPeriods.map((period) => {
+    const totals = calculatePeriodTotals(plannerData.rows, period.date);
+
+    return {
+      payPeriodLabel: period.label,
+      date: period.date,
+      income: totals.income,
+      fixedExpenses: totals.expenses,
+      savingsTransfersIn: totals.transfers,
+      remainingBalance:
+        projectedChequingRow?.amountsByPeriod?.[period.date] ?? 0,
+    };
+  });
+}
+
+function getArrayValue(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 export default function App() {
@@ -195,7 +220,7 @@ export default function App() {
       planner: {
         entries: plannerEntries,
         payPeriods: plannerData.payPeriods,
-        rows: plannerData.payPeriods,
+        rows: buildExportPlannerRows(plannerData),
       },
       savings: {
         buckets: savingsBuckets,
@@ -205,7 +230,7 @@ export default function App() {
     [
       accounts,
       manualAdjustments,
-      plannerData.payPeriods,
+      plannerData,
       plannerEntries,
       savingsBucketAdjustments,
       savingsBuckets,
@@ -446,6 +471,12 @@ export default function App() {
   }
 
   async function handleSaveSettings(updatedSettings) {
+    const validation = validateAppSettings(updatedSettings);
+
+    if (!validation.valid) {
+      throw new Error(validation.errors.join(' '));
+    }
+
     const savedSettings = await saveAppSettings(updatedSettings);
     setSettings(savedSettings);
     setStatusMessage('Settings saved. Planner projections updated.');
@@ -477,12 +508,12 @@ export default function App() {
       : [];
     const importedSavingsBuckets = Array.isArray(importedData?.savingsBuckets)
       ? importedData.savingsBuckets
-      : importedData?.savings?.buckets || [];
+      : getArrayValue(importedData?.savings?.buckets);
     const importedSavingsBucketAdjustments = Array.isArray(
       importedData?.savingsBucketAdjustments
     )
       ? importedData.savingsBucketAdjustments
-      : importedData?.savings?.transfers || [];
+      : getArrayValue(importedData?.savings?.transfers);
 
     await Promise.all([
       saveAppSettings(importedSettings),
@@ -549,13 +580,14 @@ export default function App() {
         ) : null}
 
         {currentPage === 'dashboard' ? (
-          <Dashboard plannerData={plannerData} />
+          <Dashboard plannerData={plannerData} settings={settings} />
         ) : null}
 
         {currentPage === 'planner' ? (
           <Planner
             plannerData={plannerData}
             plannerEntries={plannerEntries}
+            settings={settings}
             onCellClick={setSelectedCell}
           />
         ) : null}
@@ -563,6 +595,7 @@ export default function App() {
         {currentPage === 'scheduled-items' ? (
           <ScheduledItems
             scheduledItems={scheduledItems}
+            settings={settings}
             onSaveScheduledItem={handleSaveScheduledItem}
           />
         ) : null}
@@ -572,6 +605,7 @@ export default function App() {
             accounts={accounts}
             manualAdjustments={manualAdjustments}
             payPeriods={plannerData.payPeriods}
+            settings={settings}
             onSaveAccount={handleSaveAccount}
             onSaveManualAdjustment={handleSaveManualAdjustment}
             onDeleteManualAdjustment={handleDeleteManualAdjustment}
@@ -584,6 +618,7 @@ export default function App() {
             savingsBucketAdjustments={savingsBucketAdjustments}
             scheduledItems={scheduledItems}
             plannerData={plannerData}
+            settings={settings}
             onSaveSavingsBucket={handleSaveSavingsBucket}
             onDeleteSavingsBucket={handleDeleteSavingsBucket}
             onSaveSavingsBucketAdjustment={handleSaveSavingsBucketAdjustment}
@@ -619,6 +654,7 @@ export default function App() {
       <CellEditor
         selectedCell={selectedCell}
         plannerEntries={plannerEntries}
+        settings={settings}
         onClose={() => setSelectedCell(null)}
         onSave={handleSaveCell}
         onClear={handleClearCell}

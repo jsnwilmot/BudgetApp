@@ -9,10 +9,22 @@ import {
 } from 'recharts';
 import StatCard from '../components/StatCard';
 import { formatShortDate } from '../logic/dateLogic';
-import { formatCurrency, getDashboardSummary } from '../logic/projectionLogic';
+import { getDashboardSummary } from '../logic/projectionLogic';
 
-export default function Dashboard({ plannerData }) {
+function createCurrencyFormatter(currency) {
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: currency || 'CAD',
+  });
+}
+
+export default function Dashboard({ plannerData, settings }) {
   const summary = getDashboardSummary(plannerData);
+  const currencyFormatter = createCurrencyFormatter(settings?.currency);
+
+  function formatCurrency(value) {
+    return currencyFormatter.format(Number(value || 0));
+  }
 
   const chequingRow = plannerData.projectionRows.find(
     (row) => row.id === 'projected-chequing'
@@ -24,8 +36,8 @@ export default function Dashboard({ plannerData }) {
 
   const chartData = plannerData.payPeriods.map((period) => ({
     date: formatShortDate(period.date),
-    chequing: chequingRow.amountsByPeriod[period.date],
-    savings: savingsRow.amountsByPeriod[period.date],
+    chequing: chequingRow?.amountsByPeriod?.[period.date] || 0,
+    savings: savingsRow?.amountsByPeriod?.[period.date] || 0,
   }));
 
   const lowestTone = summary.lowestChequing < 0 ? 'danger' : 'good';
@@ -37,15 +49,15 @@ export default function Dashboard({ plannerData }) {
           Dashboard
         </p>
         <h2 className="text-3xl font-bold text-slate-950">
-          Biweekly cash-flow projection
+          Cash-flow projection
         </h2>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
         <StatCard
           label="Next Pay Date"
-          value={formatShortDate(summary.nextPayDate)}
-          helper="Anchor schedule starts June 03, 2026"
+          value={summary.nextPayDate ? formatShortDate(summary.nextPayDate) : 'Not available'}
+          helper="Based on saved planner settings"
           tone="blue"
         />
         <StatCard

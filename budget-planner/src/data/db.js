@@ -86,35 +86,84 @@ function normalizeSettingRule(rule) {
   return 'previous-pay-period';
 }
 
+function isValidDateString(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+export function validateAppSettings(settings = {}) {
+  const safeSettings =
+    settings && typeof settings === 'object' ? settings : {};
+  const errors = [];
+
+  if (!['CAD', 'USD'].includes(safeSettings.currency)) {
+    errors.push('Currency must be CAD or USD.');
+  }
+
+  if (!isValidDateString(safeSettings.payPeriodAnchorDate)) {
+    errors.push('Pay period anchor date must be a valid date.');
+  }
+
+  if (![7, 14, 28, 30].includes(Number(safeSettings.payFrequencyDays))) {
+    errors.push('Pay frequency must be 7, 14, 28, or 30 days.');
+  }
+
+  if (![3, 6, 12, 18, 24].includes(Number(safeSettings.projectionMonths))) {
+    errors.push('Projection range must be 3, 6, 12, 18, or 24 months.');
+  }
+
+  if (
+    ![
+      'previous-pay-period',
+      'previous_pay_period_before_due_date',
+      'same-pay-period',
+      'same_pay_period',
+      'same_pay_period_as_due_date',
+    ].includes(safeSettings.monthlyBillAssignmentRule)
+  ) {
+    errors.push('Monthly bill assignment rule is not supported.');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
 export function normalizeAppSettings(settings = {}) {
-  const currency = ['CAD', 'USD'].includes(settings.currency)
-    ? settings.currency
+  const safeSettings =
+    settings && typeof settings === 'object' ? settings : {};
+  const currency = ['CAD', 'USD'].includes(safeSettings.currency)
+    ? safeSettings.currency
     : defaultAppSettings.currency;
   const payFrequencyDays = [7, 14, 28, 30].includes(
-    Number(settings.payFrequencyDays)
+    Number(safeSettings.payFrequencyDays)
   )
-    ? Number(settings.payFrequencyDays)
+    ? Number(safeSettings.payFrequencyDays)
     : defaultAppSettings.payFrequencyDays;
   const projectionMonths = [3, 6, 12, 18, 24].includes(
-    Number(settings.projectionMonths)
+    Number(safeSettings.projectionMonths)
   )
-    ? Number(settings.projectionMonths)
+    ? Number(safeSettings.projectionMonths)
     : defaultAppSettings.projectionMonths;
   const payPeriodAnchorDate =
-    typeof settings.payPeriodAnchorDate === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(settings.payPeriodAnchorDate)
-      ? settings.payPeriodAnchorDate
+    isValidDateString(safeSettings.payPeriodAnchorDate)
+      ? safeSettings.payPeriodAnchorDate
       : defaultAppSettings.payPeriodAnchorDate;
 
   return {
     ...defaultAppSettings,
-    ...settings,
+    ...safeSettings,
     currency,
     payPeriodAnchorDate,
     payFrequencyDays,
     projectionMonths,
     monthlyBillAssignmentRule: normalizeSettingRule(
-      settings.monthlyBillAssignmentRule
+      safeSettings.monthlyBillAssignmentRule
     ),
   };
 }

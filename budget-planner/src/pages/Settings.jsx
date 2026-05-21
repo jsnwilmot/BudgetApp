@@ -73,6 +73,30 @@ function buildSettingsPayload(formState) {
   };
 }
 
+function buildProjectionChangeWarnings(formState, settings) {
+  const warnings = [];
+
+  if (formState.payPeriodAnchorDate !== settings.payPeriodAnchorDate) {
+    warnings.push(
+      "Changing the anchor date may move planner entries to different pay periods."
+    );
+  }
+
+  if (Number(formState.payFrequencyDays) !== Number(settings.payFrequencyDays)) {
+    warnings.push(
+      "Changing pay frequency rebuilds the spacing and number of visible pay periods."
+    );
+  }
+
+  if (Number(formState.projectionMonths) !== Number(settings.projectionMonths)) {
+    warnings.push(
+      "Changing projection range changes which pay periods are visible, but saved entries outside the range remain stored."
+    );
+  }
+
+  return warnings;
+}
+
 export default function Settings({
   settings,
   appData,
@@ -84,6 +108,10 @@ export default function Settings({
   const [formState, setFormState] = useState(() => settingsToForm(settings));
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const projectionChangeWarnings = buildProjectionChangeWarnings(
+    formState,
+    settings
+  );
 
   function updateField(fieldName, value) {
     setFormState((current) => ({
@@ -106,7 +134,8 @@ export default function Settings({
     }
 
     try {
-      await onSaveSettings(buildSettingsPayload(formState));
+      const savedSettings = await onSaveSettings(buildSettingsPayload(formState));
+      setFormState(settingsToForm(savedSettings));
       setMessage("Settings saved. Planner projections have been updated.");
       setErrorMessage("");
     } catch (error) {
@@ -277,6 +306,17 @@ export default function Settings({
               </p>
             </label>
           </div>
+
+          {projectionChangeWarnings.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">Projection changes</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {projectionChangeWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <button

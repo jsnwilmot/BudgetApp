@@ -16,7 +16,13 @@ function getAmountClass(value) {
   return 'text-slate-300';
 }
 
-function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
+function PlannerRow({
+  row,
+  payPeriods,
+  plannerEntries,
+  currency,
+  onCellClick,
+}) {
   const editable = ['income', 'expense', 'transfer'].includes(row.type);
 
   return (
@@ -58,7 +64,9 @@ function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
                 className="group flex w-full items-center justify-end gap-2 rounded-lg px-2 py-1 hover:bg-white"
                 title={hasNote ? entry.notes : 'Edit planned amount'}
               >
-                <span>{amount === 0 ? '—' : formatCurrency(amount)}</span>
+                <span>
+                  {amount === 0 ? '—' : formatCurrency(amount, currency)}
+                </span>
 
                 {hasLineItems ? (
                   <ListChecks size={14} className="text-purple-600" />
@@ -80,7 +88,9 @@ function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
                 )}
               </button>
             ) : (
-              <span>{amount === 0 ? '—' : formatCurrency(amount)}</span>
+              <span>
+                {amount === 0 ? '—' : formatCurrency(amount, currency)}
+              </span>
             )}
           </td>
         );
@@ -89,7 +99,13 @@ function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
   );
 }
 
-export default function Planner({ plannerData, plannerEntries, onCellClick }) {
+export default function Planner({
+  plannerData,
+  plannerEntries,
+  settings,
+  onCellClick,
+}) {
+  const currency = settings?.currency || 'CAD';
   const incomeRows = plannerData.rows.filter((row) => row.type === 'income');
   const expenseRows = plannerData.rows.filter((row) => row.type === 'expense');
   const transferRows = plannerData.rows.filter((row) => row.type === 'transfer');
@@ -144,6 +160,7 @@ export default function Planner({ plannerData, plannerEntries, onCellClick }) {
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  currency={currency}
                   onCellClick={onCellClick}
                 />
               ))}
@@ -163,6 +180,7 @@ export default function Planner({ plannerData, plannerEntries, onCellClick }) {
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  currency={currency}
                   onCellClick={onCellClick}
                 />
               ))}
@@ -182,6 +200,7 @@ export default function Planner({ plannerData, plannerEntries, onCellClick }) {
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  currency={currency}
                   onCellClick={onCellClick}
                 />
               ))}
@@ -201,6 +220,7 @@ export default function Planner({ plannerData, plannerEntries, onCellClick }) {
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  currency={currency}
                   onCellClick={onCellClick}
                 />
               ))}

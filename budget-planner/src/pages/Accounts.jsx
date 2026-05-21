@@ -211,11 +211,13 @@ export default function Accounts({
   accounts,
   manualAdjustments,
   payPeriods,
+  settings,
   onSaveAccount,
   onSaveManualAdjustment,
   onDeleteManualAdjustment,
 }) {
   const [selectedAdjustment, setSelectedAdjustment] = useState(null);
+  const currency = settings?.currency || 'CAD';
 
   const adjustmentSummary = useMemo(() => {
     return manualAdjustments.reduce(
@@ -291,7 +293,7 @@ export default function Accounts({
             Chequing Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(adjustmentSummary.chequing)}
+            {formatCurrency(adjustmentSummary.chequing, currency)}
           </p>
         </div>
 
@@ -300,7 +302,7 @@ export default function Accounts({
             Savings Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(adjustmentSummary.savings)}
+            {formatCurrency(adjustmentSummary.savings, currency)}
           </p>
         </div>
 
@@ -309,7 +311,10 @@ export default function Accounts({
             Total Manual Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(adjustmentSummary.chequing + adjustmentSummary.savings)}
+            {formatCurrency(
+              adjustmentSummary.chequing + adjustmentSummary.savings,
+              currency
+            )}
           </p>
         </div>
       </div>
@@ -365,7 +370,7 @@ export default function Accounts({
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm font-semibold text-slate-950">
-                  {formatCurrency(adjustment.amount)}
+                  {formatCurrency(adjustment.amount, currency)}
                 </td>
 
                 <td className="px-4 py-3 text-sm text-slate-600">

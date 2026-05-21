@@ -67,6 +67,23 @@ Known limitation:
 - No account sync or cloud settings sync is included.
 - Advanced pay schedules, like twice monthly by specific dates, are not included yet.
 
+## Phase 1Q: Settings-driven Projection Hardening
+
+Completed:
+
+- Audited projection logic for saved settings usage.
+- Hardened settings normalization and validation.
+- Improved projection rebuild behavior after settings changes.
+- Preserved planner entries when projection settings change.
+- Verified monthly bill assignment rules.
+- Confirmed backup/restore compatibility with saved settings.
+- Added edge-case handling for invalid or missing settings.
+
+Known limitation:
+
+- Manual entries outside the current projection range remain stored but may not appear until the projection range or anchor date includes them again.
+- Advanced pay schedules, such as twice monthly fixed dates, are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

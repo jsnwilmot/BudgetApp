@@ -12,6 +12,7 @@ function createLineItem() {
 export default function CellEditor({
   selectedCell,
   plannerEntries,
+  settings,
   onClose,
   onSave,
   onClear,
@@ -21,6 +22,7 @@ export default function CellEditor({
   }
 
   const entry = plannerEntries[selectedCell.entryKey] || {};
+  const currency = settings?.currency || 'CAD';
   const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
   const lineItems =
     entry.lineItems && entry.lineItems.length > 0
@@ -154,7 +156,10 @@ export default function CellEditor({
         </p>
         <p className="mt-1 text-2xl font-bold text-slate-950">
           {formatCurrency(
-            isLineItemCell ? sumLineItems(entry.lineItems || []) : selectedCell.plannedAmount
+            isLineItemCell
+              ? sumLineItems(entry.lineItems || [])
+              : selectedCell.plannedAmount,
+            currency
           )}
         </p>
       </div>
