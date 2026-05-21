@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { ListChecks, Pencil } from 'lucide-react';
 import { formatCurrency } from '../logic/projectionLogic';
 
 function formatType(type) {
@@ -32,6 +32,7 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
     dueMonth: item.dueMonth ?? '',
     notes: item.notes ?? '',
     active: item.active ?? true,
+    allowLineItems: item.allowLineItems ?? false,
   });
 
   function updateField(fieldName, value) {
@@ -52,13 +53,14 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
       dueMonth: formState.dueMonth === '' ? undefined : Number(formState.dueMonth),
       notes: String(formState.notes || '').trim(),
       active: Boolean(formState.active),
+      allowLineItems: Boolean(formState.allowLineItems),
     };
 
     onSave(cleanedItem);
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-[460px] border-l border-slate-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-y-0 right-0 z-50 w-[460px] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -190,6 +192,18 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
           </span>
         </label>
 
+        <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+          <input
+            type="checkbox"
+            checked={formState.allowLineItems}
+            onChange={(event) => updateField('allowLineItems', event.target.checked)}
+            className="h-4 w-4"
+          />
+          <span className="text-sm font-medium text-slate-700">
+            Allow multiple line items in planner cells
+          </span>
+        </label>
+
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Notes</span>
           <textarea
@@ -236,9 +250,9 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
       (summary, item) => {
         if (!item.active) return summary;
 
-        if (item.type === 'income') summary.income += item.amount || 0;
-        if (item.type === 'expense') summary.expenses += item.amount || 0;
-        if (item.type === 'transfer') summary.transfers += item.amount || 0;
+        if (item.type === 'income') summary.income += Number(item.amount) || 0;
+        if (item.type === 'expense') summary.expenses += Number(item.amount) || 0;
+        if (item.type === 'transfer') summary.transfers += Number(item.amount) || 0;
 
         return summary;
       },
@@ -266,7 +280,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             Income, expenses, and transfers
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Edit the planned amounts and timing rules that generate the pay period planner.
+            Edit the recurring rules that generate the pay period planner.
           </p>
         </div>
 
@@ -291,7 +305,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             {formatCurrency(totals.income)}
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            Total scheduled amount, not monthly total.
+            Sum of configured item amounts.
           </p>
         </div>
 
@@ -303,7 +317,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             {formatCurrency(totals.expenses)}
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            Total scheduled amount, not monthly total.
+            Sum of configured item amounts.
           </p>
         </div>
 
@@ -329,6 +343,7 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
               <th className="px-4 py-3 text-left text-sm font-bold">Frequency</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Amount</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Due</th>
+              <th className="px-4 py-3 text-center text-sm font-bold">Line Items</th>
               <th className="px-4 py-3 text-center text-sm font-bold">Active</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Action</th>
             </tr>
@@ -371,6 +386,19 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
                   {item.frequency === 'biweekly' ? item.startDate : null}
 
                   {item.frequency === 'manual' ? 'Manual' : null}
+                </td>
+
+                <td className="px-4 py-3 text-center text-sm">
+                  {item.allowLineItems ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-bold text-purple-700">
+                      <ListChecks size={13} />
+                      Yes
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">
+                      No
+                    </span>
+                  )}
                 </td>
 
                 <td className="px-4 py-3 text-center text-sm">
