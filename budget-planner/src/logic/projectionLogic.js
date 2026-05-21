@@ -17,6 +17,13 @@ export function getEntryKey(scheduledItemId, payPeriodDate) {
   return `${scheduledItemId}__${payPeriodDate}`;
 }
 
+export function sumLineItems(lineItems = []) {
+  return lineItems.reduce((total, item) => {
+    const amount = Number(item.amount);
+    return total + (Number.isNaN(amount) ? 0 : amount);
+  }, 0);
+}
+
 function shouldPlaceBiweeklyItem(item, period, settings) {
   return isSameBiweeklyCycle(
     item.startDate,
@@ -83,7 +90,15 @@ function getEffectiveAmount(item, periodDate, plannedAmount, plannerEntries) {
   const entryKey = getEntryKey(item.id, periodDate);
   const entry = plannerEntries[entryKey];
 
-  if (!entry || !entry.useActual) {
+  if (!entry) {
+    return plannedAmount;
+  }
+
+  if (item.allowLineItems) {
+    return sumLineItems(entry.lineItems || []);
+  }
+
+  if (!entry.useActual) {
     return plannedAmount;
   }
 

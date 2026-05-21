@@ -75,10 +75,11 @@ export const scheduledItems = [
     name: 'Misc Income',
     type: 'income',
     amount: 0,
-    frequency: 'manual',
+    frequency: 'biweekly',
     startDate: '2026-06-03',
     accountId: 'acct-chequing',
     active: true,
+    allowLineItems: true,
   },
 
   {
@@ -190,6 +191,28 @@ export const scheduledItems = [
     startDate: '2026-06-03',
     accountId: 'acct-chequing',
     active: true,
+  },
+  {
+    id: 'expense-misc-payments',
+    name: 'Misc Payments',
+    type: 'expense',
+    amount: 0,
+    frequency: 'biweekly',
+    startDate: '2026-06-03',
+    accountId: 'acct-chequing',
+    active: true,
+    allowLineItems: true,
+  },
+  {
+    id: 'expense-misc-expenses',
+    name: 'Misc Expenses',
+    type: 'expense',
+    amount: 0,
+    frequency: 'biweekly',
+    startDate: '2026-06-03',
+    accountId: 'acct-chequing',
+    active: true,
+    allowLineItems: true,
   },
 
   {

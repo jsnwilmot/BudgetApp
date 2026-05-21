@@ -1,4 +1,4 @@
-import { CheckCircle2, MessageSquareText, Pencil } from 'lucide-react';
+import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
 
 function getRowClass(type) {
@@ -34,7 +34,9 @@ function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
         const changed = Boolean(entry?.useActual);
         const validated = Boolean(entry?.validated);
         const hasNote = Boolean(entry?.notes?.trim());
-        const canEdit = editable && (plannedAmount !== 0 || changed);
+        const hasLineItems = Boolean(entry?.lineItems?.length);
+        const allowLineItems = Boolean(row.item?.allowLineItems);
+        const canEdit = editable && (plannedAmount !== 0 || changed || allowLineItems);
 
         return (
           <td
@@ -58,13 +60,17 @@ function PlannerRow({ row, payPeriods, plannerEntries, onCellClick }) {
               >
                 <span>{amount === 0 ? '—' : formatCurrency(amount)}</span>
 
+                {hasLineItems ? (
+                  <ListChecks size={14} className="text-purple-600" />
+                ) : null}
+
                 {hasNote ? (
                   <MessageSquareText size={14} className="text-blue-600" />
                 ) : null}
 
                 {validated ? (
                   <CheckCircle2 size={14} className="text-emerald-600" />
-                ) : changed ? (
+                ) : changed || hasLineItems ? (
                   <Pencil size={13} className="text-amber-600" />
                 ) : (
                   <Pencil
@@ -98,7 +104,7 @@ export default function Planner({ plannerData, plannerEntries, onCellClick }) {
           Biweekly budget grid
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Click a planned amount to enter the actual value, add a note, or mark it as validated.
+          Click a planned amount to enter the actual value, add a note, mark it as validated, or add line items for misc rows.
         </p>
       </div>
 
