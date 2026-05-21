@@ -1,5 +1,6 @@
 import {
   findPreviousPayPeriod,
+  formatDateKey,
   generatePayPeriods,
   getMonthDate,
   isSameBiweeklyCycle,
@@ -32,11 +33,32 @@ function shouldPlaceBiweeklyItem(item, period, settings) {
   );
 }
 
-function buildMonthlyPlacements(item, payPeriods) {
+function getMonthlyBillAssignmentRule(settings) {
+  if (
+    settings.monthlyBillAssignmentRule === 'same-pay-period' ||
+    settings.monthlyBillAssignmentRule === 'same_pay_period'
+  ) {
+    return 'same-pay-period';
+  }
+
+  return 'previous-pay-period';
+}
+
+function findSamePayPeriod(payPeriods, dueDate) {
+  const dueDateKey = formatDateKey(dueDate);
+  const matchingPeriod = [...payPeriods].reverse().find((period) => {
+    return period.date <= dueDateKey;
+  });
+
+  return matchingPeriod || payPeriods[0];
+}
+
+function buildMonthlyPlacements(item, payPeriods, settings) {
   const placements = new Set();
 
   const firstPeriodDate = parseLocalDate(payPeriods[0].date);
   const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
+  const assignmentRule = getMonthlyBillAssignmentRule(settings);
 
   for (
     let year = firstPeriodDate.getFullYear();
@@ -50,7 +72,10 @@ function buildMonthlyPlacements(item, payPeriods) {
         continue;
       }
 
-      const assignedPeriod = findPreviousPayPeriod(payPeriods, dueDate);
+      const assignedPeriod =
+        assignmentRule === 'same-pay-period'
+          ? findSamePayPeriod(payPeriods, dueDate)
+          : findPreviousPayPeriod(payPeriods, dueDate);
       placements.add(assignedPeriod.date);
     }
   }
@@ -140,7 +165,7 @@ export function buildPlannerRows({
       }
 
       if (item.frequency === 'monthly') {
-        placementDates = buildMonthlyPlacements(item, payPeriods);
+        placementDates = buildMonthlyPlacements(item, payPeriods, settings);
       }
 
       if (item.frequency === 'annual') {

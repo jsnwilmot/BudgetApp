@@ -4,6 +4,7 @@ import {
   getBackupFileName,
   validateBackupFile
 } from "../services/backupService";
+import { appSettings } from "../data/seedData";
 import { downloadTextFile } from "../utils/downloadFile";
 import { rowsToCsv } from "../utils/csv";
 
@@ -19,12 +20,7 @@ const POSSIBLE_STORAGE_KEYS = [
 ];
 
 const defaultAppState = {
-  settings: {
-    currency: "CAD",
-    payPeriodAnchorDate: "",
-    payFrequencyDays: 14,
-    projectionMonths: 6
-  },
+  settings: appSettings,
   planner: {
     rows: [],
     payPeriods: [],
@@ -212,6 +208,7 @@ function getBucketBalance(bucket) {
   return normalizeMoney(
     bucket.balance ??
       bucket.currentBalance ??
+      bucket.startingAmount ??
       bucket.amount ??
       bucket.value ??
       0
@@ -306,7 +303,12 @@ function buildSavingsCsvRows(savingsBuckets, transfers) {
   });
 }
 
-export default function DataManagement({ onDataReload }) {
+export default function DataManagement({
+  appData,
+  onDataReload,
+  onImportData,
+  onResetLocalData
+}) {
   const fileInputRef = useRef(null);
 
   const [lastBackupTimestamp, setLastBackupTimestamp] = useState("");
@@ -332,10 +334,21 @@ export default function DataManagement({ onDataReload }) {
     window.location.reload();
   }
 
+  function getCurrentAppData() {
+    if (appData && typeof appData === "object") {
+      return {
+        storageKey: activeStorageKey,
+        data: appData
+      };
+    }
+
+    return getStoredAppData();
+  }
+
   function handleExportBackup() {
     clearMessages();
 
-    const { storageKey, data } = getStoredAppData();
+    const { storageKey, data } = getCurrentAppData();
     const backup = createBackupSnapshot({
       storageKey,
       ...data
@@ -400,7 +413,7 @@ export default function DataManagement({ onDataReload }) {
     reader.readAsText(file);
   }
 
-  function confirmImportBackup() {
+  async function confirmImportBackup() {
     clearMessages();
 
     if (!pendingImport) {
@@ -414,10 +427,23 @@ export default function DataManagement({ onDataReload }) {
 
     delete dataToRestore.storageKey;
 
-    if (storageKeyFromBackup) {
-      localStorage.setItem(storageKeyFromBackup, JSON.stringify(dataToRestore));
-    } else {
-      saveStoredAppData(dataToRestore);
+    try {
+      if (typeof onImportData === "function") {
+        await onImportData(dataToRestore);
+      } else {
+        if (storageKeyFromBackup) {
+          localStorage.setItem(
+            storageKeyFromBackup,
+            JSON.stringify(dataToRestore)
+          );
+        } else {
+          saveStoredAppData(dataToRestore);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Backup import failed.");
+      return;
     }
 
     setPendingImport(null);
@@ -437,7 +463,7 @@ export default function DataManagement({ onDataReload }) {
   function handleExportPlannerCsv() {
     clearMessages();
 
-    const { data } = getStoredAppData();
+    const { data } = getCurrentAppData();
     const plannerRows = getPlannerRows(data);
 
     const headers = [
@@ -466,7 +492,7 @@ export default function DataManagement({ onDataReload }) {
   function handleExportSavingsBucketsCsv() {
     clearMessages();
 
-    const { data } = getStoredAppData();
+    const { data } = getCurrentAppData();
     const savingsBuckets = getSavingsBuckets(data);
     const transfers = getSavingsTransfers(data);
 
@@ -492,7 +518,7 @@ export default function DataManagement({ onDataReload }) {
     setSuccessMessage("Savings buckets CSV exported successfully.");
   }
 
-  function handleResetLocalData() {
+  async function handleResetLocalData() {
     clearMessages();
 
     if (deleteConfirmation !== "DELETE") {
@@ -500,7 +526,17 @@ export default function DataManagement({ onDataReload }) {
       return;
     }
 
-    saveStoredAppData(defaultAppState);
+    try {
+      if (typeof onResetLocalData === "function") {
+        await onResetLocalData();
+      } else {
+        saveStoredAppData(defaultAppState);
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Local data reset failed.");
+      return;
+    }
 
     setDeleteConfirmation("");
     setSuccessMessage("Local data reset successfully.");

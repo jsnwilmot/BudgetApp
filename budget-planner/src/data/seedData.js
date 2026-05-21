@@ -3,7 +3,7 @@ export const appSettings = {
   payPeriodAnchorDate: '2026-06-03',
   payFrequencyDays: 14,
   projectionMonths: 12,
-  monthlyBillAssignmentRule: 'previous_pay_period_before_due_date',
+  monthlyBillAssignmentRule: 'previous-pay-period',
 };
 
 export const accounts = [

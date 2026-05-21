@@ -1,7 +1,11 @@
+import { appSettings as defaultAppSettings } from './seedData';
+
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
+const SETTINGS_ID = 'app-settings';
 
 const STORES = {
+  appSettings: 'appSettings',
   plannerEntries: 'plannerEntries',
   scheduledItems: 'scheduledItems',
   accounts: 'accounts',
@@ -28,6 +32,12 @@ function openDatabase() {
       if (!db.objectStoreNames.contains(STORES.plannerEntries)) {
         db.createObjectStore(STORES.plannerEntries, {
           keyPath: 'entryKey',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.appSettings)) {
+        db.createObjectStore(STORES.appSettings, {
+          keyPath: 'id',
         });
       }
 
@@ -62,6 +72,199 @@ function openDatabase() {
       }
     };
   });
+}
+
+function normalizeSettingRule(rule) {
+  if (
+    rule === 'same-pay-period' ||
+    rule === 'same_pay_period' ||
+    rule === 'same_pay_period_as_due_date'
+  ) {
+    return 'same-pay-period';
+  }
+
+  return 'previous-pay-period';
+}
+
+export function normalizeAppSettings(settings = {}) {
+  const currency = ['CAD', 'USD'].includes(settings.currency)
+    ? settings.currency
+    : defaultAppSettings.currency;
+  const payFrequencyDays = [7, 14, 28, 30].includes(
+    Number(settings.payFrequencyDays)
+  )
+    ? Number(settings.payFrequencyDays)
+    : defaultAppSettings.payFrequencyDays;
+  const projectionMonths = [3, 6, 12, 18, 24].includes(
+    Number(settings.projectionMonths)
+  )
+    ? Number(settings.projectionMonths)
+    : defaultAppSettings.projectionMonths;
+  const payPeriodAnchorDate =
+    typeof settings.payPeriodAnchorDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(settings.payPeriodAnchorDate)
+      ? settings.payPeriodAnchorDate
+      : defaultAppSettings.payPeriodAnchorDate;
+
+  return {
+    ...defaultAppSettings,
+    ...settings,
+    currency,
+    payPeriodAnchorDate,
+    payFrequencyDays,
+    projectionMonths,
+    monthlyBillAssignmentRule: normalizeSettingRule(
+      settings.monthlyBillAssignmentRule
+    ),
+  };
+}
+
+async function clearStore(storeName) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.clear();
+
+    request.onerror = () => {
+      reject(new Error(`Failed to clear ${storeName}.`));
+    };
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+async function replaceStoreRecords(storeName, records = []) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const clearRequest = store.clear();
+
+    clearRequest.onerror = () => {
+      reject(new Error(`Failed to clear ${storeName}.`));
+    };
+
+    clearRequest.onsuccess = () => {
+      records.forEach((record) => {
+        store.put(record);
+      });
+    };
+
+    transaction.onerror = () => {
+      reject(new Error(`Failed to replace ${storeName}.`));
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+      resolve(records);
+    };
+  });
+}
+
+export async function getAppSettings() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.appSettings, 'readonly');
+    const store = transaction.objectStore(STORES.appSettings);
+    const request = store.get(SETTINGS_ID);
+
+    request.onerror = () => {
+      reject(new Error('Failed to load app settings.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(normalizeAppSettings(request.result || defaultAppSettings));
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveAppSettings(settings) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.appSettings, 'readwrite');
+    const store = transaction.objectStore(STORES.appSettings);
+    const record = {
+      ...normalizeAppSettings(settings),
+      id: SETTINGS_ID,
+      updatedAt: new Date().toISOString(),
+    };
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save app settings.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function resetAppSettings() {
+  return saveAppSettings(defaultAppSettings);
+}
+
+export async function replacePlannerEntries(entries = {}) {
+  const records = Array.isArray(entries)
+    ? entries
+    : Object.entries(entries).map(([entryKey, entry]) => ({
+        ...entry,
+        entryKey,
+      }));
+
+  return replaceStoreRecords(STORES.plannerEntries, records);
+}
+
+export async function replaceScheduledItems(items = []) {
+  return replaceStoreRecords(STORES.scheduledItems, items);
+}
+
+export async function replaceAccounts(accounts = []) {
+  return replaceStoreRecords(STORES.accounts, accounts);
+}
+
+export async function replaceManualAdjustments(adjustments = []) {
+  return replaceStoreRecords(STORES.manualAdjustments, adjustments);
+}
+
+export async function replaceSavingsBuckets(buckets = []) {
+  return replaceStoreRecords(STORES.savingsBuckets, buckets);
+}
+
+export async function replaceSavingsBucketAdjustments(adjustments = []) {
+  return replaceStoreRecords(STORES.savingsBucketAdjustments, adjustments);
+}
+
+export async function clearAllSavedData() {
+  await Promise.all([
+    clearStore(STORES.plannerEntries),
+    clearStore(STORES.scheduledItems),
+    clearStore(STORES.accounts),
+    clearStore(STORES.manualAdjustments),
+    clearStore(STORES.savingsBuckets),
+    clearStore(STORES.savingsBucketAdjustments),
+  ]);
+
+  return resetAppSettings();
 }
 
 export async function getAllPlannerEntries() {

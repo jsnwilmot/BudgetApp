@@ -50,6 +50,23 @@ Known limitation:
 - Chart image export is not included.
 - Cloud sync and automated report delivery are not included.
 
+## Phase 1P: Editable Budget Planner Settings
+
+Completed:
+
+- Added editable planner settings.
+- Added local persistence for settings.
+- Added Save, Cancel, and Reset controls.
+- Added validation for planner settings.
+- Connected saved settings to planner recalculation.
+- Preserved backup/restore compatibility.
+
+Known limitation:
+
+- Settings are local-only.
+- No account sync or cloud settings sync is included.
+- Advanced pay schedules, like twice monthly by specific dates, are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

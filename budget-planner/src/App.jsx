@@ -9,16 +9,27 @@ import {
   scheduledItems as seedScheduledItems,
 } from './data/seedData';
 import {
+  clearAllSavedData,
   deleteManualAdjustment,
   deletePlannerEntry,
   deleteSavingsBucketAdjustment,
+  getAppSettings,
   getAllAccounts,
   getAllManualAdjustments,
   getAllPlannerEntries,
   getAllSavingsBucketAdjustments,
   getAllSavingsBuckets,
   getAllScheduledItems,
+  normalizeAppSettings,
+  replaceAccounts,
+  replaceManualAdjustments,
+  replacePlannerEntries,
+  replaceSavingsBucketAdjustments,
+  replaceSavingsBuckets,
+  replaceScheduledItems,
+  resetAppSettings,
   saveAccount,
+  saveAppSettings,
   saveManualAdjustment,
   savePlannerEntry,
   saveSavingsBucket,
@@ -34,8 +45,23 @@ import SavingsBuckets from './pages/SavingsBuckets';
 import ScheduledItems from './pages/ScheduledItems';
 import Settings from './pages/Settings';
 
+function normalizePlannerEntries(entries) {
+  if (Array.isArray(entries)) {
+    return entries.reduce((result, entry) => {
+      if (entry?.entryKey) {
+        result[entry.entryKey] = entry;
+      }
+
+      return result;
+    }, {});
+  }
+
+  return entries && typeof entries === 'object' ? entries : {};
+}
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [settings, setSettings] = useState(appSettings);
   const [plannerEntries, setPlannerEntries] = useState({});
   const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
   const [accounts, setAccounts] = useState(seedAccounts);
@@ -52,6 +78,7 @@ export default function App() {
     async function loadSavedData() {
       try {
         const [
+          savedSettings,
           savedPlannerEntries,
           savedScheduledItems,
           savedAccounts,
@@ -59,6 +86,7 @@ export default function App() {
           savedSavingsBuckets,
           savedSavingsBucketAdjustments,
         ] = await Promise.all([
+          getAppSettings(),
           getAllPlannerEntries(),
           getAllScheduledItems(),
           getAllAccounts(),
@@ -67,6 +95,7 @@ export default function App() {
           getAllSavingsBucketAdjustments(),
         ]);
 
+        setSettings(savedSettings);
         setPlannerEntries(savedPlannerEntries);
 
         if (savedScheduledItems.length > 0) {
@@ -138,7 +167,7 @@ export default function App() {
 
   const plannerData = useMemo(() => {
     return buildPlannerRows({
-      settings: appSettings,
+      settings,
       accounts,
       scheduledItems,
       manualAdjustments,
@@ -147,11 +176,43 @@ export default function App() {
     });
   }, [
     plannerEntries,
+    settings,
     scheduledItems,
     accounts,
     manualAdjustments,
     savingsBucketAdjustments,
   ]);
+
+  const appData = useMemo(
+    () => ({
+      settings,
+      plannerEntries,
+      scheduledItems,
+      accounts,
+      manualAdjustments,
+      savingsBuckets,
+      savingsBucketAdjustments,
+      planner: {
+        entries: plannerEntries,
+        payPeriods: plannerData.payPeriods,
+        rows: plannerData.payPeriods,
+      },
+      savings: {
+        buckets: savingsBuckets,
+        transfers: savingsBucketAdjustments,
+      },
+    }),
+    [
+      accounts,
+      manualAdjustments,
+      plannerData.payPeriods,
+      plannerEntries,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      scheduledItems,
+      settings,
+    ]
+  );
 
   async function handleSaveCell(entryKey, entry) {
     try {
@@ -384,6 +445,85 @@ export default function App() {
     }
   }
 
+  async function handleSaveSettings(updatedSettings) {
+    const savedSettings = await saveAppSettings(updatedSettings);
+    setSettings(savedSettings);
+    setStatusMessage('Settings saved. Planner projections updated.');
+    return savedSettings;
+  }
+
+  async function handleResetSettings() {
+    const defaultSettings = await resetAppSettings();
+    setSettings(defaultSettings);
+    setStatusMessage('Settings reset to defaults.');
+    return defaultSettings;
+  }
+
+  async function handleImportData(importedData) {
+    const importedSettings = normalizeAppSettings(importedData?.settings);
+    const importedPlannerEntries = normalizePlannerEntries(
+      importedData?.plannerEntries || importedData?.planner?.entries || {}
+    );
+    const importedScheduledItems = Array.isArray(importedData?.scheduledItems)
+      ? importedData.scheduledItems
+      : [];
+    const importedAccounts = Array.isArray(importedData?.accounts)
+      ? importedData.accounts
+      : [];
+    const importedManualAdjustments = Array.isArray(
+      importedData?.manualAdjustments
+    )
+      ? importedData.manualAdjustments
+      : [];
+    const importedSavingsBuckets = Array.isArray(importedData?.savingsBuckets)
+      ? importedData.savingsBuckets
+      : importedData?.savings?.buckets || [];
+    const importedSavingsBucketAdjustments = Array.isArray(
+      importedData?.savingsBucketAdjustments
+    )
+      ? importedData.savingsBucketAdjustments
+      : importedData?.savings?.transfers || [];
+
+    await Promise.all([
+      saveAppSettings(importedSettings),
+      replacePlannerEntries(importedPlannerEntries),
+      replaceScheduledItems(importedScheduledItems),
+      replaceAccounts(importedAccounts),
+      replaceManualAdjustments(importedManualAdjustments),
+      replaceSavingsBuckets(importedSavingsBuckets),
+      replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
+    ]);
+
+    setSettings(importedSettings);
+    setPlannerEntries(importedPlannerEntries);
+    setScheduledItems(
+      importedScheduledItems.length > 0
+        ? importedScheduledItems
+        : seedScheduledItems
+    );
+    setAccounts(importedAccounts.length > 0 ? importedAccounts : seedAccounts);
+    setManualAdjustments(importedManualAdjustments);
+    setSavingsBuckets(
+      importedSavingsBuckets.length > 0
+        ? importedSavingsBuckets.filter((bucket) => !bucket.deletedAt)
+        : seedSavingsBuckets
+    );
+    setSavingsBucketAdjustments(importedSavingsBucketAdjustments);
+    setStatusMessage('Backup imported successfully.');
+  }
+
+  async function handleResetLocalData() {
+    await clearAllSavedData();
+    setSettings(appSettings);
+    setPlannerEntries({});
+    setScheduledItems(seedScheduledItems);
+    setAccounts(seedAccounts);
+    setManualAdjustments(seedManualAdjustments);
+    setSavingsBuckets(seedSavingsBuckets);
+    setSavingsBucketAdjustments([]);
+    setStatusMessage('Local data reset successfully.');
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-700">
@@ -453,7 +593,7 @@ export default function App() {
 
         {currentPage === 'reports' ? (
           <Reports
-            settings={appSettings}
+            settings={settings}
             plannerData={plannerData}
             plannerRows={plannerData.payPeriods}
             miscExpenses={manualAdjustments.filter(
@@ -465,7 +605,14 @@ export default function App() {
         ) : null}
 
         {currentPage === 'settings' ? (
-          <Settings settings={appSettings} />
+          <Settings
+            settings={settings}
+            appData={appData}
+            onSaveSettings={handleSaveSettings}
+            onResetSettings={handleResetSettings}
+            onImportData={handleImportData}
+            onResetLocalData={handleResetLocalData}
+          />
         ) : null}
       </AppShell>
 
