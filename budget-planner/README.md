@@ -34,6 +34,22 @@ Known limitation:
 - Savings transfer trends require dated transfer history.
 - Advanced forecasting and PDF reports are not included yet.
 
+## Phase 1O: Report Export and Print View
+
+Completed:
+
+- Added print action for the current Reports view.
+- Added print-friendly report layout.
+- Added report-specific CSV export.
+- CSV export includes metadata, summary totals, categories, savings transfers, savings buckets, and trend summary.
+- Export respects the current monthly or pay-period report filter.
+
+Known limitation:
+
+- PDF export uses browser print/save as PDF.
+- Chart image export is not included.
+- Cloud sync and automated report delivery are not included.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

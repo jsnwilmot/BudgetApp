@@ -49,7 +49,7 @@ const navItems = [
 export default function AppShell({ currentPage, onPageChange, children }) {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
-      <aside className="fixed left-0 top-0 h-screen w-72 border-r border-slate-200 bg-white p-5">
+      <aside className="no-print fixed left-0 top-0 h-screen w-72 border-r border-slate-200 bg-white p-5 print:hidden">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Personal Finance
@@ -83,7 +83,9 @@ export default function AppShell({ currentPage, onPageChange, children }) {
         </nav>
       </aside>
 
-      <main className="ml-72 min-h-screen p-6">{children}</main>
+      <main className="app-main ml-72 min-h-screen p-6 print:ml-0 print:p-0">
+        {children}
+      </main>
     </div>
   );
 }

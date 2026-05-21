@@ -661,6 +661,171 @@ export function calculateTrendSummary(
   };
 }
 
+export function sanitizeFileName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function buildReportExportFileName(
+  reportType,
+  selectedMonth,
+  selectedPayPeriodLabel
+) {
+  if (reportType === "payPeriod") {
+    const payPeriodName =
+      sanitizeFileName(selectedPayPeriodLabel) || "selected-pay-period";
+    return `budget-report-pay-period-${payPeriodName}.csv`;
+  }
+
+  return `budget-report-month-${sanitizeFileName(selectedMonth) || "current"}.csv`;
+}
+
+function buildTrendSummaryExportRows(trendSummary = {}) {
+  return [
+    [
+      "Trend Summary",
+      "Best Cash Flow Month",
+      trendSummary.bestCashFlowMonth
+        ? trendSummary.bestCashFlowMonth.netCashFlow
+        : "Not enough data"
+    ],
+    [
+      "Trend Summary",
+      "Highest Expense Month",
+      trendSummary.highestExpenseMonth
+        ? trendSummary.highestExpenseMonth.totalExpenses
+        : "Not enough data"
+    ],
+    [
+      "Trend Summary",
+      "Highest Savings Transfer Month",
+      trendSummary.highestSavingsTransferMonth
+        ? trendSummary.highestSavingsTransferMonth.transfersIn
+        : "Not enough data"
+    ],
+    [
+      "Trend Summary",
+      "Lowest Remaining Balance",
+      trendSummary.lowestRemainingBalance
+        ? trendSummary.lowestRemainingBalance.remainingBalance
+        : "Not enough data"
+    ],
+    [
+      "Trend Summary",
+      "Average Monthly Net Cash Flow",
+      trendSummary.averageMonthlyNetCashFlow ?? "Not enough data"
+    ]
+  ];
+}
+
+export function buildReportCsvSections(reportData = {}) {
+  const {
+    reportType,
+    periodLabel,
+    generatedAt,
+    summary = {},
+    budgetUsedPercentage = 0,
+    categoryTotals = [],
+    savingsSummary = { buckets: [], totals: {} },
+    trendSummary = {},
+    hasReportData = false
+  } = reportData;
+  const totalExpenses =
+    normalizeNumber(summary.expenses) + normalizeNumber(summary.miscExpenses);
+  const netCashFlow =
+    normalizeNumber(summary.income) -
+    totalExpenses -
+    normalizeNumber(summary.transfersIn) +
+    normalizeNumber(summary.transfersOut);
+  const rows = [
+    ["Section", "Field", "Value"],
+    [
+      "Report Metadata",
+      "Report Type",
+      reportType === "payPeriod" ? "Pay period report" : "Monthly report"
+    ],
+    ["Report Metadata", "Period", periodLabel || ""],
+    ["Report Metadata", "Generated At", generatedAt || ""]
+  ];
+
+  if (!hasReportData) {
+    rows.push(["Report Metadata", "Note", "No report data available."]);
+  }
+
+  rows.push(
+    [],
+    ["Section", "Field", "Value"],
+    ["Summary", "Income", normalizeNumber(summary.income)],
+    ["Summary", "Expenses", totalExpenses],
+    ["Summary", "Scheduled Expenses", normalizeNumber(summary.expenses)],
+    ["Summary", "Misc Payments", normalizeNumber(summary.miscPayments)],
+    ["Summary", "Misc Expenses", normalizeNumber(summary.miscExpenses)],
+    ["Summary", "Transfers In", normalizeNumber(summary.transfersIn)],
+    ["Summary", "Transfers Out", normalizeNumber(summary.transfersOut)],
+    ["Summary", "Net Cash Flow", netCashFlow],
+    ["Summary", "Remaining Balance", normalizeNumber(summary.remainingBalance)],
+    ["Summary", "Budget Used %", normalizeNumber(budgetUsedPercentage)],
+    [],
+    ["Section", "Category", "Total"]
+  );
+
+  if (categoryTotals.length === 0) {
+    rows.push(["Top Spending Categories", "No category spending found", ""]);
+  } else {
+    categoryTotals.forEach((item) => {
+      rows.push([
+        "Top Spending Categories",
+        item.category,
+        normalizeNumber(item.total)
+      ]);
+    });
+  }
+
+  rows.push(
+    [],
+    ["Section", "Field", "Value"],
+    [
+      "Savings Transfers",
+      "Transfers In",
+      normalizeNumber(savingsSummary.totals?.transfersIn)
+    ],
+    [
+      "Savings Transfers",
+      "Transfers Out",
+      normalizeNumber(savingsSummary.totals?.transfersOut)
+    ],
+    [
+      "Savings Transfers",
+      "Net Transfers",
+      normalizeNumber(savingsSummary.totals?.netTransfers)
+    ],
+    [],
+    ["Section", "Bucket", "Balance", "Transfers In", "Transfers Out", "Net Transfers"]
+  );
+
+  if ((savingsSummary.buckets || []).length === 0) {
+    rows.push(["Savings Buckets", "No savings buckets found", "", "", "", ""]);
+  } else {
+    savingsSummary.buckets.forEach((bucket) => {
+      rows.push([
+        "Savings Buckets",
+        bucket.name,
+        normalizeNumber(bucket.balance),
+        normalizeNumber(bucket.transfersIn),
+        normalizeNumber(bucket.transfersOut),
+        normalizeNumber(bucket.netTransfers)
+      ]);
+    });
+  }
+
+  rows.push([], ["Section", "Field", "Value"], ...buildTrendSummaryExportRows(trendSummary));
+
+  return rows;
+}
+
 export function calculateBucketTransferTotals(bucketId, transfers = []) {
   return transfers.reduce(
     (totals, transfer) => {

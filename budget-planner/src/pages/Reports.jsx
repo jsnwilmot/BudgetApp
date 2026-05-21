@@ -16,6 +16,8 @@ import {
 import {
   buildBucketBalanceChartData,
   buildIncomeOutflowChartData,
+  buildReportCsvSections,
+  buildReportExportFileName,
   buildReportRowsFromPlannerData,
   buildSavingsTransferChartData,
   calculateMonthlyTrendRows,
@@ -35,6 +37,8 @@ import {
   getRowsForMonth,
   getRowsForPayPeriod
 } from "../logic/reportLogic";
+import { tableRowsToCsv } from "../utils/csv";
+import { downloadTextFile } from "../utils/downloadFile";
 
 const INCOME_OUTFLOW_COLORS = ["#2563eb", "#475569", "#f97316", "#059669"];
 const SAVINGS_COLORS = ["#059669", "#dc2626", "#2563eb"];
@@ -73,7 +77,7 @@ function chartHasAnyValue(data = []) {
 
 function StatCard({ label, value, helper }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none">
       <p className="text-sm font-medium text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
       {helper && <p className="mt-1 text-sm text-slate-500">{helper}</p>}
@@ -83,7 +87,7 @@ function StatCard({ label, value, helper }) {
 
 function ChartCard({ title, helper, children }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none">
       <div className="mb-4">
         <h3 className="text-xl font-bold text-slate-950">{title}</h3>
         <p className="mt-1 text-sm text-slate-600">{helper}</p>
@@ -140,7 +144,7 @@ function TrendTooltip({ active, payload, label, currencyFormatter }) {
 
 function TrendSummaryCard({ label, value, helper }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="rounded-xl border border-slate-200 p-4 print:break-inside-avoid print:border-slate-300">
       <p className="text-sm font-medium text-slate-500">{label}</p>
       <p className="mt-2 text-xl font-bold text-slate-950">{value}</p>
       {helper && <p className="mt-1 text-sm text-slate-500">{helper}</p>}
@@ -150,7 +154,7 @@ function TrendSummaryCard({ label, value, helper }) {
 
 function EmptyChartState({ message }) {
   return (
-    <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-600">
+    <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-600 print:h-auto print:min-h-24">
       {message}
     </div>
   );
@@ -158,11 +162,19 @@ function EmptyChartState({ message }) {
 
 function EmptyState({ title, message }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center print:border-slate-300">
       <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
       <p className="mt-2 text-sm text-slate-600">{message}</p>
     </div>
   );
+}
+
+function formatGeneratedDate(date) {
+  return date.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 }
 
 export default function Reports({
@@ -204,6 +216,7 @@ export default function Reports({
   const [selectedPayPeriod, setSelectedPayPeriod] = useState(
     availablePayPeriods[0]?.date || ""
   );
+  const [exportMessage, setExportMessage] = useState("");
 
   const activeSelectedMonth = availableMonths.includes(selectedMonth)
     ? selectedMonth
@@ -312,11 +325,17 @@ export default function Reports({
     availablePayPeriods.find(
       (period) => period.date === activeSelectedPayPeriod
     )?.label || activeSelectedPayPeriod;
+  const selectedPayPeriodReportLabel = activeSelectedPayPeriod
+    ? `${selectedPayPeriodLabel} (${activeSelectedPayPeriod})`
+    : selectedPayPeriodLabel;
 
   const reportRangeLabel =
     reportFilter === "payPeriod"
-      ? selectedPayPeriodLabel || "Selected pay period"
+      ? selectedPayPeriodReportLabel || "Selected pay period"
       : getMonthLabel(activeSelectedMonth);
+  const reportTypeLabel =
+    reportFilter === "payPeriod" ? "Pay period report" : "Monthly report";
+  const generatedDate = useMemo(() => new Date(), []);
 
   const hasReportData =
     reportRows.length > 0 ||
@@ -324,9 +343,54 @@ export default function Reports({
     savingsBuckets.length > 0 ||
     savingsTransfers.length > 0;
 
+  function handlePrintReport() {
+    window.print();
+  }
+
+  function handleExportReportCsv() {
+    const generatedAt = new Date().toISOString();
+    const csvRows = buildReportCsvSections({
+      reportType: reportFilter,
+      periodLabel: reportRangeLabel,
+      generatedAt,
+      summary: monthlySummary,
+      budgetUsedPercentage,
+      categoryTotals,
+      savingsSummary,
+      trendSummary,
+      hasReportData
+    });
+    const csv = tableRowsToCsv(csvRows);
+    const filename = buildReportExportFileName(
+      reportFilter,
+      activeSelectedMonth,
+      selectedPayPeriodReportLabel
+    );
+
+    downloadTextFile({
+      content: csv,
+      filename,
+      mimeType: "text/csv;charset=utf-8"
+    });
+
+    setExportMessage(`Exported ${filename}`);
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+    <div className="space-y-6 print:bg-white print:p-6 print:text-black">
+      <div className="hidden print:block">
+        <h1 className="text-3xl font-bold text-slate-950">
+          Budget Planner Report
+        </h1>
+        <p className="mt-2 text-base text-slate-700">
+          {reportTypeLabel}, {reportRangeLabel}
+        </p>
+        <p className="mt-1 text-sm text-slate-600">
+          Generated {formatGeneratedDate(generatedDate)}
+        </p>
+      </div>
+
+      <div className="no-print flex flex-col justify-between gap-4 print:hidden md:flex-row md:items-end">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Reports
@@ -340,73 +404,105 @@ export default function Reports({
           </p>
         </div>
 
-        <div className="grid gap-3 sm:min-w-[360px] sm:grid-cols-[auto_1fr] sm:items-end">
-          <div>
-            <p className="text-sm font-medium text-slate-600">View</p>
-            <div className="mt-1 inline-flex rounded-xl border border-slate-300 bg-white p-1">
-              <button
-                type="button"
-                onClick={() => setReportFilter("month")}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                  reportFilter === "month"
-                    ? "bg-slate-950 text-white"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                Month
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportFilter("payPeriod")}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                  reportFilter === "payPeriod"
-                    ? "bg-slate-950 text-white"
-                    : "text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                Pay Period
-              </button>
+        <div className="grid gap-3 sm:min-w-[420px]">
+          <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-end">
+            <div>
+              <p className="text-sm font-medium text-slate-600">View</p>
+              <div className="mt-1 inline-flex rounded-xl border border-slate-300 bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => setReportFilter("month")}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                    reportFilter === "month"
+                      ? "bg-slate-950 text-white"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportFilter("payPeriod")}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                    reportFilter === "payPeriod"
+                      ? "bg-slate-950 text-white"
+                      : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  Pay Period
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-600">
+                {reportFilter === "payPeriod" ? "Pay period" : "Report month"}
+              </label>
+              {reportFilter === "payPeriod" ? (
+                <select
+                  value={activeSelectedPayPeriod}
+                  onChange={(event) => setSelectedPayPeriod(event.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+                >
+                  {availablePayPeriods.length === 0 && (
+                    <option value="">No pay periods</option>
+                  )}
+
+                  {availablePayPeriods.map((period) => (
+                    <option key={period.date} value={period.date}>
+                      {period.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={activeSelectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+                >
+                  {availableMonths.length === 0 && (
+                    <option value={activeSelectedMonth}>
+                      {getMonthLabel(activeSelectedMonth)}
+                    </option>
+                  )}
+
+                  {availableMonths.map((monthKey) => (
+                    <option key={monthKey} value={monthKey}>
+                      {getMonthLabel(monthKey)}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-slate-600">
-              {reportFilter === "payPeriod" ? "Pay period" : "Report month"}
-            </label>
-            {reportFilter === "payPeriod" ? (
-              <select
-                value={activeSelectedPayPeriod}
-                onChange={(event) => setSelectedPayPeriod(event.target.value)}
-                className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-950">
+              Report Actions
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Print or export the current report view.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handlePrintReport}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
-                {availablePayPeriods.length === 0 && (
-                  <option value="">No pay periods</option>
-                )}
-
-                {availablePayPeriods.map((period) => (
-                  <option key={period.date} value={period.date}>
-                    {period.label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <select
-                value={activeSelectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-                className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+                Print Current Report
+              </button>
+              <button
+                type="button"
+                onClick={handleExportReportCsv}
+                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               >
-                {availableMonths.length === 0 && (
-                  <option value={activeSelectedMonth}>
-                    {getMonthLabel(activeSelectedMonth)}
-                  </option>
-                )}
-
-                {availableMonths.map((monthKey) => (
-                  <option key={monthKey} value={monthKey}>
-                    {getMonthLabel(monthKey)}
-                  </option>
-                ))}
-              </select>
+                Export Current Report CSV
+              </button>
+            </div>
+            {exportMessage && (
+              <p className="mt-2 text-sm font-medium text-emerald-700">
+                {exportMessage}
+              </p>
             )}
           </div>
         </div>
