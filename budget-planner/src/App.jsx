@@ -5,24 +5,31 @@ import {
   accounts as seedAccounts,
   appSettings,
   manualAdjustments as seedManualAdjustments,
+  savingsBuckets as seedSavingsBuckets,
   scheduledItems as seedScheduledItems,
 } from './data/seedData';
 import {
   deleteManualAdjustment,
   deletePlannerEntry,
+  deleteSavingsBucketAdjustment,
   getAllAccounts,
   getAllManualAdjustments,
   getAllPlannerEntries,
+  getAllSavingsBucketAdjustments,
+  getAllSavingsBuckets,
   getAllScheduledItems,
   saveAccount,
   saveManualAdjustment,
   savePlannerEntry,
+  saveSavingsBucket,
+  saveSavingsBucketAdjustment,
   saveScheduledItem,
 } from './data/db';
 import { buildPlannerRows } from './logic/projectionLogic';
 import Accounts from './pages/Accounts';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
+import SavingsBuckets from './pages/SavingsBuckets';
 import ScheduledItems from './pages/ScheduledItems';
 import Settings from './pages/Settings';
 
@@ -32,6 +39,8 @@ export default function App() {
   const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
   const [accounts, setAccounts] = useState(seedAccounts);
   const [manualAdjustments, setManualAdjustments] = useState(seedManualAdjustments);
+  const [savingsBuckets, setSavingsBuckets] = useState(seedSavingsBuckets);
+  const [savingsBucketAdjustments, setSavingsBucketAdjustments] = useState([]);
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
@@ -44,11 +53,15 @@ export default function App() {
           savedScheduledItems,
           savedAccounts,
           savedManualAdjustments,
+          savedSavingsBuckets,
+          savedSavingsBucketAdjustments,
         ] = await Promise.all([
           getAllPlannerEntries(),
           getAllScheduledItems(),
           getAllAccounts(),
           getAllManualAdjustments(),
+          getAllSavingsBuckets(),
+          getAllSavingsBucketAdjustments(),
         ]);
 
         setPlannerEntries(savedPlannerEntries);
@@ -83,7 +96,20 @@ export default function App() {
           setAccounts(mergedAccounts);
         }
 
+        if (savedSavingsBuckets.length > 0) {
+          const savedBucketsById = new Map(
+            savedSavingsBuckets.map((bucket) => [bucket.id, bucket])
+          );
+
+          const mergedBuckets = seedSavingsBuckets.map((seedBucket) => {
+            return savedBucketsById.get(seedBucket.id) || seedBucket;
+          });
+
+          setSavingsBuckets(mergedBuckets);
+        }
+
         setManualAdjustments(savedManualAdjustments);
+        setSavingsBucketAdjustments(savedSavingsBucketAdjustments);
       } catch (error) {
         console.error(error);
         setStatusMessage('Could not load saved planner data.');
@@ -101,9 +127,16 @@ export default function App() {
       accounts,
       scheduledItems,
       manualAdjustments,
+      savingsBucketAdjustments,
       plannerEntries,
     });
-  }, [plannerEntries, scheduledItems, accounts, manualAdjustments]);
+  }, [
+    plannerEntries,
+    scheduledItems,
+    accounts,
+    manualAdjustments,
+    savingsBucketAdjustments,
+  ]);
 
   async function handleSaveCell(entryKey, entry) {
     try {
@@ -220,6 +253,63 @@ export default function App() {
     }
   }
 
+  async function handleSaveSavingsBucket(updatedBucket) {
+    try {
+      const savedBucket = await saveSavingsBucket(updatedBucket);
+
+      setSavingsBuckets((currentBuckets) =>
+        currentBuckets.map((bucket) =>
+          bucket.id === savedBucket.id ? savedBucket : bucket
+        )
+      );
+
+      setStatusMessage('Savings bucket saved.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save savings bucket.');
+    }
+  }
+
+  async function handleSaveSavingsBucketAdjustment(adjustment) {
+    try {
+      const savedAdjustment = await saveSavingsBucketAdjustment(adjustment);
+
+      setSavingsBucketAdjustments((currentAdjustments) => {
+        const exists = currentAdjustments.some(
+          (item) => item.id === savedAdjustment.id
+        );
+
+        if (exists) {
+          return currentAdjustments.map((item) =>
+            item.id === savedAdjustment.id ? savedAdjustment : item
+          );
+        }
+
+        return [...currentAdjustments, savedAdjustment];
+      });
+
+      setStatusMessage('Savings bucket adjustment saved.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save savings bucket adjustment.');
+    }
+  }
+
+  async function handleDeleteSavingsBucketAdjustment(id) {
+    try {
+      await deleteSavingsBucketAdjustment(id);
+
+      setSavingsBucketAdjustments((currentAdjustments) =>
+        currentAdjustments.filter((adjustment) => adjustment.id !== id)
+      );
+
+      setStatusMessage('Savings bucket adjustment deleted.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not delete savings bucket adjustment.');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-700">
@@ -271,6 +361,17 @@ export default function App() {
             onSaveAccount={handleSaveAccount}
             onSaveManualAdjustment={handleSaveManualAdjustment}
             onDeleteManualAdjustment={handleDeleteManualAdjustment}
+          />
+        ) : null}
+
+        {currentPage === 'savings-buckets' ? (
+          <SavingsBuckets
+            savingsBuckets={savingsBuckets}
+            savingsBucketAdjustments={savingsBucketAdjustments}
+            plannerData={plannerData}
+            onSaveSavingsBucket={handleSaveSavingsBucket}
+            onSaveSavingsBucketAdjustment={handleSaveSavingsBucketAdjustment}
+            onDeleteSavingsBucketAdjustment={handleDeleteSavingsBucketAdjustment}
           />
         ) : null}
 

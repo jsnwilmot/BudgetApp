@@ -116,6 +116,7 @@ export function buildPlannerRows({
   accounts,
   scheduledItems,
   manualAdjustments,
+  savingsBucketAdjustments = [],
   plannerEntries = {},
 }) {
   const payPeriods = generatePayPeriods(
@@ -176,6 +177,7 @@ export function buildPlannerRows({
     rows,
     accounts,
     manualAdjustments,
+    savingsBucketAdjustments,
   });
 
   return {
@@ -212,6 +214,7 @@ function calculateProjectionRows({
   rows,
   accounts,
   manualAdjustments,
+  savingsBucketAdjustments,
 }) {
   let chequingBalance =
     accounts.find((account) => account.type === 'chequing')?.startingBalance ||
@@ -247,8 +250,13 @@ function calculateProjectionRows({
       )
       .reduce((total, adjustment) => total + adjustment.amount, 0);
 
+    const savingsBucketAdjustmentsForPeriod = savingsBucketAdjustments
+      .filter((adjustment) => adjustment.payPeriodDate === period.date)
+      .reduce((total, adjustment) => total + adjustment.amount, 0);
+
     chequingBalance += totals.netChequing + chequingAdjustments;
-    savingsBalance += totals.netSavings + savingsAdjustments;
+    savingsBalance +=
+      totals.netSavings + savingsAdjustments + savingsBucketAdjustmentsForPeriod;
 
     totalIncome[period.date] = totals.income;
     totalExpenses[period.date] = totals.expenses;
@@ -325,4 +333,48 @@ export function getDashboardSummary(plannerData) {
     projectedSavingsEnd: savingsRow.amountsByPeriod[finalPeriod.date],
     lowestChequing,
   };
+}
+
+export function buildSavingsBucketProjection({
+  payPeriods,
+  rows,
+  savingsBuckets,
+  savingsBucketAdjustments,
+}) {
+  return savingsBuckets.map((bucket) => {
+    let balance = Number(bucket.startingAmount) || 0;
+
+    const transfersInByPeriod = {};
+    const adjustmentsByPeriod = {};
+    const balanceByPeriod = {};
+
+    payPeriods.forEach((period) => {
+      const transferIn = rows
+        .filter((row) => row.type === 'transfer')
+        .filter((row) => row.item?.bucketId === bucket.id)
+        .reduce((total, row) => {
+          return total + (Number(row.amountsByPeriod[period.date]) || 0);
+        }, 0);
+
+      const adjustmentTotal = savingsBucketAdjustments
+        .filter((adjustment) => adjustment.bucketId === bucket.id)
+        .filter((adjustment) => adjustment.payPeriodDate === period.date)
+        .reduce((total, adjustment) => {
+          return total + (Number(adjustment.amount) || 0);
+        }, 0);
+
+      balance += transferIn + adjustmentTotal;
+
+      transfersInByPeriod[period.date] = transferIn;
+      adjustmentsByPeriod[period.date] = adjustmentTotal;
+      balanceByPeriod[period.date] = balance;
+    });
+
+    return {
+      bucket,
+      transfersInByPeriod,
+      adjustmentsByPeriod,
+      balanceByPeriod,
+    };
+  });
 }

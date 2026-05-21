@@ -1,11 +1,13 @@
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const STORES = {
   plannerEntries: 'plannerEntries',
   scheduledItems: 'scheduledItems',
   accounts: 'accounts',
   manualAdjustments: 'manualAdjustments',
+  savingsBuckets: 'savingsBuckets',
+  savingsBucketAdjustments: 'savingsBucketAdjustments',
 };
 
 function openDatabase() {
@@ -43,6 +45,18 @@ function openDatabase() {
 
       if (!db.objectStoreNames.contains(STORES.manualAdjustments)) {
         db.createObjectStore(STORES.manualAdjustments, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.savingsBuckets)) {
+        db.createObjectStore(STORES.savingsBuckets, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.savingsBucketAdjustments)) {
+        db.createObjectStore(STORES.savingsBucketAdjustments, {
           keyPath: 'id',
         });
       }
@@ -117,28 +131,6 @@ export async function deletePlannerEntry(entryKey) {
 
     request.onerror = () => {
       reject(new Error('Failed to delete planner entry.'));
-    };
-
-    request.onsuccess = () => {
-      resolve();
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
-  });
-}
-
-export async function clearPlannerEntries() {
-  const db = await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.plannerEntries, 'readwrite');
-    const store = transaction.objectStore(STORES.plannerEntries);
-    const request = store.clear();
-
-    request.onerror = () => {
-      reject(new Error('Failed to clear planner entries.'));
     };
 
     request.onsuccess = () => {
@@ -313,6 +305,130 @@ export async function deleteManualAdjustment(id) {
 
     request.onerror = () => {
       reject(new Error('Failed to delete manual adjustment.'));
+    };
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function getAllSavingsBuckets() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.savingsBuckets, 'readonly');
+    const store = transaction.objectStore(STORES.savingsBuckets);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load savings buckets.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveSavingsBucket(bucket) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.savingsBuckets, 'readwrite');
+    const store = transaction.objectStore(STORES.savingsBuckets);
+
+    const record = {
+      ...bucket,
+      startingAmount: Number(bucket.startingAmount) || 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save savings bucket.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function getAllSavingsBucketAdjustments() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.savingsBucketAdjustments, 'readonly');
+    const store = transaction.objectStore(STORES.savingsBucketAdjustments);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load savings bucket adjustments.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result || []);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveSavingsBucketAdjustment(adjustment) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.savingsBucketAdjustments, 'readwrite');
+    const store = transaction.objectStore(STORES.savingsBucketAdjustments);
+
+    const record = {
+      ...adjustment,
+      amount: Number(adjustment.amount) || 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save savings bucket adjustment.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function deleteSavingsBucketAdjustment(id) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.savingsBucketAdjustments, 'readwrite');
+    const store = transaction.objectStore(STORES.savingsBucketAdjustments);
+    const request = store.delete(id);
+
+    request.onerror = () => {
+      reject(new Error('Failed to delete savings bucket adjustment.'));
     };
 
     request.onsuccess = () => {

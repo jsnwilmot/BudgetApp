@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Landmark,
   LayoutDashboard,
+  PiggyBank,
   Settings,
 } from 'lucide-react';
 
@@ -27,6 +28,11 @@ const navItems = [
     id: 'accounts',
     label: 'Accounts',
     icon: Landmark,
+  },
+  {
+    id: 'savings-buckets',
+    label: 'Savings Buckets',
+    icon: PiggyBank,
   },
   {
     id: 'reports',
