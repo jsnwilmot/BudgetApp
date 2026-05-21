@@ -43,11 +43,17 @@ export default function App() {
             savedScheduledItems.map((item) => [item.id, item])
           );
 
-          const mergedItems = seedScheduledItems.map((seedItem) => {
+          const mergedSeedItems = seedScheduledItems.map((seedItem) => {
             return savedItemsById.get(seedItem.id) || seedItem;
           });
 
-          setScheduledItems(mergedItems);
+          const seedIds = new Set(seedScheduledItems.map((item) => item.id));
+
+          const customItems = savedScheduledItems.filter((item) => {
+            return !seedIds.has(item.id);
+          });
+
+          setScheduledItems([...mergedSeedItems, ...customItems]);
         }
       } catch (error) {
         console.error(error);
@@ -109,11 +115,17 @@ export default function App() {
     try {
       const savedItem = await saveScheduledItem(updatedItem);
 
-      setScheduledItems((currentItems) =>
-        currentItems.map((item) =>
-          item.id === savedItem.id ? savedItem : item
-        )
-      );
+      setScheduledItems((currentItems) => {
+        const itemExists = currentItems.some((item) => item.id === savedItem.id);
+
+        if (itemExists) {
+          return currentItems.map((item) =>
+            item.id === savedItem.id ? savedItem : item
+          );
+        }
+
+        return [...currentItems, savedItem];
+      });
 
       setStatusMessage('Scheduled item saved.');
     } catch (error) {

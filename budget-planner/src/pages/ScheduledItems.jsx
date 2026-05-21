@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ListChecks, Pencil } from 'lucide-react';
+import { ListChecks, Pencil, Plus } from 'lucide-react';
 import { formatCurrency } from '../logic/projectionLogic';
 
 function formatType(type) {
@@ -22,6 +22,27 @@ function getTypeClass(type) {
   if (type === 'expense') return 'bg-blue-100 text-blue-800';
   if (type === 'transfer') return 'bg-slate-200 text-slate-800';
   return 'bg-slate-100 text-slate-700';
+}
+
+function createNewScheduledItem() {
+  return {
+    id: `scheduled-${crypto.randomUUID()}`,
+    name: '',
+    type: 'expense',
+    amount: 0,
+    frequency: 'biweekly',
+    startDate: '2026-06-03',
+    dueDay: '',
+    dueMonth: '',
+    accountId: 'acct-chequing',
+    fromAccountId: 'acct-chequing',
+    toAccountId: 'acct-savings',
+    active: true,
+    allowLineItems: false,
+    notes: '',
+    isCustom: true,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 function ScheduledItemForm({ item, onCancel, onSave }) {
@@ -54,7 +75,12 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
       notes: String(formState.notes || '').trim(),
       active: Boolean(formState.active),
       allowLineItems: Boolean(formState.allowLineItems),
+      updatedAt: new Date().toISOString(),
     };
+
+    if (!cleanedItem.name) {
+      return;
+    }
 
     onSave(cleanedItem);
   }
@@ -64,10 +90,10 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Edit Scheduled Item
+            {item.isCustom && !item.updatedAt ? 'Add Scheduled Item' : 'Edit Scheduled Item'}
           </p>
           <h3 className="mt-1 text-xl font-bold text-slate-950">
-            {item.name}
+            {item.name || 'New Scheduled Item'}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
             Changes affect future planner projections.
@@ -91,6 +117,7 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
             value={formState.name}
             onChange={(event) => updateField('name', event.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+            placeholder="Example: Internet, Refund, Extra Savings"
             required
           />
         </label>
@@ -178,6 +205,15 @@ function ScheduledItemForm({ item, onCancel, onSave }) {
               placeholder="1 to 12"
             />
           </label>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-800">
+            Timing guide
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Biweekly items appear every 14 days from the start date. Monthly and annual items use the due day and are placed in the previous pay period before the due date.
+          </p>
         </div>
 
         <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
@@ -269,6 +305,10 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
     setSelectedItem(null);
   }
 
+  function handleAddNew() {
+    setSelectedItem(createNewScheduledItem());
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -280,20 +320,31 @@ export default function ScheduledItems({ scheduledItems, onSaveScheduledItem }) 
             Income, expenses, and transfers
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Edit the recurring rules that generate the pay period planner.
+            Add or edit the recurring rules that generate the pay period planner.
           </p>
         </div>
 
-        <select
-          value={typeFilter}
-          onChange={(event) => setTypeFilter(event.target.value)}
-          className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-slate-900"
-        >
-          <option value="all">All items</option>
-          <option value="income">Income only</option>
-          <option value="expense">Expenses only</option>
-          <option value="transfer">Transfers only</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-slate-900"
+          >
+            <option value="all">All items</option>
+            <option value="income">Income only</option>
+            <option value="expense">Expenses only</option>
+            <option value="transfer">Transfers only</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={handleAddNew}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            <Plus size={16} />
+            Add Scheduled Item
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
