@@ -363,6 +363,25 @@ Known limitation:
   instead of running those actions directly.
 - PWA data is still browser-managed.
 
+### Phase 2E: Backup Reminders And Data Safety Polish
+
+Completed:
+
+- Confirmed local last-backup tracking in app metadata.
+- Confirmed Data Health backup status and readable Last backup display.
+- Confirmed Dashboard backup reminder alerts for missing or old backups.
+- Preserved valid last-backup timestamps through demo and empty resets.
+- Improved reset warning copy.
+- Added backup reminder guidance to the Help Guide.
+- Updated data safety and release documentation.
+
+Known limitation:
+
+- Backup reminders are in-app only.
+- Backups are local downloaded files users must store safely.
+- PWA data is still browser-managed.
+- Desktop SQLite storage is planned for a later phase.
+
 ## Known Limitations
 
 - Data is local-only and does not sync across devices.

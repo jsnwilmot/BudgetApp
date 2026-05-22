@@ -102,6 +102,17 @@ export default function Help() {
           </p>
         </HelpCard>
 
+        <HelpCard title="Backup Reminders">
+          <p>
+            The app tracks when you last exported a backup and recommends a new
+            one if no backup exists or the last backup is older than 30 days.
+          </p>
+          <p>
+            This reminder does not mean data has been uploaded anywhere.
+            Backups are downloaded files that you need to store somewhere safe.
+          </p>
+        </HelpCard>
+
         <HelpCard title="Demo Data">
           <p>
             Demo records are fictional and show accounts, income, bills, savings

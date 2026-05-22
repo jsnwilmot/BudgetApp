@@ -427,12 +427,29 @@ export function getEmptyState() {
   return getSafeAppData(getEmptyAppState());
 }
 
+async function getResetStateWithPreservedMetadata(resetState) {
+  const currentMetadata = await getAppMetadata();
+
+  return {
+    ...resetState,
+    appMetadata: {
+      ...resetState.appMetadata,
+      lastBackupAt: currentMetadata.lastBackupAt || '',
+      onboardingCompletedAt: currentMetadata.onboardingCompletedAt || '',
+    },
+  };
+}
+
 export async function resetAppToDemoData() {
-  return replaceCompleteAppData(getDemoAppState());
+  return replaceCompleteAppData(
+    await getResetStateWithPreservedMetadata(getDemoAppState())
+  );
 }
 
 export async function resetAppToEmptyState() {
-  return replaceCompleteAppData(getEmptyAppState());
+  return replaceCompleteAppData(
+    await getResetStateWithPreservedMetadata(getEmptyAppState())
+  );
 }
 
 export async function clearAllSavedData() {

@@ -60,8 +60,9 @@ browser/device. It keeps default base categories and safe settings so the app
 remains usable. It requires typing `DELETE`.
 
 Both reset modes replace local data. Export a backup first if you want to
-preserve your current data. Reset also clears the locally stored last-backup
-timestamp because it resets the local app data for this browser/device.
+preserve your current data. Reset keeps the locally stored last-backup timestamp
+when it is valid because that timestamp represents your last successful backup
+export action on this browser/device.
 
 ## Repair Local Data
 
@@ -91,5 +92,5 @@ If browser data is cleared and no backup exists, the app cannot recover the remo
 ## Future Desktop Storage Direction
 
 A future desktop version is planned to use app-managed SQLite storage for
-stronger long-term local data safety. Phase 2B does not migrate data to SQLite.
+stronger long-term local data safety. Phase 2E does not migrate data to SQLite.
 For now, backups remain the safest way to protect long-term finance data.

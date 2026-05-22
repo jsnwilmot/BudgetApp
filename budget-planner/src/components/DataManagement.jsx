@@ -940,9 +940,9 @@ export default function DataManagement({
               Reset to Demo Data
             </h5>
             <p className="mt-1 text-sm text-slate-600">
-              Reset to Demo Data will replace your current local data with
-              fictional sample records. Export a backup first if you want to keep
-              your current data. Type DEMO to confirm.
+              This replaces your current local data with fictional sample
+              records. Export a backup first if you want to keep your current
+              data. Type DEMO to confirm.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">
@@ -969,10 +969,10 @@ export default function DataManagement({
               Factory Reset to Empty App
             </h5>
             <p className="mt-1 text-sm text-slate-600">
-              Factory Reset to Empty App clears planner data, accounts,
-              scheduled items, budgets, savings buckets, adjustments, and user
-              records from this browser/device. This cannot be undone unless you
-              have a backup. Type DELETE to confirm.
+              This clears local planner data, accounts, scheduled items,
+              budgets, savings buckets, adjustments, and user records from this
+              browser/device. This cannot be undone unless you have a backup.
+              Type DELETE to confirm.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">

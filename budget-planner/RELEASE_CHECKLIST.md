@@ -52,6 +52,7 @@ The Vite large chunk warning may appear during build and does not block the loca
 
 - [ ] Export Backup downloads JSON.
 - [ ] Backup includes `appVersion` and `appDataVersion`.
+- [ ] Data Health shows Last backup.
 - [ ] Backup export updates the Last backup timestamp.
 - [ ] Data Health shows Backup status.
 - [ ] Dashboard shows backup reminder when no backup exists.
@@ -67,6 +68,7 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Reset to Demo Data restores fictional sample records.
 - [ ] Factory Reset to Empty App requires `DELETE`.
 - [ ] Factory Reset to Empty App clears user/demo records and keeps safe defaults.
+- [ ] Demo and empty resets preserve a valid Last backup timestamp.
 - [ ] Reset warnings explain the browser/device data loss risk.
 
 ## Demo Data And Empty Reset
@@ -87,6 +89,7 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Help nav item appears.
 - [ ] Help page opens.
 - [ ] Help content is readable on mobile.
+- [ ] Help explains backup reminders.
 - [ ] First-run onboarding appears for fresh demo users.
 - [ ] Explore Demo Data dismisses onboarding.
 - [ ] Onboarding completion persists after refresh.

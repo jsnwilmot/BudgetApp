@@ -27,6 +27,8 @@ On first run, Dashboard shows three choices:
 13. Export backups regularly from `Settings > Data Management`.
 
 Tip: Always export a backup before clearing browser data, switching browsers, switching devices, importing another backup, or resetting local data.
+The app tracks the last successful backup export and recommends a new backup if
+none exists or the last one is older than 30 days.
 
 ## Install The App
 

@@ -965,21 +965,11 @@ export default function App() {
 
   async function handleResetToDemoData() {
     const demoData = await resetAppToDemoData();
-    const savedMetadata = appMetadata.onboardingCompletedAt
-      ? await saveAppMetadata({
-          ...demoData.appMetadata,
-          onboardingCompletedAt: appMetadata.onboardingCompletedAt,
-        })
-      : demoData.appMetadata;
-    const loadedDemoData = {
-      ...demoData,
-      appMetadata: savedMetadata,
-    };
 
-    applyLoadedData(loadedDemoData);
+    applyLoadedData(demoData);
     setDismissedAlertIds([]);
     setStatusMessage('Demo data restored.');
-    return loadedDemoData;
+    return demoData;
   }
 
   async function handleResetToEmptyState() {
