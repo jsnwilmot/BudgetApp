@@ -1,251 +1,265 @@
-# React + Vite
+# Budget Planner
 
-## Phase 1M: Charts and Report Visuals
+Budget Planner is a local-first personal finance app for planning pay periods,
+bills, savings transfers, category budgets, transactions, alerts, and reports.
 
-Completed:
+Current release: `1.0.0-local-mvp`
+Data version: `1`
 
-- Added income vs outflow chart.
-- Added top spending categories chart.
-- Added savings transfers chart.
-- Added savings bucket balances chart.
-- Charts respond to monthly and pay period filters.
-- Added chart empty states.
-- Kept report tables and summary cards for clarity.
+## Current Status
 
-Known limitation:
+This is a clean local MVP release. It runs in the browser, stores user data
+locally, and does not require login, cloud sync, bank connections, or a server.
 
-- Charts are local-only and based on current app data.
-- Advanced trend charts and forecast analytics are not included yet.
+## Features
 
-## Phase 1N: Advanced Report Trends
+- Dashboard with cash-flow summary, projection chart, and alerts.
+- Pay Period Planner with editable projected and actual amounts.
+- Transactions view derived from scheduled items, adjustments, and savings activity.
+- Scheduled Items with recurrence, categories, filters, duplicate, and active status.
+- Accounts with starting balances and manual adjustments.
+- Savings Buckets with projected balances and adjustment history.
+- Budgets with monthly category targets, usage, remaining amounts, and progress bars.
+- Categories with local create, edit, archive, and reset workflows.
+- Reports with filters, charts, trends, print view, and report CSV export.
+- Settings with editable planner settings and data management tools.
+- Backup, restore, repair, reset, and CSV export workflows.
+- Mobile-friendly navigation and responsive page layouts.
 
-Completed:
+## Local-First Data
 
-- Added monthly cash flow trend reporting.
-- Added pay-period cash flow trend reporting.
-- Added savings transfer trend reporting where dated transfer data exists.
-- Added trend summary cards.
-- Added trend empty states.
-- Reused existing report calculations for accuracy.
+User data is stored locally in the browser through IndexedDB and local storage.
+Export backups before clearing browser data, switching browsers, switching
+devices, or updating/deploying major versions.
 
-Known limitation:
+There is no cloud account, server database, or automatic sync in this MVP.
 
-- Trends are based on local planner and transfer data only.
-- Savings transfer trends require dated transfer history.
-- Advanced forecasting and PDF reports are not included yet.
+## Backup And Restore
 
-## Phase 1O: Report Export and Print View
+Use `Settings > Data Management`.
 
-Completed:
+- `Export Backup` downloads a local JSON backup file with app metadata, app
+  version, data version, settings, planner entries, accounts, scheduled items,
+  categories, budgets, savings buckets, and adjustments.
+- `Import Backup` previews the backup counts, then replaces current local data
+  after confirmation.
+- `Repair Local Data` normalizes records and fills safe missing fields without
+  deleting user records.
+- `Reset Local Data` requires typing `DELETE` and restores safe defaults.
 
-- Added print action for the current Reports view.
-- Added print-friendly report layout.
-- Added report-specific CSV export.
-- CSV export includes metadata, summary totals, categories, savings transfers, savings buckets, and trend summary.
-- Export respects the current monthly or pay-period report filter.
+Keep backup files somewhere you control, especially before browser cleanup or
+device changes.
 
-Known limitation:
+## Install And Run
 
-- PDF export uses browser print/save as PDF.
-- Chart image export is not included.
-- Cloud sync and automated report delivery are not included.
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
 
-## Phase 1P: Editable Budget Planner Settings
+Then open the local URL shown by Vite, usually `http://localhost:5173/`.
 
-Completed:
+## Build
+
+```powershell
+npm.cmd run lint
+npm.cmd run build
+npm.cmd run preview
+```
+
+The production build currently emits a Vite large chunk warning due to
+chart/report bundle size. This does not block the local MVP. Bundle optimization
+is planned for a later performance phase.
+
+## Browser Support
+
+The app is intended for current desktop and mobile browsers with IndexedDB and
+modern JavaScript support, such as current Chrome, Edge, Firefox, and Safari.
+
+Because data is browser-local, data saved in one browser profile is separate
+from data saved in another browser, device, or private browsing session.
+
+## Documentation
+
+- [Quick Start](./QUICK_START.md)
+- [Data Safety](./DATA_SAFETY.md)
+- [Release Checklist](./RELEASE_CHECKLIST.md)
+
+## Release Notes
+
+### Phase 1A: Project Foundation
+
+- Established the local React/Vite app foundation.
+- Added the initial app shell and local MVP direction.
+
+### Phase 1B: Planner Foundation
+
+- Added the pay period planning foundation.
+- Established projection rows and planner-oriented data flow.
+
+### Phase 1C: Accounts Foundation
+
+- Added account balance support.
+- Connected starting balances to projection behavior.
+
+### Phase 1D: Scheduled Items Foundation
+
+- Added planned income, expenses, and transfer items.
+- Connected scheduled items to planner projections.
+
+### Phase 1E: Planner Editing
+
+- Added planner cell editing.
+- Preserved planned values while allowing actual user-entered values.
+
+### Phase 1F: Savings Foundation
+
+- Added savings bucket concepts.
+- Connected savings transfers and bucket tracking to projections.
+
+### Phase 1G: Dashboard Improvements
+
+- Added dashboard summary cards and projection visibility.
+- Improved cash-flow overview.
+
+### Phase 1H: Data Persistence
+
+- Added local persistence for app data.
+- Preserved user-entered planner and setup data across refreshes.
+
+### Phase 1I: CSV Exports
+
+- Added local CSV export workflows.
+- Kept exports simple and browser-based.
+
+### Phase 1J: Backup And Restore
+
+- Added JSON backup and restore.
+- Added safer reset behavior for local data.
+
+### Phase 1K: Reports Foundation
+
+- Added the Reports page foundation.
+- Added summary cards, report tables, and initial reporting structure.
+
+### Phase 1L: Report Filters And Accuracy
+
+- Added monthly and pay-period report filters.
+- Improved report calculations and savings transfer summaries.
+
+### Phase 1M: Charts And Report Visuals
+
+- Added income vs outflow, top spending categories, savings transfers, and
+  bucket balance charts.
+- Added chart empty states and responsive chart cards.
+
+### Phase 1N: Advanced Report Trends
+
+- Added monthly, pay-period, and savings transfer trend reporting.
+- Added trend summary cards and trend empty states.
+
+### Phase 1O: Report Export And Print View
+
+- Added browser print support for the current report view.
+- Added report-specific CSV export with metadata and visible totals.
+
+### Phase 1P: Editable Budget Planner Settings
 
 - Added editable planner settings.
-- Added local persistence for settings.
-- Added Save, Cancel, and Reset controls.
-- Added validation for planner settings.
-- Connected saved settings to planner recalculation.
-- Preserved backup/restore compatibility.
+- Persisted settings locally and connected them to projection rebuilds.
 
-Known limitation:
+### Phase 1Q: Settings-Driven Projection Hardening
 
-- Settings are local-only.
-- No account sync or cloud settings sync is included.
-- Advanced pay schedules, like twice monthly by specific dates, are not included yet.
+- Hardened saved settings normalization and validation.
+- Preserved planner data when projection settings change.
 
-## Phase 1Q: Settings-driven Projection Hardening
+### Phase 1R: Category Management
 
-Completed:
+- Added local category defaults, persistence, and a Categories page.
+- Added category assignment support for scheduled items and reports.
 
-- Audited projection logic for saved settings usage.
-- Hardened settings normalization and validation.
-- Improved projection rebuild behavior after settings changes.
-- Preserved planner entries when projection settings change.
-- Verified monthly bill assignment rules.
-- Confirmed backup/restore compatibility with saved settings.
-- Added edge-case handling for invalid or missing settings.
+### Phase 1S: Scheduled Item Improvements
 
-Known limitation:
+- Hardened scheduled item normalization and recurrence handling.
+- Added filters, active/inactive support, duplicate, validation, and upcoming
+  scheduled items.
 
-- Manual entries outside the current projection range remain stored but may not appear until the projection range or anchor date includes them again.
-- Advanced pay schedules, such as twice monthly fixed dates, are not included yet.
+### Phase 1T: Transaction History Foundation
 
-## Phase 1R: Category Management
+- Added Transactions page with derived transaction-style rows.
+- Added filters, sorting, summary cards, and filtered transaction CSV export.
 
-Completed:
+### Phase 1U: Budget Targets
 
-- Added local category model.
-- Added default income, expense, savings, transfer, and general categories.
-- Added category persistence.
-- Added Categories page.
-- Added category create, edit, and archive workflows.
-- Added category assignment support for scheduled items.
-- Updated report category resolution.
-- Preserved backup/restore compatibility.
-
-Known limitation:
-
-- Category budget limits are not included yet.
-- Drag-and-drop category sorting is not included yet.
-- Category icons are stored as simple text for now.
-
-## Phase 1S: Scheduled Item Improvements
-
-Completed:
-
-- Hardened scheduled item data normalization.
-- Added improved scheduled item filters.
-- Added active/inactive scheduled item support.
-- Added duplicate scheduled item action.
-- Improved scheduled item validation.
-- Improved recurrence handling for once, weekly, biweekly, monthly, and yearly items.
-- Added scheduled item summary cards.
-- Added upcoming next 30 days section.
-- Preserved category, backup, restore, and projection compatibility.
-
-Known limitation:
-
-- Advanced custom recurrence rules are not included yet.
-- Drag-and-drop ordering is not included yet.
-- Automated bill reminders are not included yet.
-
-## Phase 1T: Transaction History Foundation
-
-Completed:
-
-- Added Transactions page.
-- Added unified transaction-style rows derived from existing local data.
-- Added transaction summary cards.
-- Added transaction search, filters, and sorting.
-- Added category, account, and savings bucket name resolution.
-- Added filtered transaction CSV export.
-- Preserved backup and restore compatibility.
-
-Known limitation:
-
-- Transactions are currently derived from existing planner, manual adjustment, scheduled item, and savings bucket activity.
-- Direct standalone transaction entry is not included yet.
-- Bank import, receipt upload, and reconciliation are not included.
-
-## Phase 1U: Budget Targets
-
-Completed:
-
-- Added local budget target model.
-- Added budget target persistence.
-- Added Budgets page.
 - Added monthly category budget targets.
-- Added budget usage calculations.
-- Added remaining budget and over-budget status.
-- Added budget progress bars.
-- Added budget target backup/restore compatibility.
+- Added budget usage calculations, remaining budget, status, and progress bars.
 
-Known limitation:
+### Phase 1V: Alerts And Warnings
 
-- Budgets are monthly only.
-- Rollover is stored but full rollover math is not implemented yet.
-- Advanced budget alerts are not included yet.
+- Added local in-app alerts for low balances, budgets, upcoming bills, setup,
+  and data warnings.
+- Added Dashboard and contextual page-level alert panels.
 
-## Phase 1V: Alerts and Warnings
+### Phase 1W: Data Cleanup And Migration Safety
 
-Completed:
+- Added app data versioning, migration helpers, normalization, safer import
+  validation, import preview, data health, and repair action.
 
-- Added local in-app alert generation.
-- Added Dashboard alerts and warnings panel.
-- Added low balance alerts.
-- Added near-budget and over-budget alerts.
-- Added upcoming bill alerts.
-- Added missing setup alerts.
-- Added contextual page-level warnings where useful.
-- Preserved existing app behavior.
+### Phase 1X: Mobile UX Polish
 
-Known limitation:
+- Improved mobile navigation, spacing, tables, forms, charts, and touch targets.
+- Preserved desktop sidebar behavior.
 
-- Alerts are in-app only.
-- Push notifications, email reminders, and browser notification permissions are not included yet.
-- Advanced custom alert thresholds are not included yet.
+### Phase 1Y: Full QA And Bug Fix Pass
 
-## Phase 1W: Data Cleanup and Migration Safety
+- Completed full navigation QA and browser smoke testing.
+- Fixed chart console warnings, savings bucket edge states, projection fallback,
+  and table fallback text.
+
+### Phase 1Z: Production Readiness Pass
 
 Completed:
 
-- Added app data versioning.
-- Added migration and normalization framework.
-- Added safer backup import validation.
-- Added backup import preview summary.
-- Added local data repair action.
-- Added data health summary.
-- Improved missing reference handling.
-- Preserved backward compatibility with older local data.
+- Added app version display.
+- Added release documentation.
+- Added quick start guide.
+- Added data safety guide.
+- Updated README for local MVP release.
+- Confirmed production build readiness.
+- Confirmed release checklist.
+- Completed final label and copy consistency pass.
 
 Known limitation:
 
-- Repair is conservative and does not delete unknown or orphaned user records.
-- Future app data versions will need explicit migration steps.
-- Cloud backup and multi-device sync are not included.
-
-## Phase 1X: Mobile UX Polish
-
-Completed:
-
-- Improved responsive app shell navigation.
-- Improved mobile spacing across pages.
-- Improved table and grid behavior on small screens.
-- Improved mobile form usability.
-- Improved touch targets.
-- Improved chart responsiveness.
-- Preserved print, backup, restore, export, and existing app behavior.
-
-Known limitation:
-
-- Planner grid remains horizontally scrollable on mobile.
-- Native mobile packaging is not included yet.
+- App is local-first only.
+- No cloud sync or account login is included.
+- User data must be backed up manually.
 - PWA install support is not included yet.
+- Native desktop/mobile packaging is not included yet.
+- Vite may show a large chunk warning during build.
 
-## Phase 1Y: Full QA and Bug Fix Pass
+## Known Limitations
 
-Completed:
+- Data is local-only and does not sync across devices.
+- No account login, cloud backup, or bank connections are included.
+- User data must be backed up manually.
+- PWA install support is not included yet.
+- Native desktop/mobile packaging is not included yet.
+- Advanced forecasting, AI categorization, receipt scanning, and PDF generation
+  are not included.
+- Automated test coverage is still limited.
 
-- Completed full app navigation QA.
-- Fixed bugs found during cross-page testing.
-- Verified settings-driven projection behavior.
-- Verified scheduled item recurrence behavior.
-- Verified backup, restore, repair, reset, and export workflows.
-- Verified mobile layout behavior.
-- Verified reports, transactions, budgets, alerts, categories, and savings flows.
-- Confirmed lint and build pass.
+## Data Safety Warning
 
-Known limitation:
+Clearing site data, changing browsers, using private browsing, resetting local
+data, or moving devices can remove access to saved planner data. Export a backup
+regularly and before any browser cleanup or deployment change.
 
-- Existing Vite large chunk warning may still appear.
-- Native packaging and PWA install support are not included yet.
-- Automated test coverage is still limited unless added in a later phase.
+## Future Roadmap
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- PWA install support.
+- Bundle/performance optimization.
+- More automated test coverage.
+- Direct standalone transaction entry.
+- Budget rollover math and custom budget alerts.
+- Optional local import templates for common setup data.

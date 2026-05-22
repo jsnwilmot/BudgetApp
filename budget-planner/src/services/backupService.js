@@ -2,6 +2,7 @@ import {
   BACKUP_APP_NAME,
   getBackupSectionSummary,
   getCurrentAppDataVersion,
+  getCurrentAppVersion,
   isPlainObject,
   normalizeImportedAppData
 } from "../data/migrations";
@@ -12,6 +13,7 @@ export function createBackupSnapshot(appData) {
   return {
     metadata: {
       appName: BACKUP_APP_NAME,
+      appVersion: getCurrentAppVersion(),
       backupVersion: BACKUP_VERSION,
       appDataVersion: getCurrentAppDataVersion(),
       createdAt: new Date().toISOString(),
@@ -19,6 +21,7 @@ export function createBackupSnapshot(appData) {
     },
     data: {
       ...appData,
+      appVersion: getCurrentAppVersion(),
       appDataVersion: getCurrentAppDataVersion()
     }
   };

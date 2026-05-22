@@ -7,6 +7,7 @@ import {
 import { appSettings, budgetTargets, categories } from "../data/seedData";
 import {
   getCurrentAppDataVersion,
+  getCurrentAppVersion,
   getDataHealthSummary,
   getSafeAppData
 } from "../data/migrations";
@@ -25,6 +26,7 @@ const POSSIBLE_STORAGE_KEYS = [
 ];
 
 const defaultAppState = {
+  appVersion: getCurrentAppVersion(),
   appDataVersion: getCurrentAppDataVersion(),
   settings: appSettings,
   budgetTargets,
@@ -614,7 +616,7 @@ export default function DataManagement({
           or reset local data.
         </p>
         <p className="mt-2 text-xs text-slate-500">
-          Active local storage key: {activeStorageKey}
+          Local data location: this browser profile ({activeStorageKey})
         </p>
       </div>
 
@@ -646,6 +648,15 @@ export default function DataManagement({
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                App version
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {dataHealth.appVersion}
+              </p>
+            </div>
+
             <div className="rounded-xl bg-slate-50 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Data version
@@ -690,7 +701,8 @@ export default function DataManagement({
             Safe actions
           </h4>
           <p className="mt-1 text-sm text-slate-600">
-            Download backups and CSV files without changing your app data.
+            Download local backup and CSV files without changing your app data.
+            Repair Local Data normalizes records and does not delete user records.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-3">
@@ -734,7 +746,8 @@ export default function DataManagement({
           </h4>
           <p className="mt-1 text-sm text-slate-700">
             Importing a backup replaces your current local data. Resetting local
-            data deletes your planner, savings buckets, transfers, and settings.
+            data deletes planner entries, accounts, scheduled items, savings
+            activity, categories, budgets, reports data, and settings.
           </p>
 
           <input
@@ -811,9 +824,9 @@ export default function DataManagement({
             <h5 className="text-base font-semibold text-red-700">
               Reset Local Data
             </h5>
-            <p className="mt-1 text-sm text-slate-600">
-              Type DELETE to confirm. This resets the app back to the starter
-              state.
+              <p className="mt-1 text-sm text-slate-600">
+              Type DELETE to confirm. Export a backup first if you may need the
+              current local data again.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">

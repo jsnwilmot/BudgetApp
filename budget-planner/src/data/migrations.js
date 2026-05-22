@@ -9,6 +9,7 @@ import {
 } from './seedData';
 
 export const APP_DATA_VERSION = 1;
+export const APP_VERSION = '1.0.0-local-mvp';
 export const BACKUP_APP_NAME = 'BudgetApp';
 
 const CATEGORY_TYPES = [
@@ -21,6 +22,10 @@ const CATEGORY_TYPES = [
 ];
 
 const ACCOUNT_TYPES = ['chequing', 'savings', 'credit', 'cash', 'other'];
+
+export function getCurrentAppVersion() {
+  return APP_VERSION;
+}
 
 export function getCurrentAppDataVersion() {
   return APP_DATA_VERSION;
@@ -502,6 +507,7 @@ export function getDataHealthSummary(data = {}) {
   const warnings = getReferenceWarnings(safeData);
 
   return {
+    appVersion: APP_VERSION,
     appDataVersion: APP_DATA_VERSION,
     counts: summary,
     warningsCount: warnings.length,

@@ -51,7 +51,11 @@ import {
   saveScheduledItem,
   validateAppSettings,
 } from './data/db';
-import { getCurrentAppDataVersion, getSafeAppData } from './data/migrations';
+import {
+  getCurrentAppDataVersion,
+  getCurrentAppVersion,
+  getSafeAppData,
+} from './data/migrations';
 import { generateAlerts, getAlertCounts } from './logic/alertLogic';
 import { calculateBudgetUsage } from './logic/budgetLogic';
 import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
@@ -236,6 +240,7 @@ export default function App() {
 
   const appData = useMemo(
     () => ({
+      appVersion: getCurrentAppVersion(),
       appDataVersion: getCurrentAppDataVersion(),
       settings,
       budgetTargets,

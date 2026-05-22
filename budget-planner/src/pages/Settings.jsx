@@ -1,5 +1,9 @@
 import { useState } from "react";
 import DataManagement from "../components/DataManagement";
+import {
+  getCurrentAppDataVersion,
+  getCurrentAppVersion
+} from "../data/migrations";
 
 const currencyOptions = ["CAD", "USD"];
 const payFrequencyOptions = [7, 14, 28, 30];
@@ -177,6 +181,10 @@ export default function Settings({
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           Update the local planner settings used by dashboard projections,
           reports, and pay period planning.
+        </p>
+        <p className="mt-2 text-xs font-medium text-slate-500">
+          App version: {getCurrentAppVersion()} | Data version:{" "}
+          {getCurrentAppDataVersion()}
         </p>
       </div>
 
