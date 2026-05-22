@@ -41,6 +41,7 @@ function resolveName(id, nameMap, fallbackLabel) {
 
 function getManualAdjustmentType(adjustment) {
   const adjustmentType = String(adjustment.adjustmentType || '').toLowerCase();
+  const recordType = String(adjustment.type || '').toLowerCase();
   const amount = normalizeNumber(adjustment.amount);
 
   if (adjustmentType === 'interest' || adjustmentType === 'unexpected_deposit') {
@@ -48,6 +49,7 @@ function getManualAdjustmentType(adjustment) {
   }
 
   if (
+    recordType === 'misc-expense' ||
     adjustmentType === 'fee' ||
     adjustmentType === 'unexpected_withdrawal' ||
     amount < 0

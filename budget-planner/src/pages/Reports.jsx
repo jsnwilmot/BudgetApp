@@ -14,6 +14,9 @@ import {
   YAxis
 } from "recharts";
 import {
+  calculateBudgetUsage
+} from "../logic/budgetLogic";
+import {
   buildBucketBalanceChartData,
   buildIncomeOutflowChartData,
   buildReportCsvSections,
@@ -37,6 +40,7 @@ import {
   getRowsForMonth,
   getRowsForPayPeriod
 } from "../logic/reportLogic";
+import { buildTransactionsFromAppData } from "../logic/transactionLogic";
 import { tableRowsToCsv } from "../utils/csv";
 import { downloadTextFile } from "../utils/downloadFile";
 
@@ -179,9 +183,13 @@ function formatGeneratedDate(date) {
 
 export default function Reports({
   settings,
+  budgetTargets = [],
   categories = [],
   plannerData,
   plannerRows = [],
+  scheduledItems = [],
+  manualAdjustments = [],
+  accounts = [],
   miscExpenses = [],
   savingsBuckets = [],
   savingsTransfers = []
@@ -337,10 +345,44 @@ export default function Reports({
   const reportTypeLabel =
     reportFilter === "payPeriod" ? "Pay period report" : "Monthly report";
   const generatedDate = useMemo(() => new Date(), []);
+  const budgetMonthKey =
+    reportFilter === "payPeriod" && activeSelectedPayPeriod
+      ? activeSelectedPayPeriod.slice(0, 7)
+      : activeSelectedMonth;
+  const budgetTransactions = useMemo(
+    () =>
+      buildTransactionsFromAppData({
+        scheduledItems,
+        manualAdjustments,
+        savingsBucketAdjustments: savingsTransfers,
+        savingsBuckets,
+        accounts,
+        categories
+      }),
+    [
+      accounts,
+      categories,
+      manualAdjustments,
+      savingsBuckets,
+      savingsTransfers,
+      scheduledItems
+    ]
+  );
+  const budgetTargetUsage = useMemo(
+    () =>
+      calculateBudgetUsage({
+        budgetTargets,
+        transactions: budgetTransactions,
+        categories,
+        selectedMonth: budgetMonthKey
+      }),
+    [budgetMonthKey, budgetTargets, budgetTransactions, categories]
+  );
 
   const hasReportData =
     reportRows.length > 0 ||
     miscExpenses.length > 0 ||
+    budgetTargets.length > 0 ||
     savingsBuckets.length > 0 ||
     savingsTransfers.length > 0;
 
@@ -545,6 +587,46 @@ export default function Reports({
               helper="Expenses and savings transfers compared to income"
             />
           </section>
+
+          {budgetTargets.length > 0 ? (
+            <section className="space-y-4 print:break-inside-avoid">
+              <div>
+                <h3 className="text-xl font-bold text-slate-950">
+                  Budget Targets
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  Monthly target usage for {getMonthLabel(budgetMonthKey)}.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  label="Total Monthly Budget"
+                  value={formatCurrency(
+                    budgetTargetUsage.summary.totalBudget
+                  )}
+                  helper="Active category targets"
+                />
+                <StatCard
+                  label="Total Used"
+                  value={formatCurrency(budgetTargetUsage.summary.totalUsed)}
+                  helper="Tracked spending"
+                />
+                <StatCard
+                  label="Remaining"
+                  value={formatCurrency(
+                    budgetTargetUsage.summary.remainingBudget
+                  )}
+                  helper="Budget minus tracked spending"
+                />
+                <StatCard
+                  label="Over Budget"
+                  value={budgetTargetUsage.summary.overBudgetCount}
+                  helper="Categories over target"
+                />
+              </div>
+            </section>
+          ) : null}
 
           <ChartCard
             title="Income vs Outflow"

@@ -8,6 +8,7 @@ import {
   PiggyBank,
   Settings,
   Tags,
+  WalletCards,
 } from 'lucide-react';
 
 const navItems = [
@@ -40,6 +41,11 @@ const navItems = [
     id: 'savings-buckets',
     label: 'Savings Buckets',
     icon: PiggyBank,
+  },
+  {
+    id: 'budgets',
+    label: 'Budgets',
+    icon: WalletCards,
   },
   {
     id: 'categories',

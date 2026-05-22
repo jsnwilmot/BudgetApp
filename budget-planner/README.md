@@ -141,6 +141,25 @@ Known limitation:
 - Direct standalone transaction entry is not included yet.
 - Bank import, receipt upload, and reconciliation are not included.
 
+## Phase 1U: Budget Targets
+
+Completed:
+
+- Added local budget target model.
+- Added budget target persistence.
+- Added Budgets page.
+- Added monthly category budget targets.
+- Added budget usage calculations.
+- Added remaining budget and over-budget status.
+- Added budget progress bars.
+- Added budget target backup/restore compatibility.
+
+Known limitation:
+
+- Budgets are monthly only.
+- Rollover is stored but full rollover math is not implemented yet.
+- Advanced budget alerts are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

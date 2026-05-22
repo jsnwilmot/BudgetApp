@@ -4,6 +4,7 @@ import CellEditor from './components/CellEditor';
 import {
   accounts as seedAccounts,
   appSettings,
+  budgetTargets as seedBudgetTargets,
   categories as seedCategories,
   manualAdjustments as seedManualAdjustments,
   savingsBuckets as seedSavingsBuckets,
@@ -12,12 +13,14 @@ import {
 import {
   clearAllSavedData,
   archiveCategory,
+  archiveBudgetTarget,
   deleteManualAdjustment,
   deletePlannerEntry,
   deleteScheduledItem,
   deleteSavingsBucketAdjustment,
   getAppSettings,
   getAllAccounts,
+  getAllBudgetTargets,
   getAllCategories,
   getAllManualAdjustments,
   getAllPlannerEntries,
@@ -26,6 +29,7 @@ import {
   getAllScheduledItems,
   normalizeAppSettings,
   replaceAccounts,
+  replaceBudgetTargets,
   replaceCategories,
   replaceManualAdjustments,
   replacePlannerEntries,
@@ -33,9 +37,11 @@ import {
   replaceSavingsBuckets,
   replaceScheduledItems,
   resetAppSettings,
+  resetBudgetTargets,
   resetCategoriesToDefaults,
   saveAccount,
   saveAppSettings,
+  saveBudgetTarget,
   saveManualAdjustment,
   saveCategory,
   savePlannerEntry,
@@ -47,6 +53,7 @@ import {
 import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
 import Accounts from './pages/Accounts';
+import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
 import Dashboard from './pages/Dashboard';
 import Planner from './pages/Planner';
@@ -101,6 +108,7 @@ const normalizedSeedScheduledItems = seedScheduledItems.map((item) =>
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [settings, setSettings] = useState(appSettings);
+  const [budgetTargets, setBudgetTargets] = useState(seedBudgetTargets);
   const [categories, setCategories] = useState(seedCategories);
   const [plannerEntries, setPlannerEntries] = useState({});
   const [scheduledItems, setScheduledItems] = useState(
@@ -121,6 +129,7 @@ export default function App() {
       try {
         const [
           savedSettings,
+          savedBudgetTargets,
           savedCategories,
           savedPlannerEntries,
           savedScheduledItems,
@@ -130,6 +139,7 @@ export default function App() {
           savedSavingsBucketAdjustments,
         ] = await Promise.all([
           getAppSettings(),
+          getAllBudgetTargets(),
           getAllCategories(),
           getAllPlannerEntries(),
           getAllScheduledItems(),
@@ -140,6 +150,7 @@ export default function App() {
         ]);
 
         setSettings(savedSettings);
+        setBudgetTargets(savedBudgetTargets);
         setCategories(savedCategories);
         setPlannerEntries(savedPlannerEntries);
 
@@ -233,6 +244,7 @@ export default function App() {
   const appData = useMemo(
     () => ({
       settings,
+      budgetTargets,
       categories,
       plannerEntries,
       scheduledItems,
@@ -259,6 +271,7 @@ export default function App() {
       savingsBuckets,
       scheduledItems,
       settings,
+      budgetTargets,
       categories,
     ]
   );
@@ -558,6 +571,63 @@ export default function App() {
     }
   }
 
+  async function handleSaveBudgetTarget(updatedTarget) {
+    try {
+      const savedTarget = await saveBudgetTarget(updatedTarget);
+
+      setBudgetTargets((currentTargets) => {
+        const exists = currentTargets.some((target) => target.id === savedTarget.id);
+
+        if (exists) {
+          return currentTargets.map((target) =>
+            target.id === savedTarget.id ? savedTarget : target
+          );
+        }
+
+        return [...currentTargets, savedTarget];
+      });
+
+      setStatusMessage('Budget target saved.');
+      return savedTarget;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save budget target.');
+      throw error;
+    }
+  }
+
+  async function handleArchiveBudgetTarget(budgetTargetId) {
+    try {
+      const archivedTarget = await archiveBudgetTarget(budgetTargetId);
+
+      setBudgetTargets((currentTargets) =>
+        currentTargets.map((target) =>
+          target.id === archivedTarget.id ? archivedTarget : target
+        )
+      );
+
+      setStatusMessage('Budget target archived.');
+      return archivedTarget;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not archive budget target.');
+      throw error;
+    }
+  }
+
+  async function handleResetBudgetTargets() {
+    try {
+      const resetTargets = await resetBudgetTargets();
+      setBudgetTargets(resetTargets);
+      setStatusMessage('Budget targets reset.');
+      return resetTargets;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not reset budget targets.');
+      throw error;
+    }
+  }
+
   async function handleArchiveCategory(categoryId) {
     try {
       const archivedCategory = await archiveCategory(categoryId);
@@ -618,6 +688,9 @@ export default function App() {
     const importedCategories = Array.isArray(importedData?.categories)
       ? importedData.categories
       : seedCategories;
+    const importedBudgetTargets = Array.isArray(importedData?.budgetTargets)
+      ? importedData.budgetTargets
+      : [];
     const importedScheduledItems = Array.isArray(importedData?.scheduledItems)
       ? importedData.scheduledItems.map((item) => normalizeScheduledItem(item))
       : [];
@@ -638,9 +711,16 @@ export default function App() {
       ? importedData.savingsBucketAdjustments
       : getArrayValue(importedData?.savings?.transfers);
 
-    const [, savedImportedCategories, , savedImportedScheduledItems] =
+    const [
+      ,
+      savedImportedBudgetTargets,
+      savedImportedCategories,
+      ,
+      savedImportedScheduledItems,
+    ] =
       await Promise.all([
         saveAppSettings(importedSettings),
+        replaceBudgetTargets(importedBudgetTargets),
         replaceCategories(importedCategories),
         replacePlannerEntries(importedPlannerEntries),
         replaceScheduledItems(importedScheduledItems),
@@ -651,6 +731,7 @@ export default function App() {
       ]);
 
     setSettings(importedSettings);
+    setBudgetTargets(savedImportedBudgetTargets);
     setCategories(savedImportedCategories);
     setPlannerEntries(importedPlannerEntries);
     setScheduledItems(
@@ -672,6 +753,7 @@ export default function App() {
   async function handleResetLocalData() {
     await clearAllSavedData();
     setSettings(appSettings);
+    setBudgetTargets(seedBudgetTargets);
     setCategories(seedCategories);
     setPlannerEntries({});
     setScheduledItems(normalizedSeedScheduledItems);
@@ -769,6 +851,22 @@ export default function App() {
           />
         ) : null}
 
+        {currentPage === 'budgets' ? (
+          <Budgets
+            settings={settings}
+            budgetTargets={budgetTargets}
+            categories={categories}
+            scheduledItems={scheduledItems}
+            manualAdjustments={manualAdjustments}
+            savingsBucketAdjustments={savingsBucketAdjustments}
+            savingsBuckets={savingsBuckets}
+            accounts={accounts}
+            onSaveBudgetTarget={handleSaveBudgetTarget}
+            onArchiveBudgetTarget={handleArchiveBudgetTarget}
+            onResetBudgetTargets={handleResetBudgetTargets}
+          />
+        ) : null}
+
         {currentPage === 'categories' ? (
           <Categories
             categories={categories}
@@ -781,9 +879,13 @@ export default function App() {
         {currentPage === 'reports' ? (
           <Reports
             settings={settings}
+            budgetTargets={budgetTargets}
             categories={categories}
             plannerData={plannerData}
             plannerRows={plannerData.payPeriods}
+            scheduledItems={scheduledItems}
+            manualAdjustments={manualAdjustments}
+            accounts={accounts}
             miscExpenses={manualAdjustments.filter(
               (adjustment) => adjustment.type === 'misc-expense'
             )}

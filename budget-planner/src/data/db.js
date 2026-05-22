@@ -2,15 +2,17 @@ import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
 } from './seedData';
+import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
 
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const SETTINGS_ID = 'app-settings';
 const CATEGORY_TYPES = ['income', 'expense', 'transfer', 'savings', 'debt', 'general'];
 
 const STORES = {
   appSettings: 'appSettings',
+  budgetTargets: 'budgetTargets',
   categories: 'categories',
   plannerEntries: 'plannerEntries',
   scheduledItems: 'scheduledItems',
@@ -49,6 +51,12 @@ function openDatabase() {
 
       if (!db.objectStoreNames.contains(STORES.categories)) {
         db.createObjectStore(STORES.categories, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.budgetTargets)) {
+        db.createObjectStore(STORES.budgetTargets, {
           keyPath: 'id',
         });
       }
@@ -351,6 +359,13 @@ export async function replaceCategories(categories = []) {
   return replaceStoreRecords(STORES.categories, records);
 }
 
+export async function replaceBudgetTargets(targets = []) {
+  return replaceStoreRecords(
+    STORES.budgetTargets,
+    targets.map((target) => normalizeBudgetTarget(target))
+  );
+}
+
 export async function replaceAccounts(accounts = []) {
   return replaceStoreRecords(STORES.accounts, accounts);
 }
@@ -370,6 +385,7 @@ export async function replaceSavingsBucketAdjustments(adjustments = []) {
 export async function clearAllSavedData() {
   await Promise.all([
     clearStore(STORES.plannerEntries),
+    clearStore(STORES.budgetTargets),
     clearStore(STORES.categories),
     clearStore(STORES.scheduledItems),
     clearStore(STORES.accounts),
@@ -487,6 +503,100 @@ export async function archiveCategory(categoryId) {
 
 export async function resetCategoriesToDefaults() {
   return replaceCategories(defaultCategories);
+}
+
+export async function getAllBudgetTargets() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.budgetTargets, 'readonly');
+    const store = transaction.objectStore(STORES.budgetTargets);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load budget targets.'));
+    };
+
+    request.onsuccess = () => {
+      resolve((request.result || []).map((target) => normalizeBudgetTarget(target)));
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveBudgetTarget(target) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.budgetTargets, 'readwrite');
+    const store = transaction.objectStore(STORES.budgetTargets);
+    const record = normalizeBudgetTarget({
+      ...target,
+      updatedAt: new Date().toISOString(),
+    });
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save budget target.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function archiveBudgetTarget(budgetTargetId) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.budgetTargets, 'readwrite');
+    const store = transaction.objectStore(STORES.budgetTargets);
+    const request = store.get(budgetTargetId);
+
+    request.onerror = () => {
+      reject(new Error('Failed to load budget target.'));
+    };
+
+    request.onsuccess = () => {
+      const target = request.result;
+
+      if (!target) {
+        reject(new Error('Budget target was not found.'));
+        return;
+      }
+
+      const record = normalizeBudgetTarget({
+        ...target,
+        active: false,
+        updatedAt: new Date().toISOString(),
+      });
+      const saveRequest = store.put(record);
+
+      saveRequest.onerror = () => {
+        reject(new Error('Failed to archive budget target.'));
+      };
+
+      saveRequest.onsuccess = () => {
+        resolve(record);
+      };
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function resetBudgetTargets() {
+  return replaceBudgetTargets([]);
 }
 
 export async function getAllPlannerEntries() {

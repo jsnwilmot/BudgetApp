@@ -4,7 +4,7 @@ import {
   getBackupFileName,
   validateBackupFile
 } from "../services/backupService";
-import { appSettings, categories } from "../data/seedData";
+import { appSettings, budgetTargets, categories } from "../data/seedData";
 import { downloadTextFile } from "../utils/downloadFile";
 import { rowsToCsv } from "../utils/csv";
 
@@ -21,6 +21,7 @@ const POSSIBLE_STORAGE_KEYS = [
 
 const defaultAppState = {
   settings: appSettings,
+  budgetTargets,
   categories,
   planner: {
     rows: [],

@@ -312,3 +312,5 @@ export const scheduledItems = [
 ];
 
 export const manualAdjustments = [];
+
+export const budgetTargets = [];
