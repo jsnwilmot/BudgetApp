@@ -12,6 +12,10 @@ This is a clean local MVP release. It runs in the browser, can be installed as
 a PWA in supported browsers, stores user data locally, and does not require
 login, cloud sync, bank connections, or a server.
 
+New installs start with clearly fictional demo data so the app can be explored
+without setup. Use `Settings > Data Management` to reset back to demo data or
+factory reset to an empty app.
+
 ## Features
 
 - Dashboard with cash-flow summary, projection chart, and alerts.
@@ -26,6 +30,8 @@ login, cloud sync, bank connections, or a server.
 - Settings with editable planner settings and data management tools.
 - Backup, restore, repair, reset, and CSV export workflows.
 - Backup reminder status and data safety guidance for browser-managed storage.
+- Fictional demo dataset with scheduled items, accounts, savings buckets,
+  budgets, transactions, reports, alerts, and multi-line notes.
 - Mobile-friendly navigation and responsive page layouts.
 - PWA install support with app icons, manifest, service worker caching, and a
   simple update prompt.
@@ -53,7 +59,11 @@ Use `Settings > Data Management`.
   after confirmation.
 - `Repair Local Data` normalizes records and fills safe missing fields without
   deleting user records.
-- `Reset Local Data` requires typing `DELETE` and restores safe defaults.
+- `Reset to Demo Data` requires typing `DEMO` and restores fictional sample
+  records.
+- `Factory Reset to Empty App` requires typing `DELETE`, clears user/demo
+  records from this browser/device, and keeps only safe defaults needed to keep
+  the app usable.
 
 Keep backup files somewhere you control, especially before browser cleanup or
 device changes.
@@ -304,10 +314,18 @@ Known limitation:
 - Desktop SQLite storage is planned for a later phase.
 - Native desktop packaging is not included yet.
 
-### Phase 2B: Backup Reminders And Data Safety Polish
+### Phase 2B: Demo Data And Empty Reset Mode
 
 Completed:
 
+- Added a full fictional demo dataset for the public app.
+- Added demo records for accounts, scheduled items, savings buckets, manual
+  adjustments, savings activity, budget targets, reports, alerts, and
+  transactions.
+- Added multi-line demo notes where supported.
+- Added Reset to Demo Data with `DEMO` confirmation.
+- Added Factory Reset to Empty App with `DELETE` confirmation.
+- Kept default categories in the empty app state so users can start fresh.
 - Added local last-backup tracking.
 - Added backup status to Data Management.
 - Added Dashboard backup reminder alerts.
@@ -317,6 +335,8 @@ Completed:
 
 Known limitation:
 
+- Demo data is fictional and intended only as a starter experience.
+- Empty reset keeps default base categories so the app remains usable.
 - Backup reminders are in-app only.
 - PWA data is still browser-managed.
 - Users must keep backup files somewhere safe.

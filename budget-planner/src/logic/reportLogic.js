@@ -405,7 +405,9 @@ export function calculateCategoryTotals(items = [], categories = []) {
   items.forEach((item) => {
     const category = resolveCategoryName(item, categoryNameMap);
 
-    const amount = normalizeNumber(item.amount ?? item.value ?? item.total);
+    const amount = Math.abs(
+      normalizeNumber(item.amount ?? item.value ?? item.total)
+    );
 
     totals.set(category, normalizeNumber(totals.get(category)) + amount);
   });

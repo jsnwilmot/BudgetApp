@@ -8,11 +8,12 @@ import {
   budgetTargets as seedBudgetTargets,
   categories as seedCategories,
   manualAdjustments as seedManualAdjustments,
+  plannerEntries as seedPlannerEntries,
+  savingsBucketAdjustments as seedSavingsBucketAdjustments,
   savingsBuckets as seedSavingsBuckets,
   scheduledItems as seedScheduledItems,
 } from './data/seedData';
 import {
-  clearAllSavedData,
   archiveCategory,
   archiveBudgetTarget,
   deleteManualAdjustment,
@@ -40,6 +41,8 @@ import {
   replaceSavingsBuckets,
   replaceScheduledItems,
   repairLocalData,
+  resetAppToDemoData,
+  resetAppToEmptyState,
   resetAppSettings,
   resetBudgetTargets,
   resetCategoriesToDefaults,
@@ -106,12 +109,50 @@ function getCurrentMonthKey() {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function getComparableSettings(settings) {
+  return {
+    currency: settings.currency,
+    payPeriodAnchorDate: settings.payPeriodAnchorDate,
+    payFrequencyDays: Number(settings.payFrequencyDays),
+    projectionMonths: Number(settings.projectionMonths),
+    monthlyBillAssignmentRule: settings.monthlyBillAssignmentRule,
+  };
+}
+
+function hasCustomSavedSettings(savedSettings) {
+  return (
+    JSON.stringify(getComparableSettings(savedSettings)) !==
+    JSON.stringify(getComparableSettings(appSettings))
+  );
+}
+
+function hasCustomSavedCategories(savedCategories = []) {
+  if (savedCategories.length !== seedCategories.length) {
+    return true;
+  }
+
+  const defaultCategoryMap = new Map(
+    seedCategories.map((category) => [category.id, category])
+  );
+
+  return savedCategories.some((category) => {
+    const defaultCategory = defaultCategoryMap.get(category.id);
+
+    return (
+      !defaultCategory ||
+      category.name !== defaultCategory.name ||
+      category.type !== defaultCategory.type ||
+      category.active !== defaultCategory.active
+    );
+  });
+}
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [settings, setSettings] = useState(appSettings);
   const [budgetTargets, setBudgetTargets] = useState(seedBudgetTargets);
   const [categories, setCategories] = useState(seedCategories);
-  const [plannerEntries, setPlannerEntries] = useState({});
+  const [plannerEntries, setPlannerEntries] = useState(seedPlannerEntries);
   const [scheduledItems, setScheduledItems] = useState(
     normalizedSeedScheduledItems
   );
@@ -120,7 +161,9 @@ export default function App() {
     seedManualAdjustments
   );
   const [savingsBuckets, setSavingsBuckets] = useState(seedSavingsBuckets);
-  const [savingsBucketAdjustments, setSavingsBucketAdjustments] = useState([]);
+  const [savingsBucketAdjustments, setSavingsBucketAdjustments] = useState(
+    seedSavingsBucketAdjustments
+  );
   const [appMetadata, setAppMetadata] = useState(() =>
     normalizeAppMetadata({})
   );
@@ -132,6 +175,21 @@ export default function App() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW();
+
+  function applyLoadedData(loadedData) {
+    setSettings(loadedData.settings);
+    setBudgetTargets(loadedData.budgetTargets);
+    setCategories(loadedData.categories);
+    setPlannerEntries(loadedData.plannerEntries);
+    setScheduledItems(loadedData.scheduledItems);
+    setAccounts(loadedData.accounts);
+    setManualAdjustments(loadedData.manualAdjustments);
+    setSavingsBuckets(
+      loadedData.savingsBuckets.filter((bucket) => !bucket.deletedAt)
+    );
+    setSavingsBucketAdjustments(loadedData.savingsBucketAdjustments);
+    setAppMetadata(loadedData.appMetadata);
+  }
 
   useEffect(() => {
     async function loadSavedData() {
@@ -160,70 +218,38 @@ export default function App() {
           getAppMetadata(),
         ]);
 
-        setSettings(savedSettings);
-        setBudgetTargets(savedBudgetTargets);
-        setCategories(savedCategories);
-        setPlannerEntries(savedPlannerEntries);
+        const hasSavedRecords =
+          savedBudgetTargets.length > 0 ||
+          Object.keys(savedPlannerEntries).length > 0 ||
+          savedScheduledItems.length > 0 ||
+          savedAccounts.length > 0 ||
+          savedManualAdjustments.length > 0 ||
+          savedSavingsBuckets.length > 0 ||
+          savedSavingsBucketAdjustments.length > 0;
+        const hasExistingUserData =
+          hasSavedRecords ||
+          hasCustomSavedSettings(savedSettings) ||
+          hasCustomSavedCategories(savedCategories) ||
+          Boolean(savedAppMetadata.lastBackupAt);
 
-        if (savedScheduledItems.length > 0) {
-          const savedItemsById = new Map(
-            savedScheduledItems.map((item) => [item.id, item])
-          );
-
-          const mergedSeedItems = normalizedSeedScheduledItems.map((seedItem) => {
-            return savedItemsById.get(seedItem.id) || seedItem;
-          });
-
-          const seedIds = new Set(
-            normalizedSeedScheduledItems.map((item) => item.id)
-          );
-
-          const customItems = savedScheduledItems.filter((item) => {
-            return !seedIds.has(item.id);
-          });
-
-          setScheduledItems([...mergedSeedItems, ...customItems]);
+        if (!savedAppMetadata.dataMode && !hasExistingUserData) {
+          const demoData = await resetAppToDemoData();
+          applyLoadedData(demoData);
+          return;
         }
 
-        if (savedAccounts.length > 0) {
-          const savedAccountsById = new Map(
-            savedAccounts.map((account) => [account.id, account])
-          );
-
-          const mergedAccounts = seedAccounts.map((seedAccount) => {
-            return savedAccountsById.get(seedAccount.id) || seedAccount;
-          });
-
-          setAccounts(mergedAccounts);
-        }
-
-        if (savedSavingsBuckets.length > 0) {
-          const savedBucketsById = new Map(
-            savedSavingsBuckets.map((bucket) => [bucket.id, bucket])
-          );
-
-          const mergedSeedBuckets = seedSavingsBuckets.map((seedBucket) => {
-            return savedBucketsById.get(seedBucket.id) || seedBucket;
-          });
-
-          const seedBucketIds = new Set(
-            seedSavingsBuckets.map((bucket) => bucket.id)
-          );
-
-          const customBuckets = savedSavingsBuckets.filter((bucket) => {
-            return !seedBucketIds.has(bucket.id);
-          });
-
-          const allBuckets = [...mergedSeedBuckets, ...customBuckets].filter(
-            (bucket) => !bucket.deletedAt
-          );
-
-          setSavingsBuckets(allBuckets);
-        }
-
-        setManualAdjustments(savedManualAdjustments);
-        setSavingsBucketAdjustments(savedSavingsBucketAdjustments);
-        setAppMetadata(savedAppMetadata);
+        applyLoadedData({
+          settings: savedSettings,
+          budgetTargets: savedBudgetTargets,
+          categories: savedCategories,
+          plannerEntries: savedPlannerEntries,
+          scheduledItems: savedScheduledItems,
+          accounts: savedAccounts,
+          manualAdjustments: savedManualAdjustments,
+          savingsBuckets: savedSavingsBuckets,
+          savingsBucketAdjustments: savedSavingsBucketAdjustments,
+          appMetadata: savedAppMetadata,
+        });
       } catch (error) {
         console.error(error);
         setStatusMessage('Could not load saved planner data.');
@@ -807,7 +833,20 @@ export default function App() {
 
   async function handleImportData(importedData) {
     const safeImportedData = getSafeAppData(importedData);
-    const importedAppMetadata = safeImportedData.appMetadata;
+    const importedHasRecords =
+      safeImportedData.budgetTargets.length > 0 ||
+      Object.keys(safeImportedData.plannerEntries).length > 0 ||
+      safeImportedData.scheduledItems.length > 0 ||
+      safeImportedData.accounts.length > 0 ||
+      safeImportedData.manualAdjustments.length > 0 ||
+      safeImportedData.savingsBuckets.length > 0 ||
+      safeImportedData.savingsBucketAdjustments.length > 0;
+    const importedAppMetadata = {
+      ...safeImportedData.appMetadata,
+      dataMode:
+        safeImportedData.appMetadata.dataMode ||
+        (importedHasRecords ? 'custom' : 'empty'),
+    };
     const importedSettings = normalizeAppSettings(safeImportedData.settings);
     const importedPlannerEntries = safeImportedData.plannerEntries;
     const importedCategories = safeImportedData.categories;
@@ -853,40 +892,33 @@ export default function App() {
     setStatusMessage('Backup imported successfully.');
   }
 
+  async function handleResetToDemoData() {
+    const demoData = await resetAppToDemoData();
+    applyLoadedData(demoData);
+    setDismissedAlertIds([]);
+    setStatusMessage('Demo data restored.');
+    return demoData;
+  }
+
+  async function handleResetToEmptyState() {
+    const emptyData = await resetAppToEmptyState();
+    applyLoadedData(emptyData);
+    setDismissedAlertIds([]);
+    setStatusMessage('Factory reset to empty app completed.');
+    return emptyData;
+  }
+
   async function handleRepairLocalData() {
     const repairedData = await repairLocalData();
 
-    setSettings(repairedData.settings);
-    setBudgetTargets(repairedData.budgetTargets);
-    setCategories(repairedData.categories);
-    setPlannerEntries(repairedData.plannerEntries);
-    setScheduledItems(repairedData.scheduledItems);
-    setAccounts(repairedData.accounts);
-    setManualAdjustments(repairedData.manualAdjustments);
-    setSavingsBuckets(
-      repairedData.savingsBuckets.filter((bucket) => !bucket.deletedAt)
-    );
-    setSavingsBucketAdjustments(repairedData.savingsBucketAdjustments);
-    setAppMetadata(repairedData.appMetadata);
+    applyLoadedData(repairedData);
     setStatusMessage('Local data repaired successfully.');
 
     return repairedData;
   }
 
   async function handleResetLocalData() {
-    await clearAllSavedData();
-    setSettings(appSettings);
-    setBudgetTargets(seedBudgetTargets);
-    setCategories(seedCategories);
-    setPlannerEntries({});
-    setScheduledItems(normalizedSeedScheduledItems);
-    setAccounts(seedAccounts);
-    setManualAdjustments(seedManualAdjustments);
-    setSavingsBuckets(seedSavingsBuckets);
-    setSavingsBucketAdjustments([]);
-    setAppMetadata(normalizeAppMetadata({}));
-    setDismissedAlertIds([]);
-    setStatusMessage('Local data reset successfully.');
+    return handleResetToEmptyState();
   }
 
   if (loading) {
@@ -1042,6 +1074,8 @@ export default function App() {
             onImportData={handleImportData}
             onBackupExported={handleBackupExported}
             onRepairLocalData={handleRepairLocalData}
+            onResetToDemoData={handleResetToDemoData}
+            onResetToEmptyState={handleResetToEmptyState}
             onResetLocalData={handleResetLocalData}
           />
         ) : null}

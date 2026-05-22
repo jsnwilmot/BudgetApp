@@ -1,6 +1,8 @@
 import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
+  getDemoAppState,
+  getEmptyAppState,
 } from './seedData';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
@@ -168,28 +170,6 @@ export function normalizeAppSettings(settings = {}) {
 
 export function normalizeAppMetadata(metadata = {}) {
   return normalizeAppMetadataRecord(metadata);
-}
-
-async function clearStore(storeName) {
-  const db = await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.clear();
-
-    request.onerror = () => {
-      reject(new Error(`Failed to clear ${storeName}.`));
-    };
-
-    request.onsuccess = () => {
-      resolve();
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
-  });
 }
 
 async function replaceStoreRecords(storeName, records = []) {
@@ -394,21 +374,69 @@ export async function replaceSavingsBucketAdjustments(adjustments = []) {
   );
 }
 
-export async function clearAllSavedData() {
-  await Promise.all([
-    clearStore(STORES.appMetadata),
-    clearStore(STORES.plannerEntries),
-    clearStore(STORES.budgetTargets),
-    clearStore(STORES.categories),
-    clearStore(STORES.scheduledItems),
-    clearStore(STORES.accounts),
-    clearStore(STORES.manualAdjustments),
-    clearStore(STORES.savingsBuckets),
-    clearStore(STORES.savingsBucketAdjustments),
+async function replaceCompleteAppData(appData = {}) {
+  const safeData = getSafeAppData({
+    appDataVersion: APP_DATA_VERSION,
+    ...appData,
+  });
+
+  const [
+    savedAppMetadata,
+    savedSettings,
+    savedBudgetTargets,
+    savedCategories,
+    savedPlannerEntries,
+    savedScheduledItems,
+    savedAccounts,
+    savedManualAdjustments,
+    savedSavingsBuckets,
+    savedSavingsBucketAdjustments,
+  ] = await Promise.all([
+    saveAppMetadata(safeData.appMetadata),
+    saveAppSettings(safeData.settings),
+    replaceBudgetTargets(safeData.budgetTargets),
+    replaceCategories(safeData.categories),
+    replacePlannerEntries(safeData.plannerEntries),
+    replaceScheduledItems(safeData.scheduledItems),
+    replaceAccounts(safeData.accounts),
+    replaceManualAdjustments(safeData.manualAdjustments),
+    replaceSavingsBuckets(safeData.savingsBuckets),
+    replaceSavingsBucketAdjustments(safeData.savingsBucketAdjustments),
   ]);
 
-  await resetCategoriesToDefaults();
-  return resetAppSettings();
+  return {
+    ...safeData,
+    appMetadata: savedAppMetadata,
+    settings: savedSettings,
+    budgetTargets: savedBudgetTargets,
+    categories: savedCategories,
+    plannerEntries: normalizePlannerEntriesRecord(savedPlannerEntries),
+    scheduledItems: savedScheduledItems,
+    accounts: savedAccounts,
+    manualAdjustments: savedManualAdjustments,
+    savingsBuckets: savedSavingsBuckets,
+    savingsBucketAdjustments: savedSavingsBucketAdjustments,
+  };
+}
+
+export function getDemoState() {
+  return getSafeAppData(getDemoAppState());
+}
+
+export function getEmptyState() {
+  return getSafeAppData(getEmptyAppState());
+}
+
+export async function resetAppToDemoData() {
+  return replaceCompleteAppData(getDemoAppState());
+}
+
+export async function resetAppToEmptyState() {
+  return replaceCompleteAppData(getEmptyAppState());
+}
+
+export async function clearAllSavedData() {
+  return resetAppToEmptyState();
 }
 
 export async function getAllCategories() {

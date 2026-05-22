@@ -109,7 +109,9 @@ export default function Settings({
   onBackupExported,
   onImportData,
   onRepairLocalData,
-  onResetLocalData
+  onResetLocalData,
+  onResetToDemoData,
+  onResetToEmptyState
 }) {
   const [formState, setFormState] = useState(() => settingsToForm(settings));
   const [message, setMessage] = useState("");
@@ -361,6 +363,8 @@ export default function Settings({
         onImportData={onImportData}
         onRepairLocalData={onRepairLocalData}
         onResetLocalData={onResetLocalData}
+        onResetToDemoData={onResetToDemoData}
+        onResetToEmptyState={onResetToEmptyState}
       />
     </div>
   );

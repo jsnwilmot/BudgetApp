@@ -10,6 +10,10 @@ Budget Planner now tracks the last successful backup export in local app
 metadata. If no backup exists, or the last backup is older than 30 days, the app
 shows an in-app reminder.
 
+The public app starts with clearly fictional demo data. Demo records are only
+sample records for exploring the app and can be edited, backed up, replaced with
+demo data again, or cleared with an empty reset.
+
 ## Where Data Is Stored
 
 Data is stored locally in the browser profile used to open the app. Data in Chrome is separate from data in Edge, Firefox, Safari, another device, or a private browsing session.
@@ -40,13 +44,19 @@ Recommended backup frequency:
 
 Export a fresh backup before importing another backup if you might need to undo the import.
 
-## Reset
+## Reset Modes
 
-`Reset Local Data` deletes the current local data and restores safe defaults. It requires typing `DELETE`.
+`Reset to Demo Data` replaces current local data with fictional sample records.
+It requires typing `DEMO`.
 
-Reset is destructive. Export a backup first if you want to preserve your current data.
-Reset also clears the locally stored last-backup timestamp because it resets the
-local app data for this browser/device.
+`Factory Reset to Empty App` clears planner data, accounts, scheduled items,
+budgets, savings buckets, adjustments, and user/demo records from this
+browser/device. It keeps default base categories and safe settings so the app
+remains usable. It requires typing `DELETE`.
+
+Both reset modes replace local data. Export a backup first if you want to
+preserve your current data. Reset also clears the locally stored last-backup
+timestamp because it resets the local app data for this browser/device.
 
 ## Repair Local Data
 
@@ -58,7 +68,7 @@ local app data for this browser/device.
 - Before switching browsers or devices.
 - Before uninstalling the PWA.
 - Before importing a backup.
-- Before resetting local data.
+- Before resetting to demo data or factory resetting to an empty app.
 - Before a major app update or deployment change.
 - After significant planner setup changes.
 

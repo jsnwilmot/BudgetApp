@@ -1,11 +1,8 @@
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
 import {
-  accounts as defaultAccounts,
   appSettings as defaultAppSettings,
   categories as defaultCategories,
-  savingsBuckets as defaultSavingsBuckets,
-  scheduledItems as defaultScheduledItems,
 } from './seedData';
 
 export const APP_DATA_VERSION = 1;
@@ -443,18 +440,15 @@ export function getSafeAppData(data = {}) {
   );
   const normalizedScheduledItems = normalizeRecords(
     migratedData.scheduledItems,
-    normalizeScheduledItemRecord,
-    defaultScheduledItems
+    normalizeScheduledItemRecord
   );
   const normalizedAccounts = normalizeRecords(
     migratedData.accounts,
-    normalizeAccountRecord,
-    defaultAccounts
+    normalizeAccountRecord
   );
   const normalizedSavingsBuckets = normalizeRecords(
     migratedData.savingsBuckets,
-    normalizeSavingsBucketRecord,
-    defaultSavingsBuckets
+    normalizeSavingsBucketRecord
   );
 
   return {

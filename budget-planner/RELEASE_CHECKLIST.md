@@ -62,8 +62,24 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Newer unsupported app data version is rejected.
 - [ ] Repair Local Data completes.
 - [ ] Repair Local Data preserves a valid Last backup timestamp.
-- [ ] Reset Local Data requires `DELETE`.
-- [ ] Reset warning explains the browser/device data loss risk.
+- [ ] Reset to Demo Data requires `DEMO`.
+- [ ] Reset to Demo Data restores fictional sample records.
+- [ ] Factory Reset to Empty App requires `DELETE`.
+- [ ] Factory Reset to Empty App clears user/demo records and keeps safe defaults.
+- [ ] Reset warnings explain the browser/device data loss risk.
+
+## Demo Data And Empty Reset
+
+- [ ] Fresh app starts with fictional demo data.
+- [ ] Existing user data is not overwritten automatically.
+- [ ] No bundled demo record uses real personal names, providers, employers, or account numbers.
+- [ ] Demo data includes accounts, scheduled items, savings buckets, manual adjustments, savings adjustments, budgets, transactions, reports, and alerts.
+- [ ] Demo data includes multi-line notes where supported.
+- [ ] Multi-line notes render safely in cards, tables, forms, CSV exports, print view, and backup JSON.
+- [ ] Factory Reset to Empty App leaves no accounts, scheduled items, manual adjustments, savings buckets, savings adjustments, budget targets, or planner entries.
+- [ ] Empty app keeps default categories and safe settings.
+- [ ] Backup export works after demo reset.
+- [ ] Backup export works after empty reset.
 
 ## Core Workflows
 

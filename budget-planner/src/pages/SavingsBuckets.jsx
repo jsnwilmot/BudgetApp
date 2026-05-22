@@ -529,7 +529,7 @@ export default function SavingsBuckets({
             Bucket balances and transfers
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Track how much is accumulated in Savings, House Maintenance, and Property Taxes.
+            Track money set aside for emergency funds, goals, and planned expenses.
           </p>
         </div>
 

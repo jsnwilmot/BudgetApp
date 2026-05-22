@@ -4,7 +4,13 @@ import {
   getBackupFileName,
   validateBackupFile
 } from "../services/backupService";
-import { appSettings, budgetTargets, categories } from "../data/seedData";
+import {
+  appSettings,
+  budgetTargets,
+  categories,
+  getDemoAppState,
+  getEmptyAppState
+} from "../data/seedData";
 import {
   getCurrentAppDataVersion,
   getCurrentAppVersion,
@@ -347,12 +353,15 @@ export default function DataManagement({
   onBackupExported,
   onImportData,
   onRepairLocalData,
-  onResetLocalData
+  onResetLocalData,
+  onResetToDemoData,
+  onResetToEmptyState
 }) {
   const fileInputRef = useRef(null);
 
   const [pendingImport, setPendingImport] = useState(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [demoConfirmation, setDemoConfirmation] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -601,24 +610,58 @@ export default function DataManagement({
     clearMessages();
 
     if (deleteConfirmation !== "DELETE") {
-      setErrorMessage("Type DELETE to confirm reset.");
+      setErrorMessage("Type DELETE to confirm factory reset.");
       return;
     }
 
     try {
-      if (typeof onResetLocalData === "function") {
+      if (typeof onResetToEmptyState === "function") {
+        await onResetToEmptyState();
+      } else if (typeof onResetLocalData === "function") {
         await onResetLocalData();
       } else {
-        saveStoredAppData(defaultAppState);
+        saveStoredAppData({
+          ...defaultAppState,
+          ...getEmptyAppState()
+        });
       }
     } catch (error) {
       console.error(error);
-      setErrorMessage("Local data reset failed.");
+      setErrorMessage("Factory reset failed.");
       return;
     }
 
     setDeleteConfirmation("");
-    setSuccessMessage("Local data reset successfully.");
+    setSuccessMessage("Factory reset to empty app completed.");
+
+    reloadApp();
+  }
+
+  async function handleResetDemoData() {
+    clearMessages();
+
+    if (demoConfirmation !== "DEMO") {
+      setErrorMessage("Type DEMO to confirm demo reset.");
+      return;
+    }
+
+    try {
+      if (typeof onResetToDemoData === "function") {
+        await onResetToDemoData();
+      } else {
+        saveStoredAppData({
+          ...defaultAppState,
+          ...getDemoAppState()
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Reset to demo data failed.");
+      return;
+    }
+
+    setDemoConfirmation("");
+    setSuccessMessage("Demo data restored successfully.");
 
     reloadApp();
   }
@@ -634,7 +677,7 @@ export default function DataManagement({
         </h3>
         <p className="mt-2 text-sm text-slate-600">
           Export a full backup, restore from a saved file, download CSV reports,
-          or reset local data.
+          repair local records, or reset the app to demo or empty data.
         </p>
         <p className="mt-2 text-xs text-slate-500">
           Local data location: this browser profile ({activeStorageKey})
@@ -673,6 +716,11 @@ export default function DataManagement({
           <p className="mt-2 text-sm text-slate-700">
             A future desktop version is planned with app-managed local database
             storage for stronger long-term data safety.
+          </p>
+          <p className="mt-2 text-sm text-slate-700">
+            The public demo uses fictional sample records. You can edit them,
+            restore them with Reset to Demo Data, or clear them with Factory
+            Reset to Empty App.
           </p>
         </div>
 
@@ -800,9 +848,10 @@ export default function DataManagement({
             Risky actions
           </h4>
           <p className="mt-1 text-sm text-slate-700">
-            Importing a backup replaces your current local data. Resetting local
-            data deletes planner entries, accounts, scheduled items, savings
-            activity, categories, budgets, reports data, and settings.
+            Importing a backup replaces your current local data. Reset to Demo
+            Data restores fictional sample records. Factory Reset to Empty App
+            clears user and demo records from this browser/device. Export a
+            backup first if you want to keep current data.
           </p>
 
           <input
@@ -876,15 +925,44 @@ export default function DataManagement({
             </div>
           )}
 
+          <div className="mt-5 rounded-xl border border-amber-200 bg-white p-4">
+            <h5 className="text-base font-semibold text-amber-800">
+              Reset to Demo Data
+            </h5>
+            <p className="mt-1 text-sm text-slate-600">
+              Reset to Demo Data will replace your current local data with
+              fictional sample records. Export a backup first if you want to keep
+              your current data. Type DEMO to confirm.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <input
+                value={demoConfirmation}
+                onChange={(event) => setDemoConfirmation(event.target.value)}
+                placeholder="Type DEMO"
+                className="min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              />
+
+              <button
+                type="button"
+                onClick={handleResetDemoData}
+                disabled={demoConfirmation !== "DEMO"}
+                className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reset to Demo Data
+              </button>
+            </div>
+          </div>
+
           <div className="mt-5 rounded-xl border border-red-200 bg-white p-4">
             <h5 className="text-base font-semibold text-red-700">
-              Reset Local Data
+              Factory Reset to Empty App
             </h5>
-              <p className="mt-1 text-sm text-slate-600">
-              This will delete local planner data, accounts, scheduled items,
-              budgets, categories, savings buckets, reports data, and settings
-              from this browser/device. This cannot be undone unless you have a
-              backup. Type DELETE to confirm.
+            <p className="mt-1 text-sm text-slate-600">
+              Factory Reset to Empty App clears planner data, accounts,
+              scheduled items, budgets, savings buckets, adjustments, and user
+              records from this browser/device. This cannot be undone unless you
+              have a backup. Type DELETE to confirm.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">
@@ -903,7 +981,7 @@ export default function DataManagement({
                 disabled={deleteConfirmation !== "DELETE"}
                 className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Reset Local Data
+                Factory Reset to Empty App
               </button>
             </div>
           </div>
