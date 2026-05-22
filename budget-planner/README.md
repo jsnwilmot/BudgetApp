@@ -123,6 +123,24 @@ Known limitation:
 - Drag-and-drop ordering is not included yet.
 - Automated bill reminders are not included yet.
 
+## Phase 1T: Transaction History Foundation
+
+Completed:
+
+- Added Transactions page.
+- Added unified transaction-style rows derived from existing local data.
+- Added transaction summary cards.
+- Added transaction search, filters, and sorting.
+- Added category, account, and savings bucket name resolution.
+- Added filtered transaction CSV export.
+- Preserved backup and restore compatibility.
+
+Known limitation:
+
+- Transactions are currently derived from existing planner, manual adjustment, scheduled item, and savings bucket activity.
+- Direct standalone transaction entry is not included yet.
+- Bank import, receipt upload, and reconciliation are not included.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

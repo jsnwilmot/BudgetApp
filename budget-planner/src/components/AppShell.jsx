@@ -3,6 +3,7 @@ import {
   CalendarClock,
   CalendarDays,
   Landmark,
+  ListChecks,
   LayoutDashboard,
   PiggyBank,
   Settings,
@@ -19,6 +20,11 @@ const navItems = [
     id: 'planner',
     label: 'Pay Period Planner',
     icon: CalendarDays,
+  },
+  {
+    id: 'transactions',
+    label: 'Transactions',
+    icon: ListChecks,
   },
   {
     id: 'scheduled-items',

@@ -54,6 +54,7 @@ import Reports from './pages/Reports';
 import SavingsBuckets from './pages/SavingsBuckets';
 import ScheduledItems from './pages/ScheduledItems';
 import Settings from './pages/Settings';
+import Transactions from './pages/Transactions';
 
 function normalizePlannerEntries(entries) {
   if (Array.isArray(entries)) {
@@ -726,6 +727,18 @@ export default function App() {
             onSaveScheduledItem={handleSaveScheduledItem}
             onDuplicateScheduledItem={handleDuplicateScheduledItem}
             onDeleteScheduledItem={handleDeleteScheduledItem}
+          />
+        ) : null}
+
+        {currentPage === 'transactions' ? (
+          <Transactions
+            settings={settings}
+            scheduledItems={scheduledItems}
+            manualAdjustments={manualAdjustments}
+            savingsBucketAdjustments={savingsBucketAdjustments}
+            savingsBuckets={savingsBuckets}
+            accounts={accounts}
+            categories={categories}
           />
         ) : null}
 
