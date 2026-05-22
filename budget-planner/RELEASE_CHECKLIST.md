@@ -9,7 +9,9 @@ Run this before tagging or sharing a local MVP build.
 - [ ] `git diff --check`
 - [ ] `npm.cmd run preview`
 
-The Vite large chunk warning may appear during build and does not block the local MVP.
+The production build should split larger pages and chart code into separate
+assets. If a large chunk warning returns, review page lazy loading and chart
+imports before release.
 
 ## Browser Smoke Test
 
@@ -47,6 +49,8 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Tables scroll intentionally.
 - [ ] Forms and editors are usable.
 - [ ] Reports charts do not overflow.
+- [ ] Reports charts render after lazy loading.
+- [ ] Dashboard chart renders after lazy loading.
 
 ## Data Management
 
@@ -119,6 +123,10 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] `npm.cmd run preview`
 - [ ] Production preview loads.
 - [ ] All nav pages open in production preview.
+- [ ] Lazy-loaded pages show a loading state instead of a blank screen.
+- [ ] Reports opens and chart assets load in production preview.
+- [ ] Dashboard opens and chart assets load in production preview.
+- [ ] Service worker still registers after bundle splitting.
 - [ ] No console errors appear in production preview.
 
 ## GitHub Pages Deployment

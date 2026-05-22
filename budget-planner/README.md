@@ -106,9 +106,9 @@ npm.cmd run build
 npm.cmd run preview
 ```
 
-The production build currently emits a Vite large chunk warning due to
-chart/report bundle size. This does not block the local MVP. Bundle optimization
-is planned for a later performance phase.
+The production build uses page-level lazy loading so chart-heavy and workflow
+pages are split into separate assets. Run production preview after build to
+verify lazy-loaded pages and PWA assets.
 
 ## GitHub Pages Deployment
 
@@ -294,7 +294,7 @@ Known limitation:
 - User data must be backed up manually.
 - PWA install support depends on browser and device support.
 - Native desktop/mobile packaging is not included yet.
-- Vite may show a large chunk warning during build.
+- Further performance work may be useful after desktop packaging.
 
 ### Phase 2A: PWA Install Support
 
@@ -382,6 +382,22 @@ Known limitation:
 - PWA data is still browser-managed.
 - Desktop SQLite storage is planned for a later phase.
 
+### Phase 2F: Performance Optimization And Bundle Cleanup
+
+Completed:
+
+- Added safe page-level lazy loading.
+- Reduced initial bundle pressure.
+- Split chart-heavy page code into lazy-loaded production assets.
+- Preserved PWA and GitHub Pages deployment behavior.
+- Confirmed production build passes without the previous large chunk warning.
+
+Known limitation:
+
+- Further performance work may be needed after desktop packaging.
+- Browser storage remains the current PWA storage model until the desktop
+  SQLite phase.
+
 ## Known Limitations
 
 - Data is local-only and does not sync across devices.
@@ -403,7 +419,7 @@ regularly and before any browser cleanup or deployment change.
 ## Future Roadmap
 
 - Desktop SQLite storage.
-- Bundle/performance optimization.
+- Further performance tuning after desktop packaging.
 - More automated test coverage.
 - Direct standalone transaction entry.
 - Budget rollover math and custom budget alerts.

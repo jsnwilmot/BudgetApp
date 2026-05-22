@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import AppShell from './components/AppShell';
 import CellEditor from './components/CellEditor';
@@ -69,17 +69,26 @@ import { calculateBudgetUsage } from './logic/budgetLogic';
 import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
 import { buildTransactionsFromAppData } from './logic/transactionLogic';
-import Accounts from './pages/Accounts';
-import Budgets from './pages/Budgets';
-import Categories from './pages/Categories';
-import Dashboard from './pages/Dashboard';
-import Help from './pages/Help';
-import Planner from './pages/Planner';
-import Reports from './pages/Reports';
-import SavingsBuckets from './pages/SavingsBuckets';
-import ScheduledItems from './pages/ScheduledItems';
-import Settings from './pages/Settings';
-import Transactions from './pages/Transactions';
+
+const Accounts = lazy(() => import('./pages/Accounts'));
+const Budgets = lazy(() => import('./pages/Budgets'));
+const Categories = lazy(() => import('./pages/Categories'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Help = lazy(() => import('./pages/Help'));
+const Planner = lazy(() => import('./pages/Planner'));
+const Reports = lazy(() => import('./pages/Reports'));
+const SavingsBuckets = lazy(() => import('./pages/SavingsBuckets'));
+const ScheduledItems = lazy(() => import('./pages/ScheduledItems'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Transactions = lazy(() => import('./pages/Transactions'));
+
+function PageLoadingFallback() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-600 shadow-sm">
+      Loading page...
+    </div>
+  );
+}
 
 function buildExportPlannerRows(plannerData) {
   const projectedChequingRow = plannerData.projectionRows.find(
@@ -1017,149 +1026,151 @@ export default function App() {
           </div>
         ) : null}
 
-        {currentPage === 'dashboard' ? (
-          <Dashboard
-            plannerData={plannerData}
-            settings={settings}
-            alerts={visibleAlerts}
-            alertCounts={alertCounts}
-            appMetadata={appMetadata}
-            isEmptyApp={isEmptyApp}
-            onAlertAction={handleAlertAction}
-            onDismissAlert={handleDismissAlert}
-            onCompleteOnboarding={handleCompleteOnboarding}
-            onStartEmpty={handleStartEmptyFromOnboarding}
-            onImportBackup={handleImportBackupFromOnboarding}
-            onOpenHelp={() => setCurrentPage('help')}
-          />
-        ) : null}
+        <Suspense fallback={<PageLoadingFallback />}>
+          {currentPage === 'dashboard' ? (
+            <Dashboard
+              plannerData={plannerData}
+              settings={settings}
+              alerts={visibleAlerts}
+              alertCounts={alertCounts}
+              appMetadata={appMetadata}
+              isEmptyApp={isEmptyApp}
+              onAlertAction={handleAlertAction}
+              onDismissAlert={handleDismissAlert}
+              onCompleteOnboarding={handleCompleteOnboarding}
+              onStartEmpty={handleStartEmptyFromOnboarding}
+              onImportBackup={handleImportBackupFromOnboarding}
+              onOpenHelp={() => setCurrentPage('help')}
+            />
+          ) : null}
 
-        {currentPage === 'planner' ? (
-          <Planner
-            plannerData={plannerData}
-            plannerEntries={plannerEntries}
-            settings={settings}
-            alerts={plannerAlerts}
-            onCellClick={setSelectedCell}
-          />
-        ) : null}
+          {currentPage === 'planner' ? (
+            <Planner
+              plannerData={plannerData}
+              plannerEntries={plannerEntries}
+              settings={settings}
+              alerts={plannerAlerts}
+              onCellClick={setSelectedCell}
+            />
+          ) : null}
 
-        {currentPage === 'scheduled-items' ? (
-          <ScheduledItems
-            scheduledItems={scheduledItems}
-            categories={categories}
-            settings={settings}
-            alerts={scheduledItemAlerts}
-            onAlertAction={handleAlertAction}
-            onDismissAlert={handleDismissAlert}
-            onSaveScheduledItem={handleSaveScheduledItem}
-            onDuplicateScheduledItem={handleDuplicateScheduledItem}
-            onDeleteScheduledItem={handleDeleteScheduledItem}
-          />
-        ) : null}
+          {currentPage === 'scheduled-items' ? (
+            <ScheduledItems
+              scheduledItems={scheduledItems}
+              categories={categories}
+              settings={settings}
+              alerts={scheduledItemAlerts}
+              onAlertAction={handleAlertAction}
+              onDismissAlert={handleDismissAlert}
+              onSaveScheduledItem={handleSaveScheduledItem}
+              onDuplicateScheduledItem={handleDuplicateScheduledItem}
+              onDeleteScheduledItem={handleDeleteScheduledItem}
+            />
+          ) : null}
 
-        {currentPage === 'transactions' ? (
-          <Transactions
-            settings={settings}
-            scheduledItems={scheduledItems}
-            manualAdjustments={manualAdjustments}
-            savingsBucketAdjustments={savingsBucketAdjustments}
-            savingsBuckets={savingsBuckets}
-            accounts={accounts}
-            categories={categories}
-          />
-        ) : null}
+          {currentPage === 'transactions' ? (
+            <Transactions
+              settings={settings}
+              scheduledItems={scheduledItems}
+              manualAdjustments={manualAdjustments}
+              savingsBucketAdjustments={savingsBucketAdjustments}
+              savingsBuckets={savingsBuckets}
+              accounts={accounts}
+              categories={categories}
+            />
+          ) : null}
 
-        {currentPage === 'accounts' ? (
-          <Accounts
-            accounts={accounts}
-            categories={categories}
-            manualAdjustments={manualAdjustments}
-            payPeriods={plannerData.payPeriods}
-            settings={settings}
-            onSaveAccount={handleSaveAccount}
-            onSaveManualAdjustment={handleSaveManualAdjustment}
-            onDeleteManualAdjustment={handleDeleteManualAdjustment}
-          />
-        ) : null}
+          {currentPage === 'accounts' ? (
+            <Accounts
+              accounts={accounts}
+              categories={categories}
+              manualAdjustments={manualAdjustments}
+              payPeriods={plannerData.payPeriods}
+              settings={settings}
+              onSaveAccount={handleSaveAccount}
+              onSaveManualAdjustment={handleSaveManualAdjustment}
+              onDeleteManualAdjustment={handleDeleteManualAdjustment}
+            />
+          ) : null}
 
-        {currentPage === 'savings-buckets' ? (
-          <SavingsBuckets
-            savingsBuckets={savingsBuckets}
-            savingsBucketAdjustments={savingsBucketAdjustments}
-            scheduledItems={scheduledItems}
-            plannerData={plannerData}
-            settings={settings}
-            onSaveSavingsBucket={handleSaveSavingsBucket}
-            onDeleteSavingsBucket={handleDeleteSavingsBucket}
-            onSaveSavingsBucketAdjustment={handleSaveSavingsBucketAdjustment}
-            onDeleteSavingsBucketAdjustment={handleDeleteSavingsBucketAdjustment}
-          />
-        ) : null}
+          {currentPage === 'savings-buckets' ? (
+            <SavingsBuckets
+              savingsBuckets={savingsBuckets}
+              savingsBucketAdjustments={savingsBucketAdjustments}
+              scheduledItems={scheduledItems}
+              plannerData={plannerData}
+              settings={settings}
+              onSaveSavingsBucket={handleSaveSavingsBucket}
+              onDeleteSavingsBucket={handleDeleteSavingsBucket}
+              onSaveSavingsBucketAdjustment={handleSaveSavingsBucketAdjustment}
+              onDeleteSavingsBucketAdjustment={handleDeleteSavingsBucketAdjustment}
+            />
+          ) : null}
 
-        {currentPage === 'budgets' ? (
-          <Budgets
-            settings={settings}
-            budgetTargets={budgetTargets}
-            categories={categories}
-            scheduledItems={scheduledItems}
-            manualAdjustments={manualAdjustments}
-            savingsBucketAdjustments={savingsBucketAdjustments}
-            savingsBuckets={savingsBuckets}
-            accounts={accounts}
-            alerts={budgetAlerts}
-            onAlertAction={handleAlertAction}
-            onDismissAlert={handleDismissAlert}
-            onSaveBudgetTarget={handleSaveBudgetTarget}
-            onArchiveBudgetTarget={handleArchiveBudgetTarget}
-            onResetBudgetTargets={handleResetBudgetTargets}
-          />
-        ) : null}
+          {currentPage === 'budgets' ? (
+            <Budgets
+              settings={settings}
+              budgetTargets={budgetTargets}
+              categories={categories}
+              scheduledItems={scheduledItems}
+              manualAdjustments={manualAdjustments}
+              savingsBucketAdjustments={savingsBucketAdjustments}
+              savingsBuckets={savingsBuckets}
+              accounts={accounts}
+              alerts={budgetAlerts}
+              onAlertAction={handleAlertAction}
+              onDismissAlert={handleDismissAlert}
+              onSaveBudgetTarget={handleSaveBudgetTarget}
+              onArchiveBudgetTarget={handleArchiveBudgetTarget}
+              onResetBudgetTargets={handleResetBudgetTargets}
+            />
+          ) : null}
 
-        {currentPage === 'categories' ? (
-          <Categories
-            categories={categories}
-            onSaveCategory={handleSaveCategory}
-            onArchiveCategory={handleArchiveCategory}
-            onResetCategories={handleResetCategories}
-          />
-        ) : null}
+          {currentPage === 'categories' ? (
+            <Categories
+              categories={categories}
+              onSaveCategory={handleSaveCategory}
+              onArchiveCategory={handleArchiveCategory}
+              onResetCategories={handleResetCategories}
+            />
+          ) : null}
 
-        {currentPage === 'reports' ? (
-          <Reports
-            settings={settings}
-            budgetTargets={budgetTargets}
-            categories={categories}
-            plannerData={plannerData}
-            plannerRows={plannerData.payPeriods}
-            scheduledItems={scheduledItems}
-            manualAdjustments={manualAdjustments}
-            accounts={accounts}
-            miscExpenses={manualAdjustments.filter(
-              (adjustment) => adjustment.type === 'misc-expense'
-            )}
-            savingsBuckets={savingsBuckets}
-            savingsTransfers={savingsBucketAdjustments}
-          />
-        ) : null}
+          {currentPage === 'reports' ? (
+            <Reports
+              settings={settings}
+              budgetTargets={budgetTargets}
+              categories={categories}
+              plannerData={plannerData}
+              plannerRows={plannerData.payPeriods}
+              scheduledItems={scheduledItems}
+              manualAdjustments={manualAdjustments}
+              accounts={accounts}
+              miscExpenses={manualAdjustments.filter(
+                (adjustment) => adjustment.type === 'misc-expense'
+              )}
+              savingsBuckets={savingsBuckets}
+              savingsTransfers={savingsBucketAdjustments}
+            />
+          ) : null}
 
-        {currentPage === 'settings' ? (
-          <Settings
-            settings={settings}
-            appData={appData}
-            onSaveSettings={handleSaveSettings}
-            onResetSettings={handleResetSettings}
-            onImportData={handleImportData}
-            onBackupExported={handleBackupExported}
-            onRepairLocalData={handleRepairLocalData}
-            onResetToDemoData={handleResetToDemoData}
-            onResetToEmptyState={handleResetToEmptyState}
-            onResetLocalData={handleResetLocalData}
-            onShowHelp={() => setCurrentPage('help')}
-          />
-        ) : null}
+          {currentPage === 'settings' ? (
+            <Settings
+              settings={settings}
+              appData={appData}
+              onSaveSettings={handleSaveSettings}
+              onResetSettings={handleResetSettings}
+              onImportData={handleImportData}
+              onBackupExported={handleBackupExported}
+              onRepairLocalData={handleRepairLocalData}
+              onResetToDemoData={handleResetToDemoData}
+              onResetToEmptyState={handleResetToEmptyState}
+              onResetLocalData={handleResetLocalData}
+              onShowHelp={() => setCurrentPage('help')}
+            />
+          ) : null}
 
-        {currentPage === 'help' ? <Help /> : null}
+          {currentPage === 'help' ? <Help /> : null}
+        </Suspense>
       </AppShell>
 
       <CellEditor
