@@ -601,12 +601,12 @@ export default function DataManagement({
   }
 
   return (
-    <section className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-5">
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Data Management
         </p>
-        <h3 className="mt-1 text-2xl font-bold text-slate-950">
+        <h3 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">
           Backup, restore, and export
         </h3>
         <p className="mt-2 text-sm text-slate-600">
@@ -697,7 +697,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleExportBackup}
-              className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
             >
               Export Backup
             </button>
@@ -705,7 +705,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleExportPlannerCsv}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
               Export Planner CSV
             </button>
@@ -713,7 +713,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleExportSavingsBucketsCsv}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
               Export Savings Buckets CSV
             </button>
@@ -721,7 +721,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleRepairLocalData}
-              className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50"
+              className="min-h-11 rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50"
             >
               Repair Local Data
             </button>
@@ -749,7 +749,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleChooseImportFile}
-              className="rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-amber-100"
+              className="min-h-11 rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-amber-100"
             >
               Import Backup
             </button>
@@ -791,7 +791,7 @@ export default function DataManagement({
                 <button
                   type="button"
                   onClick={confirmImportBackup}
-                  className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                  className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
                 >
                   Import Backup
                 </button>
@@ -799,7 +799,7 @@ export default function DataManagement({
                 <button
                   type="button"
                   onClick={cancelImportBackup}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
@@ -823,14 +823,14 @@ export default function DataManagement({
                   setDeleteConfirmation(event.target.value)
                 }
                 placeholder="Type DELETE"
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                className="min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm"
               />
 
               <button
                 type="button"
                 onClick={handleResetLocalData}
                 disabled={deleteConfirmation !== "DELETE"}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Reset Local Data
               </button>

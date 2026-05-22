@@ -198,6 +198,24 @@ Known limitation:
 - Future app data versions will need explicit migration steps.
 - Cloud backup and multi-device sync are not included.
 
+## Phase 1X: Mobile UX Polish
+
+Completed:
+
+- Improved responsive app shell navigation.
+- Improved mobile spacing across pages.
+- Improved table and grid behavior on small screens.
+- Improved mobile form usability.
+- Improved touch targets.
+- Improved chart responsiveness.
+- Preserved print, backup, restore, export, and existing app behavior.
+
+Known limitation:
+
+- Planner grid remains horizontally scrollable on mobile.
+- Native mobile packaging is not included yet.
+- PWA install support is not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

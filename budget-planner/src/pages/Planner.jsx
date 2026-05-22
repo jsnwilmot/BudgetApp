@@ -118,7 +118,7 @@ export default function Planner({
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Pay Period Planner
         </p>
-        <h2 className="text-3xl font-bold text-slate-950">
+        <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
           Biweekly budget grid
         </h2>
         <p className="mt-1 text-sm text-slate-500">

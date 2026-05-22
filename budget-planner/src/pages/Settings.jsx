@@ -171,7 +171,7 @@ export default function Settings({
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Settings
         </p>
-        <h2 className="text-3xl font-bold text-slate-950">
+        <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
           Budget planner settings
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
@@ -180,7 +180,7 @@ export default function Settings({
         </p>
       </div>
 
-      <section className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-5">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Planner Settings
@@ -322,7 +322,7 @@ export default function Settings({
           <div className="flex flex-wrap gap-3">
             <button
               type="submit"
-              className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
             >
               Save Settings
             </button>
@@ -330,7 +330,7 @@ export default function Settings({
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
               Cancel Changes
             </button>
@@ -338,7 +338,7 @@ export default function Settings({
             <button
               type="button"
               onClick={handleReset}
-              className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+            className="min-h-11 rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
             >
               Reset to Defaults
             </button>

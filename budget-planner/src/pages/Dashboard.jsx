@@ -56,7 +56,7 @@ export default function Dashboard({
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Dashboard
         </p>
-        <h2 className="text-3xl font-bold text-slate-950">
+        <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
           Cash-flow projection
         </h2>
       </div>
@@ -92,7 +92,7 @@ export default function Dashboard({
         onDismiss={onDismissAlert}
       />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Next Pay Date"
           value={summary.nextPayDate ? formatShortDate(summary.nextPayDate) : 'Not available'}
@@ -117,7 +117,7 @@ export default function Dashboard({
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Chequing After Next Period"
           value={formatCurrency(summary.projectedChequingAfterNext)}
@@ -144,7 +144,7 @@ export default function Dashboard({
         />
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4">
           <h3 className="text-lg font-bold text-slate-950">
             12-Month Account Projection
@@ -154,11 +154,11 @@ export default function Dashboard({
           </p>
         </div>
 
-        <div className="h-96">
+        <div className="h-72 sm:h-96">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="date" interval="preserveStartEnd" minTickGap={16} />
               <YAxis />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Line

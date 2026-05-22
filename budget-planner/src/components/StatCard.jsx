@@ -8,9 +8,11 @@ export default function StatCard({ label, value, helper, tone = 'default' }) {
   };
 
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm ${tones[tone]}`}>
+    <div className={`rounded-2xl border p-4 shadow-sm sm:p-5 ${tones[tone]}`}>
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
+      <p className="mt-2 break-words text-xl font-bold text-slate-950 sm:text-2xl">
+        {value}
+      </p>
       {helper ? (
         <p className="mt-1 text-sm text-slate-500">{helper}</p>
       ) : null}

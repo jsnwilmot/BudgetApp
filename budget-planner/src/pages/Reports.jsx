@@ -81,9 +81,11 @@ function chartHasAnyValue(data = []) {
 
 function StatCard({ label, value, helper }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none sm:p-5">
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
+      <p className="mt-2 break-words text-xl font-bold text-slate-950 sm:text-2xl">
+        {value}
+      </p>
       {helper && <p className="mt-1 text-sm text-slate-500">{helper}</p>}
     </div>
   );
@@ -91,9 +93,9 @@ function StatCard({ label, value, helper }) {
 
 function ChartCard({ title, helper, children }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none sm:p-5">
       <div className="mb-4">
-        <h3 className="text-xl font-bold text-slate-950">{title}</h3>
+        <h3 className="text-lg font-bold text-slate-950 sm:text-xl">{title}</h3>
         <p className="mt-1 text-sm text-slate-600">{helper}</p>
       </div>
       {children}
@@ -438,7 +440,7 @@ export default function Reports({
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Reports
           </p>
-          <h2 className="text-3xl font-bold text-slate-950">
+          <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
             Budget reports
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
@@ -447,15 +449,15 @@ export default function Reports({
           </p>
         </div>
 
-        <div className="grid gap-3 sm:min-w-[420px]">
+        <div className="grid w-full gap-3 md:min-w-[420px] md:max-w-xl">
           <div className="grid gap-3 sm:grid-cols-[auto_1fr] sm:items-end">
             <div>
               <p className="text-sm font-medium text-slate-600">View</p>
-              <div className="mt-1 inline-flex rounded-xl border border-slate-300 bg-white p-1">
+              <div className="mt-1 inline-flex w-full rounded-xl border border-slate-300 bg-white p-1 sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setReportFilter("month")}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none ${
                     reportFilter === "month"
                       ? "bg-slate-950 text-white"
                       : "text-slate-700 hover:bg-slate-100"
@@ -466,7 +468,7 @@ export default function Reports({
                 <button
                   type="button"
                   onClick={() => setReportFilter("payPeriod")}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none ${
                     reportFilter === "payPeriod"
                       ? "bg-slate-950 text-white"
                       : "text-slate-700 hover:bg-slate-100"
@@ -530,14 +532,14 @@ export default function Reports({
               <button
                 type="button"
                 onClick={handlePrintReport}
-                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
                 Print Current Report
               </button>
               <button
                 type="button"
                 onClick={handleExportReportCsv}
-                className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 Export Current Report CSV
               </button>
@@ -635,7 +637,7 @@ export default function Reports({
             {selectedRows.length === 0 ? (
               <EmptyChartState message="No planner rows match this filter." />
             ) : (
-              <div className="h-[280px]" aria-label="Income vs outflow chart">
+              <div className="h-64 sm:h-[280px]" aria-label="Income vs outflow chart">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={incomeOutflowChartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -648,7 +650,7 @@ export default function Reports({
                     <YAxis
                       tick={{ fill: "#475569", fontSize: 12 }}
                       tickFormatter={(value) => formatCurrency(value)}
-                      width={88}
+                      width={72}
                     />
                     <Tooltip
                       content={
@@ -686,7 +688,7 @@ export default function Reports({
               ) : (
                 <>
                   <div
-                    className="h-[280px]"
+                    className="h-64 sm:h-[280px]"
                     aria-label="Top spending categories chart"
                   >
                     <ResponsiveContainer width="100%" height="100%">
@@ -700,7 +702,7 @@ export default function Reports({
                         <YAxis
                           type="category"
                           dataKey="name"
-                          width={130}
+                          width={104}
                           tick={{ fill: "#475569", fontSize: 12 }}
                           tickFormatter={(value) => truncateLabel(value, 18)}
                         />
@@ -747,7 +749,7 @@ export default function Reports({
                 <EmptyChartState message="No savings transfers found for this filter." />
               ) : (
                 <div
-                  className="h-[280px]"
+                  className="h-64 sm:h-[280px]"
                   aria-label="Savings transfers chart"
                 >
                   <ResponsiveContainer width="100%" height="100%">
@@ -762,7 +764,7 @@ export default function Reports({
                       <YAxis
                         tick={{ fill: "#475569", fontSize: 12 }}
                         tickFormatter={(value) => formatCurrency(value)}
-                        width={88}
+                        width={72}
                       />
                       <Tooltip
                         content={
@@ -902,7 +904,7 @@ export default function Reports({
                 <EmptyChartState message="No monthly planner data is available for trends." />
               ) : (
                 <div
-                  className="h-[320px]"
+                  className="h-72 sm:h-[320px]"
                   aria-label="Monthly cash flow trend chart"
                 >
                   <ResponsiveContainer width="100%" height="100%">
@@ -916,7 +918,7 @@ export default function Reports({
                       <YAxis
                         tick={{ fill: "#475569", fontSize: 12 }}
                         tickFormatter={(value) => formatCurrency(value)}
-                        width={88}
+                        width={72}
                       />
                       <Tooltip
                         content={
@@ -963,7 +965,7 @@ export default function Reports({
                   <EmptyChartState message="No dated pay-period planner rows are available for trends." />
                 ) : (
                   <div
-                    className="h-[320px]"
+                    className="h-72 sm:h-[320px]"
                     aria-label="Pay period cash flow trend chart"
                   >
                     <ResponsiveContainer width="100%" height="100%">
@@ -978,7 +980,7 @@ export default function Reports({
                         <YAxis
                           tick={{ fill: "#475569", fontSize: 12 }}
                           tickFormatter={(value) => formatCurrency(value)}
-                          width={88}
+                          width={72}
                         />
                         <Tooltip
                           content={
@@ -1031,7 +1033,7 @@ export default function Reports({
                   <EmptyChartState message="Savings transfer trend needs dated transfer history." />
                 ) : (
                   <div
-                    className="h-[320px]"
+                    className="h-72 sm:h-[320px]"
                     aria-label="Savings transfer trend chart"
                   >
                     <ResponsiveContainer width="100%" height="100%">
@@ -1045,7 +1047,7 @@ export default function Reports({
                         <YAxis
                           tick={{ fill: "#475569", fontSize: 12 }}
                           tickFormatter={(value) => formatCurrency(value)}
-                          width={88}
+                          width={72}
                         />
                         <Tooltip
                           content={
@@ -1094,7 +1096,7 @@ export default function Reports({
             ) : (
               <>
                 <div
-                  className="h-[320px]"
+                  className="h-72 sm:h-[320px]"
                   aria-label="Savings bucket balances chart"
                 >
                   <ResponsiveContainer width="100%" height="100%">
@@ -1108,7 +1110,7 @@ export default function Reports({
                       <YAxis
                         type="category"
                         dataKey="name"
-                        width={140}
+                        width={104}
                         tick={{ fill: "#475569", fontSize: 12 }}
                         tickFormatter={(value) => truncateLabel(value, 20)}
                       />
@@ -1130,7 +1132,7 @@ export default function Reports({
                 </div>
 
                 <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                  <table className="min-w-[760px] divide-y divide-slate-200 text-sm">
                     <thead>
                       <tr>
                         <th className="py-3 pr-4 text-left font-semibold text-slate-600">

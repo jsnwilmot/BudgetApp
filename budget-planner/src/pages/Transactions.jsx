@@ -58,9 +58,11 @@ function getTypeClass(type) {
 
 function SummaryCard({ label, value, helper }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
+      <p className="mt-2 break-words text-xl font-bold text-slate-950 sm:text-2xl">
+        {value}
+      </p>
       <p className="mt-1 text-sm text-slate-500">{helper}</p>
     </div>
   );
@@ -250,7 +252,7 @@ export default function Transactions({
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Transactions
           </p>
-          <h2 className="text-3xl font-bold text-slate-950">
+          <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
             Transaction history
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
@@ -262,7 +264,7 @@ export default function Transactions({
         <button
           type="button"
           onClick={handleExportCsv}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
         >
           <Download size={16} />
           Export Transactions CSV
@@ -301,7 +303,7 @@ export default function Transactions({
         />
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Search</span>

@@ -57,13 +57,13 @@ function BucketEditor({ bucket, onCancel, onSave }) {
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-[460px] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 w-full overflow-y-auto border-slate-200 bg-white p-4 shadow-2xl sm:inset-y-0 sm:left-auto sm:w-[460px] sm:border-l sm:p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {bucket.isCustom && !bucket.updatedAt ? 'Add Savings Bucket' : 'Edit Savings Bucket'}
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-950">
+          <h3 className="mt-1 break-words text-xl font-bold text-slate-950">
             {bucket.name || 'New Savings Bucket'}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
@@ -177,13 +177,13 @@ function DeleteBucketDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-6">
-      <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/40 p-4 sm:p-6">
+      <div className="max-h-full w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
             Delete Savings Bucket
           </p>
-          <h3 className="mt-1 text-2xl font-bold text-slate-950">
+          <h3 className="mt-1 break-words text-xl font-bold text-slate-950 sm:text-2xl">
             Delete {bucket.name}
           </h3>
           <p className="mt-2 text-sm text-slate-600">
@@ -237,7 +237,7 @@ function DeleteBucketDialog({
             />
           </label>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <button
               type="button"
               onClick={onCancel}
@@ -301,13 +301,13 @@ function BucketAdjustmentForm({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-[460px] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 w-full overflow-y-auto border-slate-200 bg-white p-4 shadow-2xl sm:inset-y-0 sm:left-auto sm:w-[460px] sm:border-l sm:p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Bucket Adjustment
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-950">
+          <h3 className="mt-1 break-words text-xl font-bold text-slate-950">
             Transfer in or out
           </h3>
           <p className="mt-1 text-sm text-slate-500">
@@ -340,7 +340,7 @@ function BucketAdjustmentForm({
           </select>
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Date</span>
             <input
@@ -519,12 +519,12 @@ export default function SavingsBuckets({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Savings Buckets
           </p>
-          <h2 className="text-3xl font-bold text-slate-950">
+          <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
             Bucket balances and transfers
           </h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -532,11 +532,11 @@ export default function SavingsBuckets({
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => setSelectedBucket(createNewBucket())}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
           >
             <Plus size={16} />
             Add Bucket
@@ -549,7 +549,7 @@ export default function SavingsBuckets({
                 createNewBucketAdjustment(savingsBuckets, plannerData.payPeriods)
               )
             }
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
           >
             <Plus size={16} />
             Add Bucket Adjustment
@@ -557,8 +557,8 @@ export default function SavingsBuckets({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Bucket Starting Total
           </p>
@@ -567,7 +567,7 @@ export default function SavingsBuckets({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Projected Transfers In
           </p>
@@ -576,7 +576,7 @@ export default function SavingsBuckets({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Bucket Adjustments
           </p>
@@ -586,7 +586,7 @@ export default function SavingsBuckets({
         </div>
 
         <div
-          className={`rounded-2xl border p-5 shadow-sm ${
+          className={`rounded-2xl border p-4 shadow-sm sm:p-5 ${
             Math.abs(savingsProjectedEnd - bucketProjectedEnd) < 0.01
               ? 'border-emerald-200 bg-emerald-50'
               : 'border-amber-200 bg-amber-50'
@@ -614,7 +614,8 @@ export default function SavingsBuckets({
           </p>
         </div>
 
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[840px]">
           <thead>
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Bucket</th>
@@ -696,6 +697,7 @@ export default function SavingsBuckets({
             })}
           </tbody>
         </table>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -708,7 +710,8 @@ export default function SavingsBuckets({
           </p>
         </div>
 
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
           <thead>
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
@@ -769,6 +772,7 @@ export default function SavingsBuckets({
                     <button
                       type="button"
                       onClick={() => onDeleteSavingsBucketAdjustment(adjustment.id)}
+                      aria-label="Delete bucket adjustment"
                       className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
                     >
                       <Trash2 size={14} />
@@ -779,6 +783,7 @@ export default function SavingsBuckets({
             ))}
           </tbody>
         </table>
+        </div>
       </section>
 
       {selectedBucket ? (
