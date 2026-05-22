@@ -103,6 +103,7 @@ export default function Settings({
   onSaveSettings,
   onResetSettings,
   onImportData,
+  onRepairLocalData,
   onResetLocalData
 }) {
   const [formState, setFormState] = useState(() => settingsToForm(settings));
@@ -348,6 +349,7 @@ export default function Settings({
       <DataManagement
         appData={appData}
         onImportData={onImportData}
+        onRepairLocalData={onRepairLocalData}
         onResetLocalData={onResetLocalData}
       />
     </div>

@@ -62,6 +62,14 @@ function buildBucketMap(savingsBuckets = []) {
   );
 }
 
+function buildAccountMap(accounts = []) {
+  return new Map(
+    accounts
+      .filter((account) => account?.id)
+      .map((account) => [account.id, account])
+  );
+}
+
 export function getLowBalanceAlerts({
   plannerData,
   settings,
@@ -293,11 +301,13 @@ export function getDataWarningAlerts({
   budgetTargets = [],
   transactions = [],
   categories = [],
+  accounts = [],
   savingsBuckets = [],
   savingsBucketAdjustments = [],
 } = {}) {
   const alerts = [];
   const categoryMap = buildCategoryMap(categories);
+  const accountMap = buildAccountMap(accounts);
   const bucketMap = buildBucketMap(savingsBuckets);
 
   scheduledItems.forEach((item) => {
@@ -342,6 +352,20 @@ export function getDataWarningAlerts({
         severity: 'info',
         title: 'Transaction category missing',
         message: `${transaction.description || 'A transaction'} references a missing category.`,
+        source: 'data',
+        sourceId: transaction.id || null,
+        actionLabel: 'Review transactions',
+        actionPage: 'transactions',
+      });
+    }
+
+    if (transaction.accountId && !accountMap.has(transaction.accountId)) {
+      alerts.push({
+        id: `data-warning-transaction-account-${transaction.id}`,
+        type: 'data-warning',
+        severity: 'info',
+        title: 'Transaction account missing',
+        message: `${transaction.description || 'A transaction'} references a missing account.`,
         source: 'data',
         sourceId: transaction.id || null,
         actionLabel: 'Review transactions',
@@ -439,6 +463,7 @@ export function generateAlerts({
       budgetTargets,
       transactions,
       categories,
+      accounts,
       savingsBuckets,
       savingsBucketAdjustments,
     }),

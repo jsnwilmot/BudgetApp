@@ -31,12 +31,12 @@ function buildNameMap(records = [], fallbackLabel) {
   );
 }
 
-function resolveName(id, nameMap, fallbackLabel) {
+function resolveName(id, nameMap, fallbackLabel, missingLabel = fallbackLabel) {
   if (!id) {
     return fallbackLabel;
   }
 
-  return nameMap.get(id) || fallbackLabel;
+  return nameMap.get(id) || missingLabel;
 }
 
 function getManualAdjustmentType(adjustment) {
@@ -132,9 +132,19 @@ export function buildTransactionsFromAppData({
       type: getManualAdjustmentType(adjustment),
       amount: normalizeNumber(adjustment.amount),
       categoryId,
-      categoryName: resolveName(categoryId, categoryNames, 'Uncategorized'),
+      categoryName: resolveName(
+        categoryId,
+        categoryNames,
+        'Uncategorized',
+        'Missing category'
+      ),
       accountId,
-      accountName: resolveName(accountId, accountNames, 'No account'),
+      accountName: resolveName(
+        accountId,
+        accountNames,
+        'No account',
+        'Missing account'
+      ),
       savingsBucketId: null,
       savingsBucketName: 'No bucket',
       source: 'manual-adjustment',
@@ -152,7 +162,12 @@ export function buildTransactionsFromAppData({
       description:
         adjustment.notes ||
         adjustment.adjustmentType ||
-        resolveName(bucketId, bucketNames, 'Savings activity'),
+        resolveName(
+          bucketId,
+          bucketNames,
+          'Savings activity',
+          'Missing savings bucket'
+        ),
       type: getSavingsAdjustmentType(adjustment),
       amount: Math.abs(normalizeNumber(adjustment.amount)),
       categoryId: null,
@@ -160,7 +175,12 @@ export function buildTransactionsFromAppData({
       accountId: null,
       accountName: 'No account',
       savingsBucketId: bucketId,
-      savingsBucketName: resolveName(bucketId, bucketNames, 'No bucket'),
+      savingsBucketName: resolveName(
+        bucketId,
+        bucketNames,
+        'No bucket',
+        'Missing savings bucket'
+      ),
       source: 'savings-bucket-adjustment',
       sourceId: adjustment.id,
       notes: adjustment.notes || '',
@@ -188,11 +208,26 @@ export function buildTransactionsFromAppData({
         type: getScheduledTransactionType(item),
         amount: normalizeNumber(item.amount),
         categoryId,
-        categoryName: resolveName(categoryId, categoryNames, 'Uncategorized'),
+        categoryName: resolveName(
+          categoryId,
+          categoryNames,
+          'Uncategorized',
+          'Missing category'
+        ),
         accountId,
-        accountName: resolveName(accountId, accountNames, 'No account'),
+        accountName: resolveName(
+          accountId,
+          accountNames,
+          'No account',
+          'Missing account'
+        ),
         savingsBucketId: bucketId,
-        savingsBucketName: resolveName(bucketId, bucketNames, 'No bucket'),
+        savingsBucketName: resolveName(
+          bucketId,
+          bucketNames,
+          'No bucket',
+          'Missing savings bucket'
+        ),
         source: 'scheduled-item',
         sourceId: item.id,
         notes: item.notes || '',

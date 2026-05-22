@@ -4,11 +4,22 @@ import {
 } from './seedData';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
+import {
+  APP_DATA_VERSION,
+  getSafeAppData,
+  normalizeAccountRecord,
+  normalizeAppSettingsRecord,
+  normalizeCategoryRecord,
+  normalizeManualAdjustmentRecord,
+  normalizePlannerEntriesRecord,
+  normalizeSavingsBucketAdjustmentRecord,
+  normalizeSavingsBucketRecord,
+  sortCategories as sortCategoryRecords,
+} from './migrations';
 
 const DB_NAME = 'budget-planner-db';
 const DB_VERSION = 7;
 const SETTINGS_ID = 'app-settings';
-const CATEGORY_TYPES = ['income', 'expense', 'transfer', 'savings', 'debt', 'general'];
 
 const STORES = {
   appSettings: 'appSettings',
@@ -94,59 +105,6 @@ function openDatabase() {
   });
 }
 
-function normalizeCategoryType(type) {
-  return CATEGORY_TYPES.includes(type) ? type : 'general';
-}
-
-function normalizeCategory(category = {}, fallbackSortOrder = 0) {
-  const timestamp = new Date().toISOString();
-  const name = String(category.name || '').trim();
-  const id =
-    category.id ||
-    `cat-${normalizeCategoryType(category.type)}-${crypto.randomUUID()}`;
-
-  return {
-    id,
-    name,
-    type: normalizeCategoryType(category.type),
-    color: String(category.color || '#64748b').trim() || '#64748b',
-    icon: String(category.icon || 'tag').trim() || 'tag',
-    active: category.active !== false,
-    sortOrder: Number.isFinite(Number(category.sortOrder))
-      ? Number(category.sortOrder)
-      : fallbackSortOrder,
-    createdAt: category.createdAt || timestamp,
-    updatedAt: category.updatedAt || timestamp,
-  };
-}
-
-function sortCategories(categories = []) {
-  return [...categories].sort((left, right) => {
-    const typeCompare = left.type.localeCompare(right.type);
-
-    if (typeCompare !== 0) {
-      return typeCompare;
-    }
-
-    return (
-      Number(left.sortOrder || 0) - Number(right.sortOrder || 0) ||
-      left.name.localeCompare(right.name)
-    );
-  });
-}
-
-function normalizeSettingRule(rule) {
-  if (
-    rule === 'same-pay-period' ||
-    rule === 'same_pay_period' ||
-    rule === 'same_pay_period_as_due_date'
-  ) {
-    return 'same-pay-period';
-  }
-
-  return 'previous-pay-period';
-}
-
 function isValidDateString(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -196,37 +154,7 @@ export function validateAppSettings(settings = {}) {
 }
 
 export function normalizeAppSettings(settings = {}) {
-  const safeSettings =
-    settings && typeof settings === 'object' ? settings : {};
-  const currency = ['CAD', 'USD'].includes(safeSettings.currency)
-    ? safeSettings.currency
-    : defaultAppSettings.currency;
-  const payFrequencyDays = [7, 14, 28, 30].includes(
-    Number(safeSettings.payFrequencyDays)
-  )
-    ? Number(safeSettings.payFrequencyDays)
-    : defaultAppSettings.payFrequencyDays;
-  const projectionMonths = [3, 6, 12, 18, 24].includes(
-    Number(safeSettings.projectionMonths)
-  )
-    ? Number(safeSettings.projectionMonths)
-    : defaultAppSettings.projectionMonths;
-  const payPeriodAnchorDate =
-    isValidDateString(safeSettings.payPeriodAnchorDate)
-      ? safeSettings.payPeriodAnchorDate
-      : defaultAppSettings.payPeriodAnchorDate;
-
-  return {
-    ...defaultAppSettings,
-    ...safeSettings,
-    currency,
-    payPeriodAnchorDate,
-    payFrequencyDays,
-    projectionMonths,
-    monthlyBillAssignmentRule: normalizeSettingRule(
-      safeSettings.monthlyBillAssignmentRule
-    ),
-  };
+  return normalizeAppSettingsRecord(settings);
 }
 
 async function clearStore(storeName) {
@@ -334,12 +262,11 @@ export async function resetAppSettings() {
 }
 
 export async function replacePlannerEntries(entries = {}) {
-  const records = Array.isArray(entries)
-    ? entries
-    : Object.entries(entries).map(([entryKey, entry]) => ({
-        ...entry,
-        entryKey,
-      }));
+  const normalizedEntries = normalizePlannerEntriesRecord(entries);
+  const records = Object.entries(normalizedEntries).map(([entryKey, entry]) => ({
+    ...entry,
+    entryKey,
+  }));
 
   return replaceStoreRecords(STORES.plannerEntries, records);
 }
@@ -353,7 +280,7 @@ export async function replaceScheduledItems(items = []) {
 
 export async function replaceCategories(categories = []) {
   const records = categories.map((category, index) =>
-    normalizeCategory(category, index + 1)
+    normalizeCategoryRecord(category, index + 1)
   );
 
   return replaceStoreRecords(STORES.categories, records);
@@ -367,19 +294,33 @@ export async function replaceBudgetTargets(targets = []) {
 }
 
 export async function replaceAccounts(accounts = []) {
-  return replaceStoreRecords(STORES.accounts, accounts);
+  return replaceStoreRecords(
+    STORES.accounts,
+    accounts.map((account) => normalizeAccountRecord(account))
+  );
 }
 
 export async function replaceManualAdjustments(adjustments = []) {
-  return replaceStoreRecords(STORES.manualAdjustments, adjustments);
+  return replaceStoreRecords(
+    STORES.manualAdjustments,
+    adjustments.map((adjustment) => normalizeManualAdjustmentRecord(adjustment))
+  );
 }
 
 export async function replaceSavingsBuckets(buckets = []) {
-  return replaceStoreRecords(STORES.savingsBuckets, buckets);
+  return replaceStoreRecords(
+    STORES.savingsBuckets,
+    buckets.map((bucket) => normalizeSavingsBucketRecord(bucket))
+  );
 }
 
 export async function replaceSavingsBucketAdjustments(adjustments = []) {
-  return replaceStoreRecords(STORES.savingsBucketAdjustments, adjustments);
+  return replaceStoreRecords(
+    STORES.savingsBucketAdjustments,
+    adjustments.map((adjustment) =>
+      normalizeSavingsBucketAdjustmentRecord(adjustment)
+    )
+  );
 }
 
 export async function clearAllSavedData() {
@@ -418,7 +359,11 @@ export async function getAllCategories() {
         return;
       }
 
-      resolve(sortCategories(records.map((category) => normalizeCategory(category))));
+      resolve(
+        sortCategoryRecords(
+          records.map((category) => normalizeCategoryRecord(category))
+        )
+      );
     };
 
     transaction.oncomplete = () => {
@@ -439,7 +384,7 @@ export async function saveCategory(category) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORES.categories, 'readwrite');
     const store = transaction.objectStore(STORES.categories);
-    const record = normalizeCategory({
+    const record = normalizeCategoryRecord({
       ...category,
       updatedAt: new Date().toISOString(),
     });
@@ -479,7 +424,7 @@ export async function archiveCategory(categoryId) {
         return;
       }
 
-      const record = normalizeCategory({
+      const record = normalizeCategoryRecord({
         ...category,
         active: false,
         updatedAt: new Date().toISOString(),
@@ -518,7 +463,9 @@ export async function getAllBudgetTargets() {
     };
 
     request.onsuccess = () => {
-      resolve((request.result || []).map((target) => normalizeBudgetTarget(target)));
+      resolve(
+        (request.result || []).map((target) => normalizeBudgetTarget(target))
+      );
     };
 
     transaction.oncomplete = () => {
@@ -618,7 +565,7 @@ export async function getAllPlannerEntries() {
         entries[entry.entryKey] = entry;
       });
 
-      resolve(entries);
+      resolve(normalizePlannerEntriesRecord(entries));
     };
 
     transaction.oncomplete = () => {
@@ -691,7 +638,9 @@ export async function getAllScheduledItems() {
     };
 
     request.onsuccess = () => {
-      resolve((request.result || []).map((item) => normalizeScheduledItem(item)));
+      resolve(
+        (request.result || []).map((item) => normalizeScheduledItem(item))
+      );
     };
 
     transaction.oncomplete = () => {
@@ -741,7 +690,7 @@ export async function getAllAccounts() {
     };
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      resolve((request.result || []).map((account) => normalizeAccountRecord(account)));
     };
 
     transaction.oncomplete = () => {
@@ -758,8 +707,7 @@ export async function saveAccount(account) {
     const store = transaction.objectStore(STORES.accounts);
 
     const record = {
-      ...account,
-      startingBalance: Number(account.startingBalance) || 0,
+      ...normalizeAccountRecord(account),
       updatedAt: new Date().toISOString(),
     };
 
@@ -792,7 +740,11 @@ export async function getAllManualAdjustments() {
     };
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      resolve(
+        (request.result || []).map((adjustment) =>
+          normalizeManualAdjustmentRecord(adjustment)
+        )
+      );
     };
 
     transaction.oncomplete = () => {
@@ -809,8 +761,7 @@ export async function saveManualAdjustment(adjustment) {
     const store = transaction.objectStore(STORES.manualAdjustments);
 
     const record = {
-      ...adjustment,
-      amount: Number(adjustment.amount) || 0,
+      ...normalizeManualAdjustmentRecord(adjustment),
       updatedAt: new Date().toISOString(),
     };
 
@@ -865,7 +816,7 @@ export async function getAllSavingsBuckets() {
     };
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      resolve((request.result || []).map((bucket) => normalizeSavingsBucketRecord(bucket)));
     };
 
     transaction.oncomplete = () => {
@@ -882,8 +833,7 @@ export async function saveSavingsBucket(bucket) {
     const store = transaction.objectStore(STORES.savingsBuckets);
 
     const record = {
-      ...bucket,
-      startingAmount: Number(bucket.startingAmount) || 0,
+      ...normalizeSavingsBucketRecord(bucket),
       updatedAt: new Date().toISOString(),
     };
 
@@ -916,7 +866,11 @@ export async function getAllSavingsBucketAdjustments() {
     };
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      resolve(
+        (request.result || []).map((adjustment) =>
+          normalizeSavingsBucketAdjustmentRecord(adjustment)
+        )
+      );
     };
 
     transaction.oncomplete = () => {
@@ -933,8 +887,7 @@ export async function saveSavingsBucketAdjustment(adjustment) {
     const store = transaction.objectStore(STORES.savingsBucketAdjustments);
 
     const record = {
-      ...adjustment,
-      amount: Number(adjustment.amount) || 0,
+      ...normalizeSavingsBucketAdjustmentRecord(adjustment),
       updatedAt: new Date().toISOString(),
     };
 
@@ -996,4 +949,76 @@ export async function deleteScheduledItem(id) {
       db.close();
     };
   });
+}
+
+export async function repairLocalData() {
+  const [
+    settings,
+    budgetTargets,
+    categories,
+    plannerEntries,
+    scheduledItems,
+    accounts,
+    manualAdjustments,
+    savingsBuckets,
+    savingsBucketAdjustments,
+  ] = await Promise.all([
+    getAppSettings(),
+    getAllBudgetTargets(),
+    getAllCategories(),
+    getAllPlannerEntries(),
+    getAllScheduledItems(),
+    getAllAccounts(),
+    getAllManualAdjustments(),
+    getAllSavingsBuckets(),
+    getAllSavingsBucketAdjustments(),
+  ]);
+
+  const repairedData = getSafeAppData({
+    appDataVersion: APP_DATA_VERSION,
+    settings,
+    budgetTargets,
+    categories,
+    plannerEntries,
+    scheduledItems,
+    accounts,
+    manualAdjustments,
+    savingsBuckets,
+    savingsBucketAdjustments,
+  });
+
+  const [
+    savedSettings,
+    savedBudgetTargets,
+    savedCategories,
+    savedPlannerEntries,
+    savedScheduledItems,
+    savedAccounts,
+    savedManualAdjustments,
+    savedSavingsBuckets,
+    savedSavingsBucketAdjustments,
+  ] = await Promise.all([
+    saveAppSettings(repairedData.settings),
+    replaceBudgetTargets(repairedData.budgetTargets),
+    replaceCategories(repairedData.categories),
+    replacePlannerEntries(repairedData.plannerEntries),
+    replaceScheduledItems(repairedData.scheduledItems),
+    replaceAccounts(repairedData.accounts),
+    replaceManualAdjustments(repairedData.manualAdjustments),
+    replaceSavingsBuckets(repairedData.savingsBuckets),
+    replaceSavingsBucketAdjustments(repairedData.savingsBucketAdjustments),
+  ]);
+
+  return {
+    ...repairedData,
+    settings: savedSettings,
+    budgetTargets: savedBudgetTargets,
+    categories: savedCategories,
+    plannerEntries: normalizePlannerEntriesRecord(savedPlannerEntries),
+    scheduledItems: savedScheduledItems,
+    accounts: savedAccounts,
+    manualAdjustments: savedManualAdjustments,
+    savingsBuckets: savedSavingsBuckets,
+    savingsBucketAdjustments: savedSavingsBucketAdjustments,
+  };
 }

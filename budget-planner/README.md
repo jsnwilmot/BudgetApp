@@ -179,6 +179,25 @@ Known limitation:
 - Push notifications, email reminders, and browser notification permissions are not included yet.
 - Advanced custom alert thresholds are not included yet.
 
+## Phase 1W: Data Cleanup and Migration Safety
+
+Completed:
+
+- Added app data versioning.
+- Added migration and normalization framework.
+- Added safer backup import validation.
+- Added backup import preview summary.
+- Added local data repair action.
+- Added data health summary.
+- Improved missing reference handling.
+- Preserved backward compatibility with older local data.
+
+Known limitation:
+
+- Repair is conservative and does not delete unknown or orphaned user records.
+- Future app data versions will need explicit migration steps.
+- Cloud backup and multi-device sync are not included.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
