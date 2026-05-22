@@ -41,7 +41,22 @@ jobs:
         working-directory: budget-planner
         run: npm run build
 
-      - name: Configure GitHub Pages
+      - name: Add Pages debug file
+        run: |
+          echo "Budget Planner GitHub Pages deploy check" > budget-planner/dist/pages-debug.txt
+          echo "Built from budget-planner/dist" >> budget-planner/dist/pages-debug.txt
+          echo "Base path: /BudgetApp/" >> budget-planner/dist/pages-debug.txt
+
+      - name: Verify build output
+        run: |
+          echo "Listing dist output"
+          ls -la budget-planner/dist
+          echo "Checking required files"
+          test -f budget-planner/dist/index.html
+          test -f budget-planner/dist/manifest.webmanifest
+          test -f budget-planner/dist/sw.js
+
+      - name: Configure Pages
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
