@@ -2,6 +2,29 @@ import { useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../logic/projectionLogic';
 
+function getCategoryName(categoryId, categories = []) {
+  if (!categoryId) {
+    return 'Uncategorized';
+  }
+
+  return (
+    categories.find((category) => category.id === categoryId)?.name ||
+    'Missing category'
+  );
+}
+
+function getAdjustmentCategoryTypes(adjustmentType) {
+  if (adjustmentType === 'interest' || adjustmentType === 'unexpected_deposit') {
+    return ['income', 'general'];
+  }
+
+  if (adjustmentType === 'fee' || adjustmentType === 'unexpected_withdrawal') {
+    return ['expense', 'debt', 'general'];
+  }
+
+  return ['general', 'transfer'];
+}
+
 function AccountBalanceForm({ account, onSave }) {
   const [startingBalance, setStartingBalance] = useState(account.startingBalance);
 
@@ -56,13 +79,47 @@ function createNewAdjustment(accounts, payPeriods) {
     accountId: accounts[0]?.id || 'acct-chequing',
     amount: 0,
     adjustmentType: 'correction',
+    categoryId: '',
     notes: '',
     createdAt: new Date().toISOString(),
   };
 }
 
-function AdjustmentForm({ adjustment, accounts, payPeriods, onCancel, onSave }) {
+function AdjustmentForm({
+  adjustment,
+  accounts,
+  categories,
+  payPeriods,
+  onCancel,
+  onSave,
+}) {
   const [formState, setFormState] = useState(adjustment);
+  const categoryOptions = useMemo(() => {
+    const allowedTypes = getAdjustmentCategoryTypes(formState.adjustmentType);
+    const selectedCategory = categories.find(
+      (category) => category.id === formState.categoryId
+    );
+    const options = categories
+      .filter(
+        (category) =>
+          allowedTypes.includes(category.type) &&
+          (category.active !== false || category.id === formState.categoryId)
+      )
+      .sort(
+        (left, right) =>
+          Number(left.sortOrder || 0) - Number(right.sortOrder || 0) ||
+          left.name.localeCompare(right.name)
+      );
+
+    if (
+      selectedCategory &&
+      !options.some((category) => category.id === selectedCategory.id)
+    ) {
+      return [...options, selectedCategory];
+    }
+
+    return options;
+  }, [categories, formState.adjustmentType, formState.categoryId]);
 
   function updateField(fieldName, value) {
     setFormState((current) => ({
@@ -77,6 +134,7 @@ function AdjustmentForm({ adjustment, accounts, payPeriods, onCancel, onSave }) 
     onSave({
       ...formState,
       amount: Number(formState.amount) || 0,
+      categoryId: formState.categoryId || undefined,
       notes: String(formState.notes || '').trim(),
       updatedAt: new Date().toISOString(),
     });
@@ -117,6 +175,23 @@ function AdjustmentForm({ adjustment, accounts, payPeriods, onCancel, onSave }) 
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Category</span>
+          <select
+            value={formState.categoryId || ''}
+            onChange={(event) => updateField('categoryId', event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-900"
+          >
+            <option value="">Uncategorized</option>
+            {categoryOptions.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+                {category.active === false ? ' (archived)' : ''}
               </option>
             ))}
           </select>
@@ -209,13 +284,16 @@ function AdjustmentForm({ adjustment, accounts, payPeriods, onCancel, onSave }) 
 
 export default function Accounts({
   accounts,
+  categories = [],
   manualAdjustments,
   payPeriods,
+  settings,
   onSaveAccount,
   onSaveManualAdjustment,
   onDeleteManualAdjustment,
 }) {
   const [selectedAdjustment, setSelectedAdjustment] = useState(null);
+  const currency = settings?.currency || 'CAD';
 
   const adjustmentSummary = useMemo(() => {
     return manualAdjustments.reduce(
@@ -291,7 +369,7 @@ export default function Accounts({
             Chequing Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(adjustmentSummary.chequing)}
+            {formatCurrency(adjustmentSummary.chequing, currency)}
           </p>
         </div>
 
@@ -300,7 +378,7 @@ export default function Accounts({
             Savings Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(adjustmentSummary.savings)}
+            {formatCurrency(adjustmentSummary.savings, currency)}
           </p>
         </div>
 
@@ -309,7 +387,10 @@ export default function Accounts({
             Total Manual Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(adjustmentSummary.chequing + adjustmentSummary.savings)}
+            {formatCurrency(
+              adjustmentSummary.chequing + adjustmentSummary.savings,
+              currency
+            )}
           </p>
         </div>
       </div>
@@ -331,6 +412,7 @@ export default function Accounts({
               <th className="px-4 py-3 text-left text-sm font-bold">Pay Period</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Account</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Type</th>
+              <th className="px-4 py-3 text-left text-sm font-bold">Category</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Amount</th>
               <th className="px-4 py-3 text-left text-sm font-bold">Notes</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Action</th>
@@ -340,7 +422,7 @@ export default function Accounts({
           <tbody>
             {manualAdjustments.length === 0 ? (
               <tr>
-                <td colSpan="7" className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan="8" className="px-4 py-8 text-center text-sm text-slate-500">
                   No manual adjustments yet.
                 </td>
               </tr>
@@ -364,8 +446,14 @@ export default function Accounts({
                   {adjustment.adjustmentType}
                 </td>
 
+                <td className="px-4 py-3 text-sm text-slate-600">
+                  <span className="block max-w-[160px] truncate">
+                    {getCategoryName(adjustment.categoryId, categories)}
+                  </span>
+                </td>
+
                 <td className="px-4 py-3 text-right text-sm font-semibold text-slate-950">
-                  {formatCurrency(adjustment.amount)}
+                  {formatCurrency(adjustment.amount, currency)}
                 </td>
 
                 <td className="px-4 py-3 text-sm text-slate-600">
@@ -401,6 +489,7 @@ export default function Accounts({
         <AdjustmentForm
           adjustment={selectedAdjustment}
           accounts={accounts}
+          categories={categories}
           payPeriods={payPeriods}
           onCancel={() => setSelectedAdjustment(null)}
           onSave={handleSaveAdjustment}

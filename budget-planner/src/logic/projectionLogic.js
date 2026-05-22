@@ -1,15 +1,22 @@
 import {
+  appSettings as defaultAppSettings,
+} from '../data/seedData';
+import {
   findPreviousPayPeriod,
+  formatDateKey,
   generatePayPeriods,
-  getMonthDate,
-  isSameBiweeklyCycle,
   parseLocalDate,
 } from './dateLogic';
+import {
+  getProjectionType,
+  getScheduledItemOccurrences,
+  normalizeScheduledItem,
+} from './scheduledItemLogic';
 
-export function formatCurrency(value) {
+export function formatCurrency(value, currency = 'CAD') {
   return new Intl.NumberFormat('en-CA', {
     style: 'currency',
-    currency: 'CAD',
+    currency,
   }).format(value || 0);
 }
 
@@ -24,64 +31,133 @@ export function sumLineItems(lineItems = []) {
   }, 0);
 }
 
-function shouldPlaceBiweeklyItem(item, period, settings) {
-  return isSameBiweeklyCycle(
-    item.startDate,
-    period.date,
-    settings.payFrequencyDays
+function getMonthlyBillAssignmentRule(settings) {
+  if (
+    settings.monthlyBillAssignmentRule === 'same-pay-period' ||
+    settings.monthlyBillAssignmentRule === 'same_pay_period'
+  ) {
+    return 'same-pay-period';
+  }
+
+  return 'previous-pay-period';
+}
+
+function normalizeProjectionSettings(settings = {}) {
+  const safeSettings =
+    settings && typeof settings === 'object' ? settings : {};
+  const payFrequencyDays = [7, 14, 28, 30].includes(
+    Number(safeSettings.payFrequencyDays)
+  )
+    ? Number(safeSettings.payFrequencyDays)
+    : defaultAppSettings.payFrequencyDays;
+  const projectionMonths = [3, 6, 12, 18, 24].includes(
+    Number(safeSettings.projectionMonths)
+  )
+    ? Number(safeSettings.projectionMonths)
+    : defaultAppSettings.projectionMonths;
+  const payPeriodAnchorDate =
+    typeof safeSettings.payPeriodAnchorDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(safeSettings.payPeriodAnchorDate)
+      ? safeSettings.payPeriodAnchorDate
+      : defaultAppSettings.payPeriodAnchorDate;
+
+  return {
+    ...defaultAppSettings,
+    ...safeSettings,
+    payFrequencyDays,
+    projectionMonths,
+    payPeriodAnchorDate,
+    monthlyBillAssignmentRule:
+      safeSettings.monthlyBillAssignmentRule || 'previous-pay-period',
+  };
+}
+
+function findSamePayPeriod(payPeriods, dueDate) {
+  const dueDateKey = formatDateKey(dueDate);
+  const matchingPeriod = [...payPeriods].reverse().find((period) => {
+    return period.date <= dueDateKey;
+  });
+
+  return matchingPeriod || payPeriods[0];
+}
+
+function isSameCalendarMonth(leftDate, rightDate) {
+  return (
+    leftDate.getFullYear() === rightDate.getFullYear() &&
+    leftDate.getMonth() === rightDate.getMonth()
   );
 }
 
-function buildMonthlyPlacements(item, payPeriods) {
-  const placements = new Set();
+function findAssignedPayPeriod(item, payPeriods, occurrenceDate, settings) {
+  if (payPeriods.length === 0 || Number.isNaN(occurrenceDate.getTime())) {
+    return null;
+  }
 
   const firstPeriodDate = parseLocalDate(payPeriods[0].date);
   const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
 
-  for (
-    let year = firstPeriodDate.getFullYear();
-    year <= lastPeriodDate.getFullYear();
-    year += 1
-  ) {
-    for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
-      const dueDate = getMonthDate(year, monthIndex, item.dueDay || 1);
-
-      if (dueDate < firstPeriodDate || dueDate > lastPeriodDate) {
-        continue;
-      }
-
-      const assignedPeriod = findPreviousPayPeriod(payPeriods, dueDate);
-      placements.add(assignedPeriod.date);
+  if (occurrenceDate < firstPeriodDate) {
+    if (item.frequency === 'monthly' && isSameCalendarMonth(occurrenceDate, firstPeriodDate)) {
+      return payPeriods[0];
     }
+
+    return null;
   }
 
-  return placements;
+  if (occurrenceDate > lastPeriodDate) {
+    return null;
+  }
+
+  if (item.frequency === 'monthly') {
+    return getMonthlyBillAssignmentRule(settings) === 'same-pay-period'
+      ? findSamePayPeriod(payPeriods, occurrenceDate)
+      : findPreviousPayPeriod(payPeriods, occurrenceDate);
+  }
+
+  if (item.frequency === 'yearly') {
+    return findPreviousPayPeriod(payPeriods, occurrenceDate);
+  }
+
+  return findSamePayPeriod(payPeriods, occurrenceDate);
 }
 
-function buildAnnualPlacements(item, payPeriods) {
-  const placements = new Set();
+function buildScheduledItemPlacements(item, payPeriods, settings) {
+  const placements = new Map();
+
+  if (payPeriods.length === 0) {
+    return placements;
+  }
 
   const firstPeriodDate = parseLocalDate(payPeriods[0].date);
   const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
+  const occurrenceRangeStart =
+    item.frequency === 'monthly'
+      ? new Date(firstPeriodDate.getFullYear(), firstPeriodDate.getMonth(), 1)
+      : firstPeriodDate;
+  const occurrences = getScheduledItemOccurrences(
+    item,
+    occurrenceRangeStart,
+    lastPeriodDate
+  );
 
-  for (
-    let year = firstPeriodDate.getFullYear();
-    year <= lastPeriodDate.getFullYear();
-    year += 1
-  ) {
-    const dueDate = getMonthDate(
-      year,
-      (item.dueMonth || 1) - 1,
-      item.dueDay || 1
+  occurrences.forEach((occurrence) => {
+    const occurrenceDate = parseLocalDate(occurrence);
+    const assignedPeriod = findAssignedPayPeriod(
+      item,
+      payPeriods,
+      occurrenceDate,
+      settings
     );
 
-    if (dueDate < firstPeriodDate || dueDate > lastPeriodDate) {
-      continue;
+    if (!assignedPeriod) {
+      return;
     }
 
-    const assignedPeriod = findPreviousPayPeriod(payPeriods, dueDate);
-    placements.add(assignedPeriod.date);
-  }
+    placements.set(
+      assignedPeriod.date,
+      (placements.get(assignedPeriod.date) || 0) + 1
+    );
+  });
 
   return placements;
 }
@@ -119,39 +195,27 @@ export function buildPlannerRows({
   savingsBucketAdjustments = [],
   plannerEntries = {},
 }) {
+  const normalizedSettings = normalizeProjectionSettings(settings);
   const payPeriods = generatePayPeriods(
-    settings.payPeriodAnchorDate,
-    settings.payFrequencyDays,
-    settings.projectionMonths
+    normalizedSettings.payPeriodAnchorDate,
+    normalizedSettings.payFrequencyDays,
+    normalizedSettings.projectionMonths
   );
 
   const rows = scheduledItems
+    .map((item) => normalizeScheduledItem(item))
     .filter((item) => item.active)
-    .filter((item) => item.frequency !== 'manual')
     .map((item) => {
-      let placementDates = new Set();
-
-      if (item.frequency === 'biweekly') {
-        placementDates = new Set(
-          payPeriods
-            .filter((period) => shouldPlaceBiweeklyItem(item, period, settings))
-            .map((period) => period.date)
-        );
-      }
-
-      if (item.frequency === 'monthly') {
-        placementDates = buildMonthlyPlacements(item, payPeriods);
-      }
-
-      if (item.frequency === 'annual') {
-        placementDates = buildAnnualPlacements(item, payPeriods);
-      }
-
+      const placements = buildScheduledItemPlacements(
+        item,
+        payPeriods,
+        normalizedSettings
+      );
       const plannedByPeriod = {};
       const amountsByPeriod = {};
 
       payPeriods.forEach((period) => {
-        const plannedAmount = placementDates.has(period.date) ? item.amount : 0;
+        const plannedAmount = (placements.get(period.date) || 0) * item.amount;
 
         plannedByPeriod[period.date] = plannedAmount;
         amountsByPeriod[period.date] = getEffectiveAmount(
@@ -165,7 +229,9 @@ export function buildPlannerRows({
       return {
         id: item.id,
         name: item.name,
-        type: item.type,
+        type: getProjectionType(item.type),
+        scheduledItemType: item.type,
+        categoryId: item.categoryId,
         item,
         plannedByPeriod,
         amountsByPeriod,
@@ -310,6 +376,20 @@ export function getDashboardSummary(plannerData) {
   const { payPeriods, rows, projectionRows } = plannerData;
   const nextPeriod = payPeriods[0];
 
+  if (!nextPeriod) {
+    return {
+      nextPayDate: '',
+      nextIncome: 0,
+      nextExpenses: 0,
+      nextTransfers: 0,
+      projectedChequingAfterNext: 0,
+      projectedSavingsAfterNext: 0,
+      projectedChequingEnd: 0,
+      projectedSavingsEnd: 0,
+      lowestChequing: 0,
+    };
+  }
+
   const totals = calculatePeriodTotals(rows, nextPeriod.date);
 
   const chequingRow = projectionRows.find(
@@ -319,7 +399,7 @@ export function getDashboardSummary(plannerData) {
 
   const finalPeriod = payPeriods[payPeriods.length - 1];
 
-  const chequingValues = Object.values(chequingRow.amountsByPeriod);
+  const chequingValues = Object.values(chequingRow?.amountsByPeriod || {});
   const lowestChequing = Math.min(...chequingValues);
 
   return {
@@ -327,11 +407,13 @@ export function getDashboardSummary(plannerData) {
     nextIncome: totals.income,
     nextExpenses: totals.expenses,
     nextTransfers: totals.transfers,
-    projectedChequingAfterNext: chequingRow.amountsByPeriod[nextPeriod.date],
-    projectedSavingsAfterNext: savingsRow.amountsByPeriod[nextPeriod.date],
-    projectedChequingEnd: chequingRow.amountsByPeriod[finalPeriod.date],
-    projectedSavingsEnd: savingsRow.amountsByPeriod[finalPeriod.date],
-    lowestChequing,
+    projectedChequingAfterNext:
+      chequingRow?.amountsByPeriod?.[nextPeriod.date] || 0,
+    projectedSavingsAfterNext:
+      savingsRow?.amountsByPeriod?.[nextPeriod.date] || 0,
+    projectedChequingEnd: chequingRow?.amountsByPeriod?.[finalPeriod.date] || 0,
+    projectedSavingsEnd: savingsRow?.amountsByPeriod?.[finalPeriod.date] || 0,
+    lowestChequing: Number.isFinite(lowestChequing) ? lowestChequing : 0,
   };
 }
 

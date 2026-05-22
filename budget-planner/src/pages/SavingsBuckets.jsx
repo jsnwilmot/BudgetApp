@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   buildSavingsBucketProjection,
   formatCurrency,
@@ -147,6 +147,7 @@ function DeleteBucketDialog({
   bucketProjectedAmount,
   savingsBuckets,
   bucketIsUsedByTransfer,
+  currency,
   onCancel,
   onDelete,
 }) {
@@ -200,7 +201,7 @@ function DeleteBucketDialog({
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Funds to move</p>
             <p className="mt-1 text-2xl font-bold text-slate-950">
-              {formatCurrency(bucketProjectedAmount)}
+              {formatCurrency(bucketProjectedAmount, currency)}
             </p>
           </div>
 
@@ -432,6 +433,7 @@ export default function SavingsBuckets({
   savingsBucketAdjustments,
   scheduledItems,
   plannerData,
+  settings,
   onSaveSavingsBucket,
   onDeleteSavingsBucket,
   onSaveSavingsBucketAdjustment,
@@ -440,6 +442,7 @@ export default function SavingsBuckets({
   const [selectedAdjustment, setSelectedAdjustment] = useState(null);
   const [selectedBucket, setSelectedBucket] = useState(null);
   const [deleteBucket, setDeleteBucket] = useState(null);
+  const currency = settings?.currency || 'CAD';
 
   const bucketProjection = useMemo(() => {
     return buildSavingsBucketProjection({
@@ -560,7 +563,7 @@ export default function SavingsBuckets({
             Bucket Starting Total
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(bucketStartingTotal)}
+            {formatCurrency(bucketStartingTotal, currency)}
           </p>
         </div>
 
@@ -569,7 +572,7 @@ export default function SavingsBuckets({
             Projected Transfers In
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totalTransfersIn)}
+            {formatCurrency(totalTransfersIn, currency)}
           </p>
         </div>
 
@@ -578,7 +581,7 @@ export default function SavingsBuckets({
             Bucket Adjustments
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totalBucketAdjustments)}
+            {formatCurrency(totalBucketAdjustments, currency)}
           </p>
         </div>
 
@@ -593,7 +596,10 @@ export default function SavingsBuckets({
             Savings vs Buckets Difference
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(savingsProjectedEnd - bucketProjectedEnd)}
+            {formatCurrency(
+              savingsProjectedEnd - bucketProjectedEnd,
+              currency
+            )}
           </p>
         </div>
       </div>
@@ -648,19 +654,22 @@ export default function SavingsBuckets({
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
-                    {formatCurrency(item.bucket.startingAmount)}
+                    {formatCurrency(item.bucket.startingAmount, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-emerald-700">
-                    {formatCurrency(transfersIn)}
+                    {formatCurrency(transfersIn, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
-                    {formatCurrency(adjustments)}
+                    {formatCurrency(adjustments, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm font-bold text-slate-950">
-                    {formatCurrency(item.balanceByPeriod[finalPeriod.date])}
+                    {formatCurrency(
+                      item.balanceByPeriod[finalPeriod.date],
+                      currency
+                    )}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm">
@@ -740,7 +749,7 @@ export default function SavingsBuckets({
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm font-semibold text-slate-950">
-                  {formatCurrency(adjustment.amount)}
+                  {formatCurrency(adjustment.amount, currency)}
                 </td>
 
                 <td className="px-4 py-3 text-sm text-slate-600">
@@ -786,6 +795,7 @@ export default function SavingsBuckets({
           bucketProjectedAmount={getProjectedBucketAmount(deleteBucket.id)}
           savingsBuckets={savingsBuckets}
           bucketIsUsedByTransfer={bucketIsUsedByTransfer(deleteBucket.id)}
+          currency={currency}
           onCancel={() => setDeleteBucket(null)}
           onDelete={handleDeleteBucket}
         />

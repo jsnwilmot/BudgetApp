@@ -22,3 +22,18 @@ textarea {
 table {
   border-collapse: collapse;
 }
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .app-main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+}

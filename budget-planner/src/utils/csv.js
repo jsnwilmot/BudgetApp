@@ -23,3 +23,9 @@ export function rowsToCsv(headers, rows) {
 
   return [headerRow, ...dataRows].join("\n");
 }
+
+export function tableRowsToCsv(rows) {
+  return rows
+    .map((row) => row.map((value) => escapeCsvValue(value)).join(","))
+    .join("\n");
+}

@@ -1,11 +1,34 @@
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function parseLocalDate(dateString) {
+  if (typeof dateString !== 'string') {
+    return new Date(Number.NaN);
+  }
+
   const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
+
+  if (!year || !month || !day) {
+    return new Date(Number.NaN);
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return new Date(Number.NaN);
+  }
+
+  return date;
 }
 
 export function formatDateKey(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
@@ -14,6 +37,11 @@ export function formatDateKey(date) {
 
 export function formatShortDate(dateString) {
   const date = parseLocalDate(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Invalid date';
+  }
+
   return date.toLocaleDateString('en-CA', {
     month: 'short',
     day: '2-digit',
@@ -38,6 +66,19 @@ export function daysBetween(startDate, endDate) {
 
 export function generatePayPeriods(anchorDateString, frequencyDays, monthsToProject) {
   const anchorDate = parseLocalDate(anchorDateString);
+  const safeFrequencyDays = Number(frequencyDays);
+  const safeMonthsToProject = Number(monthsToProject);
+
+  if (
+    Number.isNaN(anchorDate.getTime()) ||
+    !Number.isFinite(safeFrequencyDays) ||
+    safeFrequencyDays <= 0 ||
+    !Number.isFinite(safeMonthsToProject) ||
+    safeMonthsToProject <= 0
+  ) {
+    return [];
+  }
+
   const endDate = addMonths(anchorDate, monthsToProject);
   const payPeriods = [];
 
@@ -49,7 +90,7 @@ export function generatePayPeriods(anchorDateString, frequencyDays, monthsToProj
       label: formatShortDate(formatDateKey(currentDate)),
     });
 
-    currentDate = addDays(currentDate, frequencyDays);
+    currentDate = addDays(currentDate, safeFrequencyDays);
   }
 
   return payPeriods;
