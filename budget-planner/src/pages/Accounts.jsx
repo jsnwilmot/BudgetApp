@@ -458,7 +458,7 @@ export default function Accounts({
                 </td>
 
                 <td className="px-4 py-3 text-sm text-slate-600">
-                  {adjustment.notes || '—'}
+                  {adjustment.notes || '--'}
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm">

@@ -120,7 +120,7 @@ export default function CellEditor({
         aria-label="Remove line item"
         title="Remove line"
       >
-        ×
+        X
       </button>
     `;
 

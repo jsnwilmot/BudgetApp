@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -8,7 +8,6 @@ import {
   Line,
   LineChart,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
@@ -100,6 +99,47 @@ function ChartCard({ title, helper, children }) {
       </div>
       {children}
     </section>
+  );
+}
+
+function MeasuredChartFrame({ children, className, label }) {
+  const containerRef = useRef(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    function updateSize() {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const rect = containerRef.current.getBoundingClientRect();
+
+      setSize({
+        width: Math.max(1, Math.floor(rect.width)),
+        height: Math.max(1, Math.floor(rect.height))
+      });
+    }
+
+    updateSize();
+
+    const resizeObserver = new ResizeObserver(updateSize);
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener("resize", updateSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateSize);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className={className} aria-label={label}>
+      {size.width > 1 && size.height > 1 ? children(size) : null}
+    </div>
   );
 }
 
@@ -637,9 +677,16 @@ export default function Reports({
             {selectedRows.length === 0 ? (
               <EmptyChartState message="No planner rows match this filter." />
             ) : (
-              <div className="h-64 sm:h-[280px]" aria-label="Income vs outflow chart">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={incomeOutflowChartData}>
+              <MeasuredChartFrame
+                className="h-64 sm:h-[280px]"
+                label="Income vs outflow chart"
+              >
+                {({ width, height }) => (
+                  <BarChart
+                    width={width}
+                    height={height}
+                    data={incomeOutflowChartData}
+                  >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="name"
@@ -673,8 +720,8 @@ export default function Reports({
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
+                )}
+              </MeasuredChartFrame>
             )}
           </ChartCard>
 
@@ -687,12 +734,17 @@ export default function Reports({
                 <EmptyChartState message="No category spending found for this filter." />
               ) : (
                 <>
-                  <div
+                  <MeasuredChartFrame
                     className="h-64 sm:h-[280px]"
-                    aria-label="Top spending categories chart"
+                    label="Top spending categories chart"
                   >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={categoryChartData} layout="vertical">
+                    {({ width, height }) => (
+                      <BarChart
+                        width={width}
+                        height={height}
+                        data={categoryChartData}
+                        layout="vertical"
+                      >
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                         <XAxis
                           type="number"
@@ -719,8 +771,8 @@ export default function Reports({
                           radius={[0, 8, 8, 0]}
                         />
                       </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                    )}
+                  </MeasuredChartFrame>
 
                   <div className="mt-4 space-y-3">
                     {categoryTotals.map((item) => (
@@ -748,12 +800,16 @@ export default function Reports({
               {!chartHasAnyValue(savingsTransferChartData) ? (
                 <EmptyChartState message="No savings transfers found for this filter." />
               ) : (
-                <div
+                <MeasuredChartFrame
                   className="h-64 sm:h-[280px]"
-                  aria-label="Savings transfers chart"
+                  label="Savings transfers chart"
                 >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={savingsTransferChartData}>
+                  {({ width, height }) => (
+                    <BarChart
+                      width={width}
+                      height={height}
+                      data={savingsTransferChartData}
+                    >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="name"
@@ -783,8 +839,8 @@ export default function Reports({
                         ))}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </MeasuredChartFrame>
               )}
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -903,12 +959,16 @@ export default function Reports({
               {monthlyTrendRows.length === 0 ? (
                 <EmptyChartState message="No monthly planner data is available for trends." />
               ) : (
-                <div
+                <MeasuredChartFrame
                   className="h-72 sm:h-[320px]"
-                  aria-label="Monthly cash flow trend chart"
+                  label="Monthly cash flow trend chart"
                 >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyTrendRows}>
+                  {({ width, height }) => (
+                    <LineChart
+                      width={width}
+                      height={height}
+                      data={monthlyTrendRows}
+                    >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="label"
@@ -951,8 +1011,8 @@ export default function Reports({
                         strokeWidth={2}
                       />
                     </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </MeasuredChartFrame>
               )}
             </ChartCard>
 
@@ -964,12 +1024,16 @@ export default function Reports({
                 {payPeriodTrendRows.length === 0 ? (
                   <EmptyChartState message="No dated pay-period planner rows are available for trends." />
                 ) : (
-                  <div
+                  <MeasuredChartFrame
                     className="h-72 sm:h-[320px]"
-                    aria-label="Pay period cash flow trend chart"
+                    label="Pay period cash flow trend chart"
                   >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={payPeriodTrendRows}>
+                    {({ width, height }) => (
+                      <LineChart
+                        width={width}
+                        height={height}
+                        data={payPeriodTrendRows}
+                      >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis
                           dataKey="label"
@@ -1020,8 +1084,8 @@ export default function Reports({
                           strokeWidth={2}
                         />
                       </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                    )}
+                  </MeasuredChartFrame>
                 )}
               </ChartCard>
 
@@ -1032,12 +1096,16 @@ export default function Reports({
                 {savingsTransferTrendRows.length === 0 ? (
                   <EmptyChartState message="Savings transfer trend needs dated transfer history." />
                 ) : (
-                  <div
+                  <MeasuredChartFrame
                     className="h-72 sm:h-[320px]"
-                    aria-label="Savings transfer trend chart"
+                    label="Savings transfer trend chart"
                   >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={savingsTransferTrendRows}>
+                    {({ width, height }) => (
+                      <LineChart
+                        width={width}
+                        height={height}
+                        data={savingsTransferTrendRows}
+                      >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis
                           dataKey="label"
@@ -1080,8 +1148,8 @@ export default function Reports({
                           strokeWidth={2}
                         />
                       </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                    )}
+                  </MeasuredChartFrame>
                 )}
               </ChartCard>
             </section>
@@ -1095,12 +1163,17 @@ export default function Reports({
               <EmptyChartState message="No savings buckets found yet." />
             ) : (
               <>
-                <div
+                <MeasuredChartFrame
                   className="h-72 sm:h-[320px]"
-                  aria-label="Savings bucket balances chart"
+                  label="Savings bucket balances chart"
                 >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={bucketBalanceChartData} layout="vertical">
+                  {({ width, height }) => (
+                    <BarChart
+                      width={width}
+                      height={height}
+                      data={bucketBalanceChartData}
+                      layout="vertical"
+                    >
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                       <XAxis
                         type="number"
@@ -1128,8 +1201,8 @@ export default function Reports({
                         radius={[0, 8, 8, 0]}
                       />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </MeasuredChartFrame>
 
                 <div className="mt-4 overflow-x-auto">
                   <table className="min-w-[760px] divide-y divide-slate-200 text-sm">

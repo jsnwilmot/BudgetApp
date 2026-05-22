@@ -1,8 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   Line,
   LineChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -11,6 +11,47 @@ import AlertList from '../components/AlertList';
 import StatCard from '../components/StatCard';
 import { formatShortDate } from '../logic/dateLogic';
 import { getDashboardSummary } from '../logic/projectionLogic';
+
+function MeasuredChartFrame({ children, className }) {
+  const containerRef = useRef(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    function updateSize() {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const rect = containerRef.current.getBoundingClientRect();
+
+      setSize({
+        width: Math.max(1, Math.floor(rect.width)),
+        height: Math.max(1, Math.floor(rect.height)),
+      });
+    }
+
+    updateSize();
+
+    const resizeObserver = new ResizeObserver(updateSize);
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className={className}>
+      {size.width > 1 && size.height > 1 ? children(size) : null}
+    </div>
+  );
+}
 
 function createCurrencyFormatter(currency) {
   return new Intl.NumberFormat('en-CA', {
@@ -154,9 +195,9 @@ export default function Dashboard({
           </p>
         </div>
 
-        <div className="h-72 sm:h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+        <MeasuredChartFrame className="h-72 sm:h-96">
+          {({ width, height }) => (
+            <LineChart width={width} height={height} data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" interval="preserveStartEnd" minTickGap={16} />
               <YAxis />
@@ -174,8 +215,8 @@ export default function Dashboard({
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </MeasuredChartFrame>
       </section>
     </div>
   );

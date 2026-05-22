@@ -454,16 +454,17 @@ export default function SavingsBuckets({
   }, [plannerData, savingsBuckets, savingsBucketAdjustments]);
 
   const finalPeriod = plannerData.payPeriods[plannerData.payPeriods.length - 1];
+  const finalPeriodDate = finalPeriod?.date || '';
 
   const projectedSavingsRow = plannerData.projectionRows.find(
     (row) => row.id === 'projected-savings'
   );
 
   const savingsProjectedEnd =
-    projectedSavingsRow?.amountsByPeriod[finalPeriod?.date] || 0;
+    projectedSavingsRow?.amountsByPeriod?.[finalPeriodDate] || 0;
 
   const bucketProjectedEnd = bucketProjection.reduce((total, item) => {
-    return total + (item.balanceByPeriod[finalPeriod?.date] || 0);
+    return total + (item.balanceByPeriod[finalPeriodDate] || 0);
   }, 0);
 
   const bucketStartingTotal = savingsBuckets.reduce((total, bucket) => {
@@ -490,7 +491,7 @@ export default function SavingsBuckets({
 
   function getProjectedBucketAmount(bucketId) {
     const projection = bucketProjection.find((item) => item.bucket.id === bucketId);
-    return projection?.balanceByPeriod[finalPeriod?.date] || 0;
+    return projection?.balanceByPeriod[finalPeriodDate] || 0;
   }
 
   function bucketIsUsedByTransfer(bucketId) {
@@ -549,7 +550,13 @@ export default function SavingsBuckets({
                 createNewBucketAdjustment(savingsBuckets, plannerData.payPeriods)
               )
             }
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            disabled={savingsBuckets.length === 0}
+            title={
+              savingsBuckets.length === 0
+                ? 'Add a savings bucket before adding an adjustment.'
+                : undefined
+            }
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             <Plus size={16} />
             Add Bucket Adjustment
@@ -630,6 +637,14 @@ export default function SavingsBuckets({
           </thead>
 
           <tbody>
+            {bucketProjection.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-4 py-8 text-center text-sm text-slate-500">
+                  No savings buckets yet. Add a bucket to start tracking projected balances.
+                </td>
+              </tr>
+            ) : null}
+
             {bucketProjection.map((item) => {
               const transfersIn = Object.values(item.transfersInByPeriod).reduce(
                 (total, value) => total + (Number(value) || 0),
@@ -668,7 +683,7 @@ export default function SavingsBuckets({
 
                   <td className="px-4 py-3 text-right text-sm font-bold text-slate-950">
                     {formatCurrency(
-                      item.balanceByPeriod[finalPeriod.date],
+                      item.balanceByPeriod[finalPeriodDate],
                       currency
                     )}
                   </td>
@@ -756,7 +771,7 @@ export default function SavingsBuckets({
                 </td>
 
                 <td className="px-4 py-3 text-sm text-slate-600">
-                  {adjustment.notes || '—'}
+                  {adjustment.notes || '--'}
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm">

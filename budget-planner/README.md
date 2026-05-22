@@ -216,6 +216,25 @@ Known limitation:
 - Native mobile packaging is not included yet.
 - PWA install support is not included yet.
 
+## Phase 1Y: Full QA and Bug Fix Pass
+
+Completed:
+
+- Completed full app navigation QA.
+- Fixed bugs found during cross-page testing.
+- Verified settings-driven projection behavior.
+- Verified scheduled item recurrence behavior.
+- Verified backup, restore, repair, reset, and export workflows.
+- Verified mobile layout behavior.
+- Verified reports, transactions, budgets, alerts, categories, and savings flows.
+- Confirmed lint and build pass.
+
+Known limitation:
+
+- Existing Vite large chunk warning may still appear.
+- Native packaging and PWA install support are not included yet.
+- Automated test coverage is still limited unless added in a later phase.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

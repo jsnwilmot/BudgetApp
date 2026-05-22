@@ -398,6 +398,7 @@ export function getDashboardSummary(plannerData) {
   const savingsRow = projectionRows.find((row) => row.id === 'projected-savings');
 
   const finalPeriod = payPeriods[payPeriods.length - 1];
+  const finalPeriodDate = finalPeriod?.date || nextPeriod.date;
 
   const chequingValues = Object.values(chequingRow?.amountsByPeriod || {});
   const lowestChequing = Math.min(...chequingValues);
@@ -411,8 +412,8 @@ export function getDashboardSummary(plannerData) {
       chequingRow?.amountsByPeriod?.[nextPeriod.date] || 0,
     projectedSavingsAfterNext:
       savingsRow?.amountsByPeriod?.[nextPeriod.date] || 0,
-    projectedChequingEnd: chequingRow?.amountsByPeriod?.[finalPeriod.date] || 0,
-    projectedSavingsEnd: savingsRow?.amountsByPeriod?.[finalPeriod.date] || 0,
+    projectedChequingEnd: chequingRow?.amountsByPeriod?.[finalPeriodDate] || 0,
+    projectedSavingsEnd: savingsRow?.amountsByPeriod?.[finalPeriodDate] || 0,
     lowestChequing: Number.isFinite(lowestChequing) ? lowestChequing : 0,
   };
 }
