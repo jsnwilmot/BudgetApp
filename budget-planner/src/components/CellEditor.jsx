@@ -96,14 +96,14 @@ export default function CellEditor({
     if (!container) return;
 
     const row = document.createElement('div');
-    row.className = 'grid grid-cols-[1fr_120px_36px] gap-2';
+    row.className = 'grid grid-cols-[minmax(0,1fr)_96px_40px] gap-2 sm:grid-cols-[1fr_120px_40px]';
     row.innerHTML = `
       <input type="hidden" name="lineId" value="${crypto.randomUUID()}" />
       <input
         name="lineDescription"
         type="text"
         placeholder="Description"
-        class="rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+        class="min-w-0 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
       />
       <input
         name="lineAmount"
@@ -111,15 +111,16 @@ export default function CellEditor({
         step="0.01"
         min="0"
         placeholder="0.00"
-        class="rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
+        class="min-w-0 rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
       />
       <button
         type="button"
         class="rounded-xl border border-red-200 px-2 py-2 text-red-600 hover:bg-red-50"
         onclick="this.parentElement.remove()"
+        aria-label="Remove line item"
         title="Remove line"
       >
-        ×
+        X
       </button>
     `;
 
@@ -127,13 +128,13 @@ export default function CellEditor({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-[460px] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 w-full overflow-y-auto border-slate-200 bg-white p-4 shadow-2xl sm:inset-y-0 sm:left-auto sm:w-[460px] sm:border-l sm:p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {isLineItemCell ? 'Edit Line Items' : 'Edit Planner Cell'}
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-950">
+          <h3 className="mt-1 break-words text-xl font-bold text-slate-950">
             {selectedCell.row.name}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
@@ -186,7 +187,7 @@ export default function CellEditor({
               {lineItems.map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[1fr_120px_36px] gap-2"
+                className="grid grid-cols-[minmax(0,1fr)_96px_40px] gap-2 sm:grid-cols-[1fr_120px_40px]"
                 >
                   <input type="hidden" name="lineId" defaultValue={item.id} />
 
@@ -195,7 +196,7 @@ export default function CellEditor({
                     type="text"
                     defaultValue={item.description}
                     placeholder="Description"
-                    className="rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+                    className="min-w-0 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
                   />
 
                   <input
@@ -205,13 +206,14 @@ export default function CellEditor({
                     min="0"
                     defaultValue={item.amount}
                     placeholder="0.00"
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
+                    className="min-w-0 rounded-xl border border-slate-300 px-3 py-2 text-right outline-none focus:border-slate-900"
                   />
 
                   <button
                     type="button"
                     onClick={(event) => event.currentTarget.parentElement.remove()}
                     className="rounded-xl border border-red-200 px-2 py-2 text-red-600 hover:bg-red-50"
+                    aria-label="Remove line item"
                     title="Remove line"
                   >
                     <Trash2 size={14} />
@@ -244,7 +246,7 @@ export default function CellEditor({
             />
           </label>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <button
               type="submit"
               className="flex-1 rounded-xl bg-slate-950 px-4 py-2 font-semibold text-white hover:bg-slate-800"
@@ -312,7 +314,7 @@ export default function CellEditor({
             />
           </label>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <button
               type="submit"
               className="flex-1 rounded-xl bg-slate-950 px-4 py-2 font-semibold text-white hover:bg-slate-800"

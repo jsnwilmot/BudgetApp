@@ -38,7 +38,7 @@ function AccountBalanceForm({ account, onSave }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">{account.type}</p>
@@ -141,13 +141,13 @@ function AdjustmentForm({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-[460px] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 w-full overflow-y-auto border-slate-200 bg-white p-4 shadow-2xl sm:inset-y-0 sm:left-auto sm:w-[460px] sm:border-l sm:p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Manual Adjustment
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-950">
+          <h3 className="mt-1 break-words text-xl font-bold text-slate-950">
             Account correction
           </h3>
           <p className="mt-1 text-sm text-slate-500">
@@ -197,7 +197,7 @@ function AdjustmentForm({
           </select>
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Date</span>
             <input
@@ -330,12 +330,12 @@ export default function Accounts({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Accounts
           </p>
-          <h2 className="text-3xl font-bold text-slate-950">
+          <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
             Balances and manual adjustments
           </h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -346,14 +346,14 @@ export default function Accounts({
         <button
           type="button"
           onClick={handleAddAdjustment}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
         >
           <Plus size={16} />
           Add Adjustment
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         {accounts.map((account) => (
           <AccountBalanceForm
             key={account.id}
@@ -363,8 +363,8 @@ export default function Accounts({
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Chequing Adjustments
           </p>
@@ -373,7 +373,7 @@ export default function Accounts({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Savings Adjustments
           </p>
@@ -382,7 +382,7 @@ export default function Accounts({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Total Manual Adjustments
           </p>
@@ -405,7 +405,8 @@ export default function Accounts({
           </p>
         </div>
 
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[920px]">
           <thead>
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
@@ -457,7 +458,7 @@ export default function Accounts({
                 </td>
 
                 <td className="px-4 py-3 text-sm text-slate-600">
-                  {adjustment.notes || '—'}
+                  {adjustment.notes || '--'}
                 </td>
 
                 <td className="px-4 py-3 text-right text-sm">
@@ -473,6 +474,7 @@ export default function Accounts({
                     <button
                       type="button"
                       onClick={() => onDeleteManualAdjustment(adjustment.id)}
+                      aria-label="Delete manual adjustment"
                       className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
                     >
                       <Trash2 size={14} />
@@ -483,6 +485,7 @@ export default function Accounts({
             ))}
           </tbody>
         </table>
+        </div>
       </section>
 
       {selectedAdjustment ? (

@@ -5,6 +5,12 @@ import {
   validateBackupFile
 } from "../services/backupService";
 import { appSettings, budgetTargets, categories } from "../data/seedData";
+import {
+  getCurrentAppDataVersion,
+  getCurrentAppVersion,
+  getDataHealthSummary,
+  getSafeAppData
+} from "../data/migrations";
 import { downloadTextFile } from "../utils/downloadFile";
 import { rowsToCsv } from "../utils/csv";
 
@@ -20,6 +26,8 @@ const POSSIBLE_STORAGE_KEYS = [
 ];
 
 const defaultAppState = {
+  appVersion: getCurrentAppVersion(),
+  appDataVersion: getCurrentAppDataVersion(),
   settings: appSettings,
   budgetTargets,
   categories,
@@ -93,6 +101,22 @@ function saveStoredAppData(data) {
 function getDatedFileName(prefix, extension) {
   const date = new Date().toISOString().slice(0, 10);
   return `${prefix}-${date}.${extension}`;
+}
+
+function getCountRows(summary = {}) {
+  return [
+    ["Accounts", summary.accounts],
+    ["Scheduled items", summary.scheduledItems],
+    ["Savings buckets", summary.savingsBuckets],
+    ["Categories", summary.categories],
+    ["Budget targets", summary.budgetTargets],
+    ["Manual adjustments", summary.manualAdjustments],
+    ["Savings adjustments", summary.savingsAdjustments],
+    ["Planner entries", summary.plannerEntries]
+  ].map(([label, value]) => ({
+    label,
+    value: Number.isFinite(Number(value)) ? Number(value) : 0
+  }));
 }
 
 function normalizeMoney(value) {
@@ -309,6 +333,7 @@ export default function DataManagement({
   appData,
   onDataReload,
   onImportData,
+  onRepairLocalData,
   onResetLocalData
 }) {
   const fileInputRef = useRef(null);
@@ -321,6 +346,14 @@ export default function DataManagement({
   const [errorMessage, setErrorMessage] = useState("");
 
   const activeStorageKey = useMemo(() => getActiveStorageKey(), []);
+  const dataHealth = useMemo(() => {
+    const { data } =
+      appData && typeof appData === "object"
+        ? { data: appData }
+        : getStoredAppData();
+
+    return getDataHealthSummary(data);
+  }, [appData]);
 
   function clearMessages() {
     setSuccessMessage("");
@@ -401,7 +434,11 @@ export default function DataManagement({
           return;
         }
 
-        setPendingImport(parsedBackup);
+        setPendingImport({
+          ...parsedBackup,
+          data: validation.data,
+          summary: validation.summary
+        });
         setShowImportConfirm(true);
       } catch {
         setErrorMessage("The selected file is not valid JSON.");
@@ -520,6 +557,25 @@ export default function DataManagement({
     setSuccessMessage("Savings buckets CSV exported successfully.");
   }
 
+  async function handleRepairLocalData() {
+    clearMessages();
+
+    try {
+      if (typeof onRepairLocalData === "function") {
+        await onRepairLocalData();
+      } else {
+        const { data } = getCurrentAppData();
+        saveStoredAppData(getSafeAppData(data));
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Local data repair failed.");
+      return;
+    }
+
+    setSuccessMessage("Local data repaired successfully.");
+  }
+
   async function handleResetLocalData() {
     clearMessages();
 
@@ -547,12 +603,12 @@ export default function DataManagement({
   }
 
   return (
-    <section className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-5">
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Data Management
         </p>
-        <h3 className="mt-1 text-2xl font-bold text-slate-950">
+        <h3 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">
           Backup, restore, and export
         </h3>
         <p className="mt-2 text-sm text-slate-600">
@@ -560,7 +616,7 @@ export default function DataManagement({
           or reset local data.
         </p>
         <p className="mt-2 text-xs text-slate-500">
-          Active local storage key: {activeStorageKey}
+          Local data location: this browser profile ({activeStorageKey})
         </p>
       </div>
 
@@ -585,37 +641,52 @@ export default function DataManagement({
       <div className="grid gap-5">
         <div className="rounded-xl border border-slate-200 p-4">
           <h4 className="text-lg font-semibold text-slate-950">
-            Safe actions
+            Data health
           </h4>
           <p className="mt-1 text-sm text-slate-600">
-            Download backups and CSV files without changing your app data.
+            A compact check of the local data currently loaded by the app.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleExportBackup}
-              className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              Export Backup
-            </button>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                App version
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {dataHealth.appVersion}
+              </p>
+            </div>
 
-            <button
-              type="button"
-              onClick={handleExportPlannerCsv}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Export Planner CSV
-            </button>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Data version
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {dataHealth.appDataVersion}
+              </p>
+            </div>
 
-            <button
-              type="button"
-              onClick={handleExportSavingsBucketsCsv}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Export Savings Buckets CSV
-            </button>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Data warnings
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {dataHealth.warningsCount}
+              </p>
+            </div>
           </div>
+
+          <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+            {getCountRows(dataHealth.counts).map((row) => (
+              <div
+                key={row.label}
+                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+              >
+                <dt className="text-slate-600">{row.label}</dt>
+                <dd className="font-semibold text-slate-950">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
 
           {lastBackupTimestamp && (
             <p className="mt-3 text-sm text-slate-500">
@@ -625,13 +696,58 @@ export default function DataManagement({
           )}
         </div>
 
+        <div className="rounded-xl border border-slate-200 p-4">
+          <h4 className="text-lg font-semibold text-slate-950">
+            Safe actions
+          </h4>
+          <p className="mt-1 text-sm text-slate-600">
+            Download local backup and CSV files without changing your app data.
+            Repair Local Data normalizes records and does not delete user records.
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Export Backup
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportPlannerCsv}
+              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Export Planner CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportSavingsBucketsCsv}
+              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Export Savings Buckets CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRepairLocalData}
+              className="min-h-11 rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50"
+            >
+              Repair Local Data
+            </button>
+          </div>
+        </div>
+
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <h4 className="text-lg font-semibold text-slate-950">
             Risky actions
           </h4>
           <p className="mt-1 text-sm text-slate-700">
             Importing a backup replaces your current local data. Resetting local
-            data deletes your planner, savings buckets, transfers, and settings.
+            data deletes planner entries, accounts, scheduled items, savings
+            activity, categories, budgets, reports data, and settings.
           </p>
 
           <input
@@ -646,7 +762,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleChooseImportFile}
-              className="rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-amber-100"
+              className="min-h-11 rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-amber-100"
             >
               Import Backup
             </button>
@@ -659,11 +775,36 @@ export default function DataManagement({
                 cannot be undone unless you exported a backup first.
               </p>
 
+              {pendingImport?.summary ? (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    This backup contains:
+                  </p>
+                  <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    {getCountRows(pendingImport.summary).map((row) => (
+                      <div
+                        key={row.label}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <dt className="text-slate-600">{row.label}</dt>
+                        <dd className="font-semibold text-slate-950">
+                          {row.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-600">
+                  Backup summary unavailable.
+                </p>
+              )}
+
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={confirmImportBackup}
-                  className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                  className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
                 >
                   Import Backup
                 </button>
@@ -671,7 +812,7 @@ export default function DataManagement({
                 <button
                   type="button"
                   onClick={cancelImportBackup}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
@@ -683,9 +824,9 @@ export default function DataManagement({
             <h5 className="text-base font-semibold text-red-700">
               Reset Local Data
             </h5>
-            <p className="mt-1 text-sm text-slate-600">
-              Type DELETE to confirm. This resets the app back to the starter
-              state.
+              <p className="mt-1 text-sm text-slate-600">
+              Type DELETE to confirm. Export a backup first if you may need the
+              current local data again.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">
@@ -695,14 +836,14 @@ export default function DataManagement({
                   setDeleteConfirmation(event.target.value)
                 }
                 placeholder="Type DELETE"
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                className="min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm"
               />
 
               <button
                 type="button"
                 onClick={handleResetLocalData}
                 disabled={deleteConfirmation !== "DELETE"}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Reset Local Data
               </button>

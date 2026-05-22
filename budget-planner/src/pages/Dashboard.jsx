@@ -1,15 +1,57 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   Line,
   LineChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import AlertList from '../components/AlertList';
 import StatCard from '../components/StatCard';
 import { formatShortDate } from '../logic/dateLogic';
 import { getDashboardSummary } from '../logic/projectionLogic';
+
+function MeasuredChartFrame({ children, className }) {
+  const containerRef = useRef(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    function updateSize() {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const rect = containerRef.current.getBoundingClientRect();
+
+      setSize({
+        width: Math.max(1, Math.floor(rect.width)),
+        height: Math.max(1, Math.floor(rect.height)),
+      });
+    }
+
+    updateSize();
+
+    const resizeObserver = new ResizeObserver(updateSize);
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className={className}>
+      {size.width > 1 && size.height > 1 ? children(size) : null}
+    </div>
+  );
+}
 
 function createCurrencyFormatter(currency) {
   return new Intl.NumberFormat('en-CA', {
@@ -18,7 +60,14 @@ function createCurrencyFormatter(currency) {
   });
 }
 
-export default function Dashboard({ plannerData, settings }) {
+export default function Dashboard({
+  plannerData,
+  settings,
+  alerts = [],
+  alertCounts = { total: 0, warning: 0, danger: 0 },
+  onAlertAction,
+  onDismissAlert,
+}) {
   const summary = getDashboardSummary(plannerData);
   const currencyFormatter = createCurrencyFormatter(settings?.currency);
 
@@ -48,12 +97,43 @@ export default function Dashboard({ plannerData, settings }) {
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Dashboard
         </p>
-        <h2 className="text-3xl font-bold text-slate-950">
+        <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
           Cash-flow projection
         </h2>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Alerts"
+          value={alertCounts.total}
+          helper="Active in-app alerts."
+          tone={alertCounts.total > 0 ? 'blue' : 'good'}
+        />
+        <StatCard
+          label="Warnings"
+          value={alertCounts.warning}
+          helper="Items that need attention soon."
+          tone={alertCounts.warning > 0 ? 'warning' : 'default'}
+        />
+        <StatCard
+          label="Critical"
+          value={alertCounts.danger}
+          helper="Cash-flow or budget risks."
+          tone={alertCounts.danger > 0 ? 'danger' : 'default'}
+        />
+      </div>
+
+      <AlertList
+        title="Alerts and Warnings"
+        helper="Key budget, cash-flow, and setup risks from your local data."
+        alerts={alerts}
+        maxItems={5}
+        showEmpty
+        onAction={onAlertAction}
+        onDismiss={onDismissAlert}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Next Pay Date"
           value={summary.nextPayDate ? formatShortDate(summary.nextPayDate) : 'Not available'}
@@ -78,7 +158,7 @@ export default function Dashboard({ plannerData, settings }) {
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Chequing After Next Period"
           value={formatCurrency(summary.projectedChequingAfterNext)}
@@ -105,7 +185,7 @@ export default function Dashboard({ plannerData, settings }) {
         />
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4">
           <h3 className="text-lg font-bold text-slate-950">
             12-Month Account Projection
@@ -115,11 +195,11 @@ export default function Dashboard({ plannerData, settings }) {
           </p>
         </div>
 
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+        <MeasuredChartFrame className="h-72 sm:h-96">
+          {({ width, height }) => (
+            <LineChart width={width} height={height} data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="date" interval="preserveStartEnd" minTickGap={16} />
               <YAxis />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Line
@@ -135,8 +215,8 @@ export default function Dashboard({ plannerData, settings }) {
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </MeasuredChartFrame>
       </section>
     </div>
   );
