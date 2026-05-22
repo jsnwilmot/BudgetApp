@@ -111,7 +111,8 @@ export default function Settings({
   onRepairLocalData,
   onResetLocalData,
   onResetToDemoData,
-  onResetToEmptyState
+  onResetToEmptyState,
+  onShowHelp
 }) {
   const [formState, setFormState] = useState(() => settingsToForm(settings));
   const [message, setMessage] = useState("");
@@ -365,6 +366,7 @@ export default function Settings({
         onResetLocalData={onResetLocalData}
         onResetToDemoData={onResetToDemoData}
         onResetToEmptyState={onResetToEmptyState}
+        onShowHelp={onShowHelp}
       />
     </div>
   );

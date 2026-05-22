@@ -25,6 +25,7 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Categories opens.
 - [ ] Reports opens.
 - [ ] Settings opens.
+- [ ] Help opens.
 - [ ] No console errors appear.
 - [ ] Manifest loads.
 - [ ] Service worker registers.
@@ -80,6 +81,19 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Empty app keeps default categories and safe settings.
 - [ ] Backup export works after demo reset.
 - [ ] Backup export works after empty reset.
+
+## Help And Onboarding
+
+- [ ] Help nav item appears.
+- [ ] Help page opens.
+- [ ] Help content is readable on mobile.
+- [ ] First-run onboarding appears for fresh demo users.
+- [ ] Explore Demo Data dismisses onboarding.
+- [ ] Onboarding completion persists after refresh.
+- [ ] Start Empty navigates to Settings and does not erase data without confirmation.
+- [ ] Import Backup navigates to Settings and uses the existing safe import flow.
+- [ ] Empty app setup prompt appears after Factory Reset to Empty App.
+- [ ] Data Management includes a Help link.
 
 ## Core Workflows
 

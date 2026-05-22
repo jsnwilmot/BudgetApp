@@ -73,6 +73,7 @@ import Accounts from './pages/Accounts';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
 import Dashboard from './pages/Dashboard';
+import Help from './pages/Help';
 import Planner from './pages/Planner';
 import Reports from './pages/Reports';
 import SavingsBuckets from './pages/SavingsBuckets';
@@ -145,6 +146,26 @@ function hasCustomSavedCategories(savedCategories = []) {
       category.active !== defaultCategory.active
     );
   });
+}
+
+function hasNoUserRecords({
+  accounts = [],
+  scheduledItems = [],
+  manualAdjustments = [],
+  savingsBuckets = [],
+  savingsBucketAdjustments = [],
+  budgetTargets = [],
+  plannerEntries = {},
+}) {
+  return (
+    accounts.length === 0 &&
+    scheduledItems.length === 0 &&
+    manualAdjustments.length === 0 &&
+    savingsBuckets.length === 0 &&
+    savingsBucketAdjustments.length === 0 &&
+    budgetTargets.length === 0 &&
+    Object.keys(plannerEntries).length === 0
+  );
 }
 
 export default function App() {
@@ -391,6 +412,29 @@ export default function App() {
     () => getAlertCounts(visibleAlerts),
     [visibleAlerts]
   );
+  const isEmptyApp = useMemo(
+    () =>
+      appMetadata.dataMode === 'empty' ||
+      hasNoUserRecords({
+        accounts,
+        scheduledItems,
+        manualAdjustments,
+        savingsBuckets,
+        savingsBucketAdjustments,
+        budgetTargets,
+        plannerEntries,
+      }),
+    [
+      accounts,
+      appMetadata.dataMode,
+      budgetTargets,
+      manualAdjustments,
+      plannerEntries,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      scheduledItems,
+    ]
+  );
 
   const plannerAlerts = useMemo(
     () => visibleAlerts.filter((alert) => alert.source === 'planner'),
@@ -418,6 +462,33 @@ export default function App() {
 
     setDismissedAlertIds((currentIds) =>
       currentIds.includes(alert.id) ? currentIds : [...currentIds, alert.id]
+    );
+  }
+
+  async function handleCompleteOnboarding() {
+    const savedMetadata = await saveAppMetadata({
+      ...appMetadata,
+      onboardingCompletedAt: new Date().toISOString(),
+    });
+
+    setAppMetadata(savedMetadata);
+    setStatusMessage('Onboarding dismissed. You can open Help anytime.');
+    return savedMetadata;
+  }
+
+  async function handleStartEmptyFromOnboarding() {
+    await handleCompleteOnboarding();
+    setCurrentPage('settings');
+    setStatusMessage(
+      'To start empty, use Factory Reset to Empty App in Settings > Data Management. It requires typing DELETE.'
+    );
+  }
+
+  async function handleImportBackupFromOnboarding() {
+    await handleCompleteOnboarding();
+    setCurrentPage('settings');
+    setStatusMessage(
+      'Use Import Backup in Settings > Data Management. Importing replaces current local data, so export first if needed.'
     );
   }
 
@@ -894,10 +965,21 @@ export default function App() {
 
   async function handleResetToDemoData() {
     const demoData = await resetAppToDemoData();
-    applyLoadedData(demoData);
+    const savedMetadata = appMetadata.onboardingCompletedAt
+      ? await saveAppMetadata({
+          ...demoData.appMetadata,
+          onboardingCompletedAt: appMetadata.onboardingCompletedAt,
+        })
+      : demoData.appMetadata;
+    const loadedDemoData = {
+      ...demoData,
+      appMetadata: savedMetadata,
+    };
+
+    applyLoadedData(loadedDemoData);
     setDismissedAlertIds([]);
     setStatusMessage('Demo data restored.');
-    return demoData;
+    return loadedDemoData;
   }
 
   async function handleResetToEmptyState() {
@@ -951,8 +1033,14 @@ export default function App() {
             settings={settings}
             alerts={visibleAlerts}
             alertCounts={alertCounts}
+            appMetadata={appMetadata}
+            isEmptyApp={isEmptyApp}
             onAlertAction={handleAlertAction}
             onDismissAlert={handleDismissAlert}
+            onCompleteOnboarding={handleCompleteOnboarding}
+            onStartEmpty={handleStartEmptyFromOnboarding}
+            onImportBackup={handleImportBackupFromOnboarding}
+            onOpenHelp={() => setCurrentPage('help')}
           />
         ) : null}
 
@@ -1077,8 +1165,11 @@ export default function App() {
             onResetToDemoData={handleResetToDemoData}
             onResetToEmptyState={handleResetToEmptyState}
             onResetLocalData={handleResetLocalData}
+            onShowHelp={() => setCurrentPage('help')}
           />
         ) : null}
+
+        {currentPage === 'help' ? <Help /> : null}
       </AppShell>
 
       <CellEditor

@@ -156,6 +156,10 @@ export function normalizeAppMetadataRecord(metadata = {}) {
     ...safeMetadata,
     id: safeString(safeMetadata.id, APP_METADATA_ID),
     lastBackupAt: safeTimestampString(safeMetadata.lastBackupAt, ''),
+    onboardingCompletedAt: safeTimestampString(
+      safeMetadata.onboardingCompletedAt,
+      ''
+    ),
     createdAt: safeTimestampString(safeMetadata.createdAt, timestamp),
     updatedAt: safeTimestampString(safeMetadata.updatedAt, ''),
   };

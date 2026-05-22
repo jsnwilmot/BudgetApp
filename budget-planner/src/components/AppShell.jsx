@@ -2,6 +2,7 @@ import {
   BarChart3,
   CalendarClock,
   CalendarDays,
+  CircleHelp,
   Menu,
   Landmark,
   ListChecks,
@@ -64,6 +65,11 @@ const navItems = [
     id: 'settings',
     label: 'Settings',
     icon: Settings,
+  },
+  {
+    id: 'help',
+    label: 'Help',
+    icon: CircleHelp,
   },
 ];
 

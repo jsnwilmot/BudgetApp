@@ -32,6 +32,7 @@ factory reset to an empty app.
 - Backup reminder status and data safety guidance for browser-managed storage.
 - Fictional demo dataset with scheduled items, accounts, savings buckets,
   budgets, transactions, reports, alerts, and multi-line notes.
+- First-run onboarding and an in-app Help Guide.
 - Mobile-friendly navigation and responsive page layouts.
 - PWA install support with app icons, manifest, service worker caching, and a
   simple update prompt.
@@ -341,6 +342,26 @@ Known limitation:
 - PWA data is still browser-managed.
 - Users must keep backup files somewhere safe.
 - Desktop SQLite storage is planned for a later phase.
+
+### Phase 2D: Help Guide And First-Run Onboarding
+
+Completed:
+
+- Added an in-app Help Guide.
+- Added Help navigation.
+- Added first-run onboarding for the public demo.
+- Added onboarding choices for exploring demo data, starting empty, or
+  importing a backup.
+- Added Dashboard empty-app setup prompt.
+- Persisted onboarding completion in local app metadata.
+- Added contextual Help access from Data Management.
+
+Known limitation:
+
+- Onboarding is in-app only.
+- Start Empty and Import Backup route users to existing safe Settings flows
+  instead of running those actions directly.
+- PWA data is still browser-managed.
 
 ## Known Limitations
 

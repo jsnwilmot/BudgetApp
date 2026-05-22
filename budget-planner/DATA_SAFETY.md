@@ -14,6 +14,9 @@ The public app starts with clearly fictional demo data. Demo records are only
 sample records for exploring the app and can be edited, backed up, replaced with
 demo data again, or cleared with an empty reset.
 
+The first-run onboarding and Help page repeat the most important safety rule:
+local browser data can be lost, so export backups regularly.
+
 ## Where Data Is Stored
 
 Data is stored locally in the browser profile used to open the app. Data in Chrome is separate from data in Edge, Firefox, Safari, another device, or a private browsing session.
@@ -37,6 +40,8 @@ Recommended backup frequency:
 - Before switching browsers or devices.
 - Before uninstalling the PWA.
 - Before importing another backup or resetting local data.
+
+The in-app Help Guide includes the same backup guidance in a shorter format.
 
 ## Restore
 

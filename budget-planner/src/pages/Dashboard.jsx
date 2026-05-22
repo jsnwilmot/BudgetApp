@@ -65,8 +65,14 @@ export default function Dashboard({
   settings,
   alerts = [],
   alertCounts = { total: 0, warning: 0, danger: 0 },
+  appMetadata = {},
+  isEmptyApp = false,
   onAlertAction,
   onDismissAlert,
+  onCompleteOnboarding,
+  onStartEmpty,
+  onImportBackup,
+  onOpenHelp,
 }) {
   const summary = getDashboardSummary(plannerData);
   const currencyFormatter = createCurrencyFormatter(settings?.currency);
@@ -90,6 +96,8 @@ export default function Dashboard({
   }));
 
   const lowestTone = summary.lowestChequing < 0 ? 'danger' : 'good';
+  const showOnboarding =
+    appMetadata?.dataMode === 'demo' && !appMetadata?.onboardingCompletedAt;
 
   return (
     <div className="space-y-6">
@@ -101,6 +109,86 @@ export default function Dashboard({
           Cash-flow projection
         </h2>
       </div>
+
+      {showOnboarding ? (
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+                Welcome
+              </p>
+              <h3 className="mt-1 text-xl font-bold text-slate-950">
+                Start with demo data, empty setup, or a backup
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                This is a local-first budget planner. The public app starts with
+                fictional demo data, and anything you change is stored locally in
+                this browser/device. Export backups regularly to protect your
+                planner data.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onCompleteOnboarding}
+                className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Explore Demo Data
+              </button>
+              <button
+                type="button"
+                onClick={onStartEmpty}
+                className="min-h-11 rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"
+              >
+                Start Empty
+              </button>
+              <button
+                type="button"
+                onClick={onImportBackup}
+                className="min-h-11 rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"
+              >
+                Import Backup
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isEmptyApp ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
+          <h3 className="text-lg font-bold text-slate-950">
+            Your app is empty
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+            Start by adding an account, scheduled income, scheduled expenses,
+            and savings buckets. You can also open Help for a quick setup guide.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => onAlertAction?.('accounts')}
+              className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Add Account
+            </button>
+            <button
+              type="button"
+              onClick={() => onAlertAction?.('scheduled-items')}
+              className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              Add Scheduled Item
+            </button>
+            <button
+              type="button"
+              onClick={onOpenHelp}
+              className="min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              Go to Help
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard

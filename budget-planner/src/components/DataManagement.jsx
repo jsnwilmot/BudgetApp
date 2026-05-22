@@ -355,7 +355,8 @@ export default function DataManagement({
   onRepairLocalData,
   onResetLocalData,
   onResetToDemoData,
-  onResetToEmptyState
+  onResetToEmptyState,
+  onShowHelp
 }) {
   const fileInputRef = useRef(null);
 
@@ -722,6 +723,15 @@ export default function DataManagement({
             restore them with Reset to Demo Data, or clear them with Factory
             Reset to Empty App.
           </p>
+          {typeof onShowHelp === "function" ? (
+            <button
+              type="button"
+              onClick={onShowHelp}
+              className="mt-3 min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              Open Help Guide
+            </button>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-slate-200 p-4">
