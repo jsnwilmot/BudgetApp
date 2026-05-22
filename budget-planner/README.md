@@ -96,6 +96,25 @@ The production build currently emits a Vite large chunk warning due to
 chart/report bundle size. This does not block the local MVP. Bundle optimization
 is planned for a later performance phase.
 
+## GitHub Pages Deployment
+
+Live URL: https://jsnwilmot.github.io/BudgetApp/
+
+- Source folder: `budget-planner`
+- Build output: `budget-planner/dist`
+- Deployment: GitHub Actions
+- Workflow: `.github/workflows/deploy-pages.yml`
+
+The Vite base path is configured as `/BudgetApp/` so production assets, the PWA
+manifest, service worker, and icons load correctly from GitHub Pages.
+
+Local deployment check:
+
+```powershell
+npm.cmd run build
+npm.cmd run preview
+```
+
 ## Browser Support
 
 The app is intended for current desktop and mobile browsers with IndexedDB and

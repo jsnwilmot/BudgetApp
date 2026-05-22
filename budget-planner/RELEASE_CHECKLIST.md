@@ -79,3 +79,15 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Production preview loads.
 - [ ] All nav pages open in production preview.
 - [ ] No console errors appear in production preview.
+
+## GitHub Pages Deployment
+
+- [ ] Push to `main`.
+- [ ] Confirm GitHub Actions workflow passes.
+- [ ] Confirm Pages deployment completes.
+- [ ] Open https://jsnwilmot.github.io/BudgetApp/.
+- [ ] Confirm app shell loads.
+- [ ] Confirm PWA manifest loads.
+- [ ] Confirm service worker registers.
+- [ ] Confirm Settings shows app version.
+- [ ] Confirm backup/export works.
