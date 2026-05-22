@@ -7,12 +7,14 @@ Run this before tagging or sharing a local MVP build.
 - [ ] `npm.cmd run lint`
 - [ ] `npm.cmd run build`
 - [ ] `git diff --check`
+- [ ] `npm.cmd run preview`
 
 The Vite large chunk warning may appear during build and does not block the local MVP.
 
 ## Browser Smoke Test
 
 - [ ] App loads in the browser.
+- [ ] Production preview loads.
 - [ ] Dashboard opens.
 - [ ] Pay Period Planner opens.
 - [ ] Transactions opens.
@@ -24,6 +26,18 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Reports opens.
 - [ ] Settings opens.
 - [ ] No console errors appear.
+- [ ] Manifest loads.
+- [ ] Service worker registers.
+
+## PWA Checks
+
+- [ ] Browser shows install option where supported.
+- [ ] Installed app opens in standalone mode.
+- [ ] App name appears as Budget Planner.
+- [ ] App icon appears correctly.
+- [ ] Refresh/update prompt appears after a new service worker is available.
+- [ ] Local data remains after app close and reopen.
+- [ ] App shell loads after first visit when offline, where supported.
 
 ## Mobile Check
 
@@ -56,6 +70,8 @@ The Vite large chunk warning may appear during build and does not block the loca
 - [ ] Transactions CSV export downloads.
 - [ ] Report CSV export downloads.
 - [ ] Report print opens browser print.
+- [ ] Backup/export still works in installed PWA.
+- [ ] Import backup still works in installed PWA.
 
 ## Production Preview
 

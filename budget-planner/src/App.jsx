@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import AppShell from './components/AppShell';
 import CellEditor from './components/CellEditor';
 import {
@@ -120,6 +121,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
   const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW();
 
   useEffect(() => {
     async function loadSavedData() {
@@ -1023,6 +1028,34 @@ export default function App() {
         onSave={handleSaveCell}
         onClear={handleClearCell}
       />
+
+      {needRefresh ? (
+        <div className="fixed bottom-4 left-4 right-4 z-50 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:left-auto sm:max-w-sm">
+          <p className="text-sm font-semibold text-slate-950">
+            A new version is available.
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Refresh to update Budget Planner. Your local data stays in this
+            browser profile.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => updateServiceWorker(true)}
+              className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Refresh App
+            </button>
+            <button
+              type="button"
+              onClick={() => setNeedRefresh(false)}
+              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

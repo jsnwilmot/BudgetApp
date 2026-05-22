@@ -2,9 +2,17 @@
 
 Budget Planner is local-first. Your data is stored in your browser through IndexedDB and local storage.
 
+The current PWA uses browser-managed storage on the device. Clearing browser or
+site data can delete app data, even when the app is installed. Export backups
+regularly.
+
 ## Where Data Is Stored
 
 Data is stored locally in the browser profile used to open the app. Data in Chrome is separate from data in Edge, Firefox, Safari, another device, or a private browsing session.
+
+Installed PWA data is still tied to the browser engine/profile that installed
+it. Uninstalling the PWA or clearing site data may remove access to the local
+data.
 
 ## Backup
 
@@ -32,6 +40,7 @@ Reset is destructive. Export a backup first if you want to preserve your current
 
 - Before clearing browser data.
 - Before switching browsers or devices.
+- Before uninstalling the PWA.
 - Before importing a backup.
 - Before resetting local data.
 - Before a major app update or deployment change.
@@ -47,3 +56,9 @@ Reset is destructive. Export a backup first if you want to preserve your current
 6. Review the preview counts and confirm the import.
 
 If browser data is cleared and no backup exists, the app cannot recover the removed local data.
+
+## Future Desktop Storage Direction
+
+A future desktop version is planned to use app-managed SQLite storage for
+stronger long-term local data safety. Phase 2A does not migrate data to SQLite.
+For now, backups remain the safest way to protect long-term finance data.

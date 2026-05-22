@@ -8,8 +8,9 @@ Data version: `1`
 
 ## Current Status
 
-This is a clean local MVP release. It runs in the browser, stores user data
-locally, and does not require login, cloud sync, bank connections, or a server.
+This is a clean local MVP release. It runs in the browser, can be installed as
+a PWA in supported browsers, stores user data locally, and does not require
+login, cloud sync, bank connections, or a server.
 
 ## Features
 
@@ -25,6 +26,8 @@ locally, and does not require login, cloud sync, bank connections, or a server.
 - Settings with editable planner settings and data management tools.
 - Backup, restore, repair, reset, and CSV export workflows.
 - Mobile-friendly navigation and responsive page layouts.
+- PWA install support with app icons, manifest, service worker caching, and a
+  simple update prompt.
 
 ## Local-First Data
 
@@ -32,7 +35,9 @@ User data is stored locally in the browser through IndexedDB and local storage.
 Export backups before clearing browser data, switching browsers, switching
 devices, or updating/deploying major versions.
 
-There is no cloud account, server database, or automatic sync in this MVP.
+There is no cloud account, server database, or automatic sync in this MVP. The
+planned long-term direction is a desktop app with app-managed SQLite storage for
+stronger local data ownership.
 
 ## Backup And Restore
 
@@ -58,6 +63,26 @@ npm.cmd run dev
 ```
 
 Then open the local URL shown by Vite, usually `http://localhost:5173/`.
+
+## Install As A PWA
+
+Desktop browser:
+
+1. Open the app URL.
+2. Look for the install icon in the address bar.
+3. Install Budget Planner.
+4. Open it from the desktop, dock, start menu, or app launcher.
+
+Mobile browser:
+
+1. Open the app URL.
+2. Open the browser menu.
+3. Choose `Add to Home Screen` or `Install App`.
+4. Open Budget Planner from the home screen.
+
+Exact wording depends on browser and device. PWA data is still browser-managed,
+so export backups before uninstalling the PWA, clearing site data, switching
+browsers, or switching devices.
 
 ## Build
 
@@ -234,16 +259,35 @@ Known limitation:
 - App is local-first only.
 - No cloud sync or account login is included.
 - User data must be backed up manually.
-- PWA install support is not included yet.
+- PWA install support depends on browser and device support.
 - Native desktop/mobile packaging is not included yet.
 - Vite may show a large chunk warning during build.
+
+### Phase 2A: PWA Install Support
+
+Completed:
+
+- Added PWA manifest.
+- Added app icons.
+- Added service worker caching.
+- Added install support for supported browsers.
+- Added PWA install and testing documentation.
+- Updated data safety guidance for browser-managed local data.
+
+Known limitation:
+
+- PWA data is still browser-managed.
+- Clearing browser or site data can remove user data.
+- Users must export backups regularly.
+- Desktop SQLite storage is planned for a later phase.
+- Native desktop packaging is not included yet.
 
 ## Known Limitations
 
 - Data is local-only and does not sync across devices.
 - No account login, cloud backup, or bank connections are included.
 - User data must be backed up manually.
-- PWA install support is not included yet.
+- PWA install support depends on browser and device support.
 - Native desktop/mobile packaging is not included yet.
 - Advanced forecasting, AI categorization, receipt scanning, and PDF generation
   are not included.
@@ -257,7 +301,7 @@ regularly and before any browser cleanup or deployment change.
 
 ## Future Roadmap
 
-- PWA install support.
+- Desktop SQLite storage.
 - Bundle/performance optimization.
 - More automated test coverage.
 - Direct standalone transaction entry.
