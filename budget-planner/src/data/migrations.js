@@ -11,6 +11,8 @@ import {
 export const APP_DATA_VERSION = 1;
 export const APP_VERSION = '1.0.0-local-mvp';
 export const BACKUP_APP_NAME = 'BudgetApp';
+export const BACKUP_REMINDER_DAYS = 30;
+export const APP_METADATA_ID = 'app-metadata';
 
 const CATEGORY_TYPES = [
   'income',
@@ -70,6 +72,15 @@ export function safeBoolean(value, fallback = false) {
 
 export function createTimestamp() {
   return new Date().toISOString();
+}
+
+export function safeTimestampString(value, fallback = '') {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return fallback;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
 }
 
 export function safeDateString(value, fallback = '') {
@@ -137,6 +148,57 @@ export function normalizeAppSettingsRecord(settings = {}) {
     monthlyBillAssignmentRule: normalizeSettingRule(
       safeSettings.monthlyBillAssignmentRule
     ),
+  };
+}
+
+export function normalizeAppMetadataRecord(metadata = {}) {
+  const timestamp = createTimestamp();
+  const safeMetadata = isPlainObject(metadata) ? metadata : {};
+
+  return {
+    ...safeMetadata,
+    id: safeString(safeMetadata.id, APP_METADATA_ID),
+    lastBackupAt: safeTimestampString(safeMetadata.lastBackupAt, ''),
+    createdAt: safeTimestampString(safeMetadata.createdAt, timestamp),
+    updatedAt: safeTimestampString(safeMetadata.updatedAt, ''),
+  };
+}
+
+export function getBackupReminderStatus(lastBackupAt, currentDate = new Date()) {
+  const safeLastBackupAt = safeTimestampString(lastBackupAt, '');
+
+  if (!safeLastBackupAt) {
+    return {
+      status: 'none',
+      label: 'No backup yet',
+      lastBackupAt: '',
+      ageDays: null,
+      isReminderDue: true,
+      severity: 'info',
+    };
+  }
+
+  const ageMs = currentDate.getTime() - new Date(safeLastBackupAt).getTime();
+  const ageDays = Math.max(0, Math.floor(ageMs / (24 * 60 * 60 * 1000)));
+
+  if (ageDays > BACKUP_REMINDER_DAYS) {
+    return {
+      status: 'recommended',
+      label: 'Backup recommended',
+      lastBackupAt: safeLastBackupAt,
+      ageDays,
+      isReminderDue: true,
+      severity: 'warning',
+    };
+  }
+
+  return {
+    status: 'current',
+    label: 'Backup current',
+    lastBackupAt: safeLastBackupAt,
+    ageDays,
+    isReminderDue: false,
+    severity: 'info',
   };
 }
 
@@ -337,6 +399,7 @@ export function migrateFromVersion0(data = {}) {
 
   return {
     ...safeData,
+    appMetadata: safeData.appMetadata || {},
     settings: safeData.settings || safeData.appSettings || defaultAppSettings,
     budgetTargets: safeArray(safeData.budgetTargets),
     categories: safeArray(safeData.categories).length
@@ -397,6 +460,7 @@ export function getSafeAppData(data = {}) {
   return {
     ...migratedData,
     appDataVersion: APP_DATA_VERSION,
+    appMetadata: normalizeAppMetadataRecord(migratedData.appMetadata),
     settings: normalizeAppSettingsRecord(migratedData.settings),
     budgetTargets: normalizeRecords(
       migratedData.budgetTargets,
@@ -505,10 +569,15 @@ export function getDataHealthSummary(data = {}) {
   const safeData = getSafeAppData(data);
   const summary = getBackupSectionSummary(safeData);
   const warnings = getReferenceWarnings(safeData);
+  const backupStatus = getBackupReminderStatus(
+    safeData.appMetadata?.lastBackupAt
+  );
 
   return {
     appVersion: APP_VERSION,
     appDataVersion: APP_DATA_VERSION,
+    lastBackupAt: backupStatus.lastBackupAt,
+    backupStatus,
     counts: summary,
     warningsCount: warnings.length,
   };

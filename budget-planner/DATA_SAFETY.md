@@ -6,6 +6,10 @@ The current PWA uses browser-managed storage on the device. Clearing browser or
 site data can delete app data, even when the app is installed. Export backups
 regularly.
 
+Budget Planner now tracks the last successful backup export in local app
+metadata. If no backup exists, or the last backup is older than 30 days, the app
+shows an in-app reminder.
+
 ## Where Data Is Stored
 
 Data is stored locally in the browser profile used to open the app. Data in Chrome is separate from data in Edge, Firefox, Safari, another device, or a private browsing session.
@@ -18,7 +22,17 @@ data.
 
 `Export Backup` downloads a JSON file containing your local planner data, including settings, planner entries, accounts, scheduled items, categories, budget targets, savings buckets, and adjustments.
 
-Backups include app metadata such as app version, backup version, data version, creation date, and source.
+Backups include app metadata such as app version, backup version, data version,
+creation date, source, and the last successful backup export timestamp.
+
+Recommended backup frequency:
+
+- At least monthly.
+- Before major app updates or deployments.
+- Before clearing browser or site data.
+- Before switching browsers or devices.
+- Before uninstalling the PWA.
+- Before importing another backup or resetting local data.
 
 ## Restore
 
@@ -31,6 +45,8 @@ Export a fresh backup before importing another backup if you might need to undo 
 `Reset Local Data` deletes the current local data and restores safe defaults. It requires typing `DELETE`.
 
 Reset is destructive. Export a backup first if you want to preserve your current data.
+Reset also clears the locally stored last-backup timestamp because it resets the
+local app data for this browser/device.
 
 ## Repair Local Data
 
@@ -60,5 +76,5 @@ If browser data is cleared and no backup exists, the app cannot recover the remo
 ## Future Desktop Storage Direction
 
 A future desktop version is planned to use app-managed SQLite storage for
-stronger long-term local data safety. Phase 2A does not migrate data to SQLite.
+stronger long-term local data safety. Phase 2B does not migrate data to SQLite.
 For now, backups remain the safest way to protect long-term finance data.

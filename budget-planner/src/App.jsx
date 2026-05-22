@@ -19,6 +19,7 @@ import {
   deletePlannerEntry,
   deleteScheduledItem,
   deleteSavingsBucketAdjustment,
+  getAppMetadata,
   getAppSettings,
   getAllAccounts,
   getAllBudgetTargets,
@@ -29,6 +30,7 @@ import {
   getAllSavingsBuckets,
   getAllScheduledItems,
   normalizeAppSettings,
+  normalizeAppMetadata,
   replaceAccounts,
   replaceBudgetTargets,
   replaceCategories,
@@ -43,6 +45,8 @@ import {
   resetCategoriesToDefaults,
   saveAccount,
   saveAppSettings,
+  saveAppMetadata,
+  saveLastBackupAt,
   saveBudgetTarget,
   saveManualAdjustment,
   saveCategory,
@@ -117,6 +121,9 @@ export default function App() {
   );
   const [savingsBuckets, setSavingsBuckets] = useState(seedSavingsBuckets);
   const [savingsBucketAdjustments, setSavingsBucketAdjustments] = useState([]);
+  const [appMetadata, setAppMetadata] = useState(() =>
+    normalizeAppMetadata({})
+  );
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
@@ -139,6 +146,7 @@ export default function App() {
           savedManualAdjustments,
           savedSavingsBuckets,
           savedSavingsBucketAdjustments,
+          savedAppMetadata,
         ] = await Promise.all([
           getAppSettings(),
           getAllBudgetTargets(),
@@ -149,6 +157,7 @@ export default function App() {
           getAllManualAdjustments(),
           getAllSavingsBuckets(),
           getAllSavingsBucketAdjustments(),
+          getAppMetadata(),
         ]);
 
         setSettings(savedSettings);
@@ -214,6 +223,7 @@ export default function App() {
 
         setManualAdjustments(savedManualAdjustments);
         setSavingsBucketAdjustments(savedSavingsBucketAdjustments);
+        setAppMetadata(savedAppMetadata);
       } catch (error) {
         console.error(error);
         setStatusMessage('Could not load saved planner data.');
@@ -256,6 +266,7 @@ export default function App() {
       manualAdjustments,
       savingsBuckets,
       savingsBucketAdjustments,
+      appMetadata,
       planner: {
         entries: plannerEntries,
         payPeriods: plannerData.payPeriods,
@@ -277,6 +288,7 @@ export default function App() {
       settings,
       budgetTargets,
       categories,
+      appMetadata,
     ]
   );
 
@@ -324,6 +336,7 @@ export default function App() {
         savingsBuckets,
         savingsBucketAdjustments,
         settings,
+        appMetadata,
       }),
     [
       accounts,
@@ -336,6 +349,7 @@ export default function App() {
       savingsBuckets,
       scheduledItems,
       settings,
+      appMetadata,
     ]
   );
 
@@ -785,8 +799,15 @@ export default function App() {
     return defaultSettings;
   }
 
+  async function handleBackupExported(timestamp) {
+    const savedMetadata = await saveLastBackupAt(timestamp);
+    setAppMetadata(savedMetadata);
+    return savedMetadata;
+  }
+
   async function handleImportData(importedData) {
     const safeImportedData = getSafeAppData(importedData);
+    const importedAppMetadata = safeImportedData.appMetadata;
     const importedSettings = normalizeAppSettings(safeImportedData.settings);
     const importedPlannerEntries = safeImportedData.plannerEntries;
     const importedCategories = safeImportedData.categories;
@@ -799,6 +820,7 @@ export default function App() {
       safeImportedData.savingsBucketAdjustments;
 
     const [
+      savedImportedAppMetadata,
       ,
       savedImportedBudgetTargets,
       savedImportedCategories,
@@ -806,6 +828,7 @@ export default function App() {
       savedImportedScheduledItems,
     ] =
       await Promise.all([
+        saveAppMetadata(importedAppMetadata),
         saveAppSettings(importedSettings),
         replaceBudgetTargets(importedBudgetTargets),
         replaceCategories(importedCategories),
@@ -820,6 +843,7 @@ export default function App() {
     setSettings(importedSettings);
     setBudgetTargets(savedImportedBudgetTargets);
     setCategories(savedImportedCategories);
+    setAppMetadata(savedImportedAppMetadata);
     setPlannerEntries(importedPlannerEntries);
     setScheduledItems(savedImportedScheduledItems);
     setAccounts(importedAccounts);
@@ -843,6 +867,7 @@ export default function App() {
       repairedData.savingsBuckets.filter((bucket) => !bucket.deletedAt)
     );
     setSavingsBucketAdjustments(repairedData.savingsBucketAdjustments);
+    setAppMetadata(repairedData.appMetadata);
     setStatusMessage('Local data repaired successfully.');
 
     return repairedData;
@@ -859,6 +884,7 @@ export default function App() {
     setManualAdjustments(seedManualAdjustments);
     setSavingsBuckets(seedSavingsBuckets);
     setSavingsBucketAdjustments([]);
+    setAppMetadata(normalizeAppMetadata({}));
     setDismissedAlertIds([]);
     setStatusMessage('Local data reset successfully.');
   }
@@ -1014,6 +1040,7 @@ export default function App() {
             onSaveSettings={handleSaveSettings}
             onResetSettings={handleResetSettings}
             onImportData={handleImportData}
+            onBackupExported={handleBackupExported}
             onRepairLocalData={handleRepairLocalData}
             onResetLocalData={handleResetLocalData}
           />

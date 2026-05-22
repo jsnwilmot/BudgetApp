@@ -28,6 +28,7 @@ const POSSIBLE_STORAGE_KEYS = [
 const defaultAppState = {
   appVersion: getCurrentAppVersion(),
   appDataVersion: getCurrentAppDataVersion(),
+  appMetadata: {},
   settings: appSettings,
   budgetTargets,
   categories,
@@ -101,6 +102,17 @@ function saveStoredAppData(data) {
 function getDatedFileName(prefix, extension) {
   const date = new Date().toISOString().slice(0, 10);
   return `${prefix}-${date}.${extension}`;
+}
+
+function formatBackupDate(timestamp) {
+  if (!timestamp) {
+    return "No backup exported yet.";
+  }
+
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime())
+    ? "No backup exported yet."
+    : date.toLocaleString();
 }
 
 function getCountRows(summary = {}) {
@@ -332,13 +344,13 @@ function buildSavingsCsvRows(savingsBuckets, transfers) {
 export default function DataManagement({
   appData,
   onDataReload,
+  onBackupExported,
   onImportData,
   onRepairLocalData,
   onResetLocalData
 }) {
   const fileInputRef = useRef(null);
 
-  const [lastBackupTimestamp, setLastBackupTimestamp] = useState("");
   const [pendingImport, setPendingImport] = useState(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
@@ -380,7 +392,7 @@ export default function DataManagement({
     return getStoredAppData();
   }
 
-  function handleExportBackup() {
+  async function handleExportBackup() {
     clearMessages();
 
     const { storageKey, data } = getCurrentAppData();
@@ -395,8 +407,17 @@ export default function DataManagement({
       mimeType: "application/json;charset=utf-8"
     });
 
-    setLastBackupTimestamp(backup.metadata.createdAt);
-    setSuccessMessage("Backup exported successfully.");
+    try {
+      if (typeof onBackupExported === "function") {
+        await onBackupExported(backup.metadata.createdAt);
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Backup downloaded, but the backup reminder could not be updated.");
+      return;
+    }
+
+    setSuccessMessage("Backup exported successfully. Keep this file somewhere safe.");
   }
 
   function handleChooseImportFile() {
@@ -639,6 +660,22 @@ export default function DataManagement({
       )}
 
       <div className="grid gap-5">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h4 className="text-lg font-semibold text-slate-950">
+            Local data safety
+          </h4>
+          <p className="mt-2 text-sm text-slate-700">
+            Your data is stored locally in this browser on this device. Clearing
+            browser data, clearing site data, switching browsers, switching
+            devices, or uninstalling the PWA can remove your budget data. Export
+            backups regularly and keep them somewhere safe.
+          </p>
+          <p className="mt-2 text-sm text-slate-700">
+            A future desktop version is planned with app-managed local database
+            storage for stronger long-term data safety.
+          </p>
+        </div>
+
         <div className="rounded-xl border border-slate-200 p-4">
           <h4 className="text-lg font-semibold text-slate-950">
             Data health
@@ -674,6 +711,24 @@ export default function DataManagement({
                 {dataHealth.warningsCount}
               </p>
             </div>
+
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Last backup
+              </p>
+              <p className="mt-1 text-base font-bold text-slate-950">
+                {formatBackupDate(dataHealth.lastBackupAt)}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Backup status
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {dataHealth.backupStatus?.label || "No backup yet"}
+              </p>
+            </div>
           </div>
 
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -688,12 +743,12 @@ export default function DataManagement({
             ))}
           </dl>
 
-          {lastBackupTimestamp && (
-            <p className="mt-3 text-sm text-slate-500">
-              Last backup exported:{" "}
-              {new Date(lastBackupTimestamp).toLocaleString()}
-            </p>
-          )}
+          {dataHealth.backupStatus?.ageDays !== null &&
+            dataHealth.backupStatus?.ageDays !== undefined && (
+              <p className="mt-3 text-sm text-slate-500">
+                Last backup age: {dataHealth.backupStatus.ageDays} days.
+              </p>
+            )}
         </div>
 
         <div className="rounded-xl border border-slate-200 p-4">
@@ -771,8 +826,9 @@ export default function DataManagement({
           {showImportConfirm && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-white p-4">
               <p className="text-sm font-medium text-slate-800">
-                Importing this backup will replace your current local data. This
-                cannot be undone unless you exported a backup first.
+                Importing this backup will replace your current local data.
+                Export a backup first if you want to keep your current data. The
+                app will reload after import.
               </p>
 
               {pendingImport?.summary ? (
@@ -825,8 +881,10 @@ export default function DataManagement({
               Reset Local Data
             </h5>
               <p className="mt-1 text-sm text-slate-600">
-              Type DELETE to confirm. Export a backup first if you may need the
-              current local data again.
+              This will delete local planner data, accounts, scheduled items,
+              budgets, categories, savings buckets, reports data, and settings
+              from this browser/device. This cannot be undone unless you have a
+              backup. Type DELETE to confirm.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">

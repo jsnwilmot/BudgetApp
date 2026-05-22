@@ -51,11 +51,19 @@ The Vite large chunk warning may appear during build and does not block the loca
 
 - [ ] Export Backup downloads JSON.
 - [ ] Backup includes `appVersion` and `appDataVersion`.
+- [ ] Backup export updates the Last backup timestamp.
+- [ ] Data Health shows Backup status.
+- [ ] Dashboard shows backup reminder when no backup exists.
+- [ ] Dashboard shows backup reminder when last backup is older than 30 days.
+- [ ] Dashboard does not show backup reminder when backup is current.
 - [ ] Import Backup shows preview counts.
+- [ ] Import warning says current local data will be replaced.
 - [ ] Valid backup import works.
 - [ ] Newer unsupported app data version is rejected.
 - [ ] Repair Local Data completes.
+- [ ] Repair Local Data preserves a valid Last backup timestamp.
 - [ ] Reset Local Data requires `DELETE`.
+- [ ] Reset warning explains the browser/device data loss risk.
 
 ## Core Workflows
 

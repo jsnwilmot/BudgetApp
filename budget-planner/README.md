@@ -25,6 +25,7 @@ login, cloud sync, bank connections, or a server.
 - Reports with filters, charts, trends, print view, and report CSV export.
 - Settings with editable planner settings and data management tools.
 - Backup, restore, repair, reset, and CSV export workflows.
+- Backup reminder status and data safety guidance for browser-managed storage.
 - Mobile-friendly navigation and responsive page layouts.
 - PWA install support with app icons, manifest, service worker caching, and a
   simple update prompt.
@@ -46,6 +47,8 @@ Use `Settings > Data Management`.
 - `Export Backup` downloads a local JSON backup file with app metadata, app
   version, data version, settings, planner entries, accounts, scheduled items,
   categories, budgets, savings buckets, and adjustments.
+- The app records the last successful backup export and recommends a new backup
+  if no backup exists or the last one is older than 30 days.
 - `Import Backup` previews the backup counts, then replaces current local data
   after confirmation.
 - `Repair Local Data` normalizes records and fills safe missing fields without
@@ -301,11 +304,30 @@ Known limitation:
 - Desktop SQLite storage is planned for a later phase.
 - Native desktop packaging is not included yet.
 
+### Phase 2B: Backup Reminders And Data Safety Polish
+
+Completed:
+
+- Added local last-backup tracking.
+- Added backup status to Data Management.
+- Added Dashboard backup reminder alerts.
+- Added clearer local browser data safety messaging.
+- Improved backup export, import, and reset guidance.
+- Updated data safety and release documentation.
+
+Known limitation:
+
+- Backup reminders are in-app only.
+- PWA data is still browser-managed.
+- Users must keep backup files somewhere safe.
+- Desktop SQLite storage is planned for a later phase.
+
 ## Known Limitations
 
 - Data is local-only and does not sync across devices.
 - No account login, cloud backup, or bank connections are included.
 - User data must be backed up manually.
+- Backup reminders are local to the browser/device.
 - PWA install support depends on browser and device support.
 - Native desktop/mobile packaging is not included yet.
 - Advanced forecasting, AI categorization, receipt scanning, and PDF generation

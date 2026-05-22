@@ -10,17 +10,24 @@ import {
 const BACKUP_VERSION = 1;
 
 export function createBackupSnapshot(appData) {
+  const createdAt = new Date().toISOString();
+
   return {
     metadata: {
       appName: BACKUP_APP_NAME,
       appVersion: getCurrentAppVersion(),
       backupVersion: BACKUP_VERSION,
       appDataVersion: getCurrentAppDataVersion(),
-      createdAt: new Date().toISOString(),
+      createdAt,
       source: "local"
     },
     data: {
       ...appData,
+      appMetadata: {
+        ...(appData?.appMetadata || {}),
+        lastBackupAt: createdAt,
+        updatedAt: createdAt
+      },
       appVersion: getCurrentAppVersion(),
       appDataVersion: getCurrentAppDataVersion()
     }

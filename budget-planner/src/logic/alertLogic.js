@@ -1,4 +1,5 @@
 import { addDays, formatShortDate, parseLocalDate } from './dateLogic';
+import { getBackupReminderStatus } from '../data/migrations';
 import {
   getProjectionType,
   getScheduledItemOccurrences,
@@ -395,6 +396,32 @@ export function getDataWarningAlerts({
   return alerts;
 }
 
+export function getBackupReminderAlerts(appMetadata = {}, currentDate = new Date()) {
+  const backupStatus = getBackupReminderStatus(
+    appMetadata?.lastBackupAt,
+    currentDate
+  );
+
+  if (!backupStatus.isReminderDue) {
+    return [];
+  }
+
+  return [
+    {
+      id: `backup-reminder-${backupStatus.status}`,
+      type: 'backup-reminder',
+      severity: backupStatus.severity,
+      title: 'Backup recommended',
+      message:
+        'Your data is stored locally on this browser and device. Export a backup regularly to protect your budget data.',
+      source: 'settings',
+      sourceId: null,
+      actionLabel: 'Go to Settings',
+      actionPage: 'settings',
+    },
+  ];
+}
+
 export function getAlertCounts(alerts = []) {
   return alerts.reduce(
     (counts, alert) => {
@@ -446,9 +473,11 @@ export function generateAlerts({
   savingsBuckets = [],
   savingsBucketAdjustments = [],
   settings = {},
+  appMetadata = {},
   currentDate = new Date(),
 } = {}) {
   const alerts = [
+    ...getBackupReminderAlerts(appMetadata, currentDate),
     ...getLowBalanceAlerts({ plannerData, settings }),
     ...getBudgetAlerts(budgetUsageRows, settings),
     ...getUpcomingBillAlerts({ scheduledItems, settings, currentDate }),

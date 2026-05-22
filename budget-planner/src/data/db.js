@@ -6,8 +6,10 @@ import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
 import {
   APP_DATA_VERSION,
+  APP_METADATA_ID,
   getSafeAppData,
   normalizeAccountRecord,
+  normalizeAppMetadataRecord,
   normalizeAppSettingsRecord,
   normalizeCategoryRecord,
   normalizeManualAdjustmentRecord,
@@ -18,10 +20,11 @@ import {
 } from './migrations';
 
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 const SETTINGS_ID = 'app-settings';
 
 const STORES = {
+  appMetadata: 'appMetadata',
   appSettings: 'appSettings',
   budgetTargets: 'budgetTargets',
   categories: 'categories',
@@ -51,6 +54,12 @@ function openDatabase() {
       if (!db.objectStoreNames.contains(STORES.plannerEntries)) {
         db.createObjectStore(STORES.plannerEntries, {
           keyPath: 'entryKey',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.appMetadata)) {
+        db.createObjectStore(STORES.appMetadata, {
+          keyPath: 'id',
         });
       }
 
@@ -157,6 +166,10 @@ export function normalizeAppSettings(settings = {}) {
   return normalizeAppSettingsRecord(settings);
 }
 
+export function normalizeAppMetadata(metadata = {}) {
+  return normalizeAppMetadataRecord(metadata);
+}
+
 async function clearStore(storeName) {
   const db = await openDatabase();
 
@@ -261,6 +274,64 @@ export async function resetAppSettings() {
   return saveAppSettings(defaultAppSettings);
 }
 
+export async function getAppMetadata() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.appMetadata, 'readonly');
+    const store = transaction.objectStore(STORES.appMetadata);
+    const request = store.get(APP_METADATA_ID);
+
+    request.onerror = () => {
+      reject(new Error('Failed to load app metadata.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(normalizeAppMetadata(request.result || {}));
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveAppMetadata(metadata = {}) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.appMetadata, 'readwrite');
+    const store = transaction.objectStore(STORES.appMetadata);
+    const record = normalizeAppMetadata({
+      ...metadata,
+      id: APP_METADATA_ID,
+      updatedAt: new Date().toISOString(),
+    });
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save app metadata.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveLastBackupAt(lastBackupAt = new Date().toISOString()) {
+  const currentMetadata = await getAppMetadata();
+
+  return saveAppMetadata({
+    ...currentMetadata,
+    lastBackupAt,
+  });
+}
+
 export async function replacePlannerEntries(entries = {}) {
   const normalizedEntries = normalizePlannerEntriesRecord(entries);
   const records = Object.entries(normalizedEntries).map(([entryKey, entry]) => ({
@@ -325,6 +396,7 @@ export async function replaceSavingsBucketAdjustments(adjustments = []) {
 
 export async function clearAllSavedData() {
   await Promise.all([
+    clearStore(STORES.appMetadata),
     clearStore(STORES.plannerEntries),
     clearStore(STORES.budgetTargets),
     clearStore(STORES.categories),
@@ -962,6 +1034,7 @@ export async function repairLocalData() {
     manualAdjustments,
     savingsBuckets,
     savingsBucketAdjustments,
+    appMetadata,
   ] = await Promise.all([
     getAppSettings(),
     getAllBudgetTargets(),
@@ -972,6 +1045,7 @@ export async function repairLocalData() {
     getAllManualAdjustments(),
     getAllSavingsBuckets(),
     getAllSavingsBucketAdjustments(),
+    getAppMetadata(),
   ]);
 
   const repairedData = getSafeAppData({
@@ -985,6 +1059,7 @@ export async function repairLocalData() {
     manualAdjustments,
     savingsBuckets,
     savingsBucketAdjustments,
+    appMetadata,
   });
 
   const [
@@ -997,6 +1072,7 @@ export async function repairLocalData() {
     savedManualAdjustments,
     savedSavingsBuckets,
     savedSavingsBucketAdjustments,
+    savedAppMetadata,
   ] = await Promise.all([
     saveAppSettings(repairedData.settings),
     replaceBudgetTargets(repairedData.budgetTargets),
@@ -1007,6 +1083,7 @@ export async function repairLocalData() {
     replaceManualAdjustments(repairedData.manualAdjustments),
     replaceSavingsBuckets(repairedData.savingsBuckets),
     replaceSavingsBucketAdjustments(repairedData.savingsBucketAdjustments),
+    saveAppMetadata(repairedData.appMetadata),
   ]);
 
   return {
@@ -1020,5 +1097,6 @@ export async function repairLocalData() {
     manualAdjustments: savedManualAdjustments,
     savingsBuckets: savedSavingsBuckets,
     savingsBucketAdjustments: savedSavingsBucketAdjustments,
+    appMetadata: savedAppMetadata,
   };
 }

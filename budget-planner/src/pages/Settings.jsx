@@ -106,6 +106,7 @@ export default function Settings({
   appData,
   onSaveSettings,
   onResetSettings,
+  onBackupExported,
   onImportData,
   onRepairLocalData,
   onResetLocalData
@@ -356,6 +357,7 @@ export default function Settings({
 
       <DataManagement
         appData={appData}
+        onBackupExported={onBackupExported}
         onImportData={onImportData}
         onRepairLocalData={onRepairLocalData}
         onResetLocalData={onResetLocalData}
