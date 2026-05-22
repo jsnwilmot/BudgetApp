@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import AlertList from '../components/AlertList';
 import StatCard from '../components/StatCard';
 import { formatShortDate } from '../logic/dateLogic';
 import { getDashboardSummary } from '../logic/projectionLogic';
@@ -18,7 +19,14 @@ function createCurrencyFormatter(currency) {
   });
 }
 
-export default function Dashboard({ plannerData, settings }) {
+export default function Dashboard({
+  plannerData,
+  settings,
+  alerts = [],
+  alertCounts = { total: 0, warning: 0, danger: 0 },
+  onAlertAction,
+  onDismissAlert,
+}) {
   const summary = getDashboardSummary(plannerData);
   const currencyFormatter = createCurrencyFormatter(settings?.currency);
 
@@ -52,6 +60,37 @@ export default function Dashboard({ plannerData, settings }) {
           Cash-flow projection
         </h2>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Alerts"
+          value={alertCounts.total}
+          helper="Active in-app alerts."
+          tone={alertCounts.total > 0 ? 'blue' : 'good'}
+        />
+        <StatCard
+          label="Warnings"
+          value={alertCounts.warning}
+          helper="Items that need attention soon."
+          tone={alertCounts.warning > 0 ? 'warning' : 'default'}
+        />
+        <StatCard
+          label="Critical"
+          value={alertCounts.danger}
+          helper="Cash-flow or budget risks."
+          tone={alertCounts.danger > 0 ? 'danger' : 'default'}
+        />
+      </div>
+
+      <AlertList
+        title="Alerts and Warnings"
+        helper="Key budget, cash-flow, and setup risks from your local data."
+        alerts={alerts}
+        maxItems={5}
+        showEmpty
+        onAction={onAlertAction}
+        onDismiss={onDismissAlert}
+      />
 
       <div className="grid grid-cols-4 gap-4">
         <StatCard

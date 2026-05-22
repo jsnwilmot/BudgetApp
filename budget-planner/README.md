@@ -160,6 +160,25 @@ Known limitation:
 - Rollover is stored but full rollover math is not implemented yet.
 - Advanced budget alerts are not included yet.
 
+## Phase 1V: Alerts and Warnings
+
+Completed:
+
+- Added local in-app alert generation.
+- Added Dashboard alerts and warnings panel.
+- Added low balance alerts.
+- Added near-budget and over-budget alerts.
+- Added upcoming bill alerts.
+- Added missing setup alerts.
+- Added contextual page-level warnings where useful.
+- Preserved existing app behavior.
+
+Known limitation:
+
+- Alerts are in-app only.
+- Push notifications, email reminders, and browser notification permissions are not included yet.
+- Advanced custom alert thresholds are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

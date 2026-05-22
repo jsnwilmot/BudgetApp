@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Archive, Pencil, Plus, RotateCcw } from 'lucide-react';
+import AlertList from '../components/AlertList';
 import {
   calculateBudgetUsage,
   normalizeBudgetTarget,
@@ -278,6 +279,9 @@ export default function Budgets({
   savingsBucketAdjustments = [],
   savingsBuckets = [],
   accounts = [],
+  alerts = [],
+  onAlertAction,
+  onDismissAlert,
   onSaveBudgetTarget,
   onArchiveBudgetTarget,
   onResetBudgetTargets,
@@ -459,6 +463,15 @@ export default function Budgets({
           {errorMessage}
         </div>
       ) : null}
+
+      <AlertList
+        title="Budget Warnings"
+        helper="Budget targets that are near or over their monthly amount."
+        alerts={alerts}
+        maxItems={4}
+        onAction={onAlertAction}
+        onDismiss={onDismissAlert}
+      />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <label className="block max-w-xs">

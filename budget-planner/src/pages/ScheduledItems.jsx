@@ -8,6 +8,7 @@ import {
   PowerOff,
   Trash2,
 } from 'lucide-react';
+import AlertList from '../components/AlertList';
 import { formatCurrency } from '../logic/projectionLogic';
 import {
   getCategoryTypesForScheduledType,
@@ -502,6 +503,9 @@ export default function ScheduledItems({
   scheduledItems,
   categories = [],
   settings,
+  alerts = [],
+  onAlertAction,
+  onDismissAlert,
   onSaveScheduledItem,
   onDuplicateScheduledItem,
   onDeleteScheduledItem,
@@ -724,6 +728,15 @@ export default function ScheduledItems({
           {errorMessage}
         </div>
       ) : null}
+
+      <AlertList
+        title="Scheduled Item Warnings"
+        helper="Upcoming bills and scheduled item setup issues."
+        alerts={alerts}
+        maxItems={4}
+        onAction={onAlertAction}
+        onDismiss={onDismissAlert}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard

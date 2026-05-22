@@ -1,4 +1,5 @@
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
+import AlertList from '../components/AlertList';
 import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
 
 function getRowClass(type) {
@@ -103,6 +104,7 @@ export default function Planner({
   plannerData,
   plannerEntries,
   settings,
+  alerts = [],
   onCellClick,
 }) {
   const currency = settings?.currency || 'CAD';
@@ -123,6 +125,13 @@ export default function Planner({
           Click a planned amount to enter the actual value, add a note, mark it as validated, or add line items for misc rows.
         </p>
       </div>
+
+      <AlertList
+        title="Planner Warnings"
+        helper="Projected balances that may need attention."
+        alerts={alerts}
+        maxItems={3}
+      />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-auto">

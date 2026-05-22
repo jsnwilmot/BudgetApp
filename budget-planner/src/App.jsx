@@ -50,8 +50,11 @@ import {
   saveScheduledItem,
   validateAppSettings,
 } from './data/db';
+import { generateAlerts, getAlertCounts } from './logic/alertLogic';
+import { calculateBudgetUsage } from './logic/budgetLogic';
 import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
+import { buildTransactionsFromAppData } from './logic/transactionLogic';
 import Accounts from './pages/Accounts';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
@@ -105,6 +108,11 @@ const normalizedSeedScheduledItems = seedScheduledItems.map((item) =>
   normalizeScheduledItem(item)
 );
 
+function getCurrentMonthKey() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [settings, setSettings] = useState(appSettings);
@@ -123,6 +131,7 @@ export default function App() {
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
+  const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
 
   useEffect(() => {
     async function loadSavedData() {
@@ -275,6 +284,107 @@ export default function App() {
       categories,
     ]
   );
+
+  const alertTransactions = useMemo(
+    () =>
+      buildTransactionsFromAppData({
+        scheduledItems,
+        manualAdjustments,
+        savingsBucketAdjustments,
+        savingsBuckets,
+        accounts,
+        categories,
+      }),
+    [
+      accounts,
+      categories,
+      manualAdjustments,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      scheduledItems,
+    ]
+  );
+
+  const currentBudgetUsage = useMemo(
+    () =>
+      calculateBudgetUsage({
+        budgetTargets,
+        transactions: alertTransactions,
+        categories,
+        selectedMonth: getCurrentMonthKey(),
+      }),
+    [alertTransactions, budgetTargets, categories]
+  );
+
+  const activeAlerts = useMemo(
+    () =>
+      generateAlerts({
+        plannerData,
+        budgetUsageRows: currentBudgetUsage.rows,
+        scheduledItems,
+        accounts,
+        categories,
+        budgetTargets,
+        transactions: alertTransactions,
+        savingsBuckets,
+        savingsBucketAdjustments,
+        settings,
+      }),
+    [
+      accounts,
+      alertTransactions,
+      budgetTargets,
+      categories,
+      currentBudgetUsage.rows,
+      plannerData,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      scheduledItems,
+      settings,
+    ]
+  );
+
+  const visibleAlerts = useMemo(() => {
+    const dismissedIds = new Set(dismissedAlertIds);
+
+    return activeAlerts.filter((alert) => {
+      return alert.severity === 'danger' || !dismissedIds.has(alert.id);
+    });
+  }, [activeAlerts, dismissedAlertIds]);
+
+  const alertCounts = useMemo(
+    () => getAlertCounts(visibleAlerts),
+    [visibleAlerts]
+  );
+
+  const plannerAlerts = useMemo(
+    () => visibleAlerts.filter((alert) => alert.source === 'planner'),
+    [visibleAlerts]
+  );
+
+  const budgetAlerts = useMemo(
+    () => visibleAlerts.filter((alert) => alert.source === 'budgets'),
+    [visibleAlerts]
+  );
+
+  const scheduledItemAlerts = useMemo(
+    () => visibleAlerts.filter((alert) => alert.source === 'scheduled-items'),
+    [visibleAlerts]
+  );
+
+  function handleAlertAction(pageId) {
+    setCurrentPage(pageId);
+  }
+
+  function handleDismissAlert(alert) {
+    if (!alert || alert.severity === 'danger') {
+      return;
+    }
+
+    setDismissedAlertIds((currentIds) =>
+      currentIds.includes(alert.id) ? currentIds : [...currentIds, alert.id]
+    );
+  }
 
   async function handleSaveCell(entryKey, entry) {
     try {
@@ -761,6 +871,7 @@ export default function App() {
     setManualAdjustments(seedManualAdjustments);
     setSavingsBuckets(seedSavingsBuckets);
     setSavingsBucketAdjustments([]);
+    setDismissedAlertIds([]);
     setStatusMessage('Local data reset successfully.');
   }
 
@@ -789,7 +900,14 @@ export default function App() {
         ) : null}
 
         {currentPage === 'dashboard' ? (
-          <Dashboard plannerData={plannerData} settings={settings} />
+          <Dashboard
+            plannerData={plannerData}
+            settings={settings}
+            alerts={visibleAlerts}
+            alertCounts={alertCounts}
+            onAlertAction={handleAlertAction}
+            onDismissAlert={handleDismissAlert}
+          />
         ) : null}
 
         {currentPage === 'planner' ? (
@@ -797,6 +915,7 @@ export default function App() {
             plannerData={plannerData}
             plannerEntries={plannerEntries}
             settings={settings}
+            alerts={plannerAlerts}
             onCellClick={setSelectedCell}
           />
         ) : null}
@@ -806,6 +925,9 @@ export default function App() {
             scheduledItems={scheduledItems}
             categories={categories}
             settings={settings}
+            alerts={scheduledItemAlerts}
+            onAlertAction={handleAlertAction}
+            onDismissAlert={handleDismissAlert}
             onSaveScheduledItem={handleSaveScheduledItem}
             onDuplicateScheduledItem={handleDuplicateScheduledItem}
             onDeleteScheduledItem={handleDeleteScheduledItem}
@@ -861,6 +983,9 @@ export default function App() {
             savingsBucketAdjustments={savingsBucketAdjustments}
             savingsBuckets={savingsBuckets}
             accounts={accounts}
+            alerts={budgetAlerts}
+            onAlertAction={handleAlertAction}
+            onDismissAlert={handleDismissAlert}
             onSaveBudgetTarget={handleSaveBudgetTarget}
             onArchiveBudgetTarget={handleArchiveBudgetTarget}
             onResetBudgetTargets={handleResetBudgetTargets}
