@@ -5,10 +5,13 @@ import {
   findPreviousPayPeriod,
   formatDateKey,
   generatePayPeriods,
-  getMonthDate,
-  isSameBiweeklyCycle,
   parseLocalDate,
 } from './dateLogic';
+import {
+  getProjectionType,
+  getScheduledItemOccurrences,
+  normalizeScheduledItem,
+} from './scheduledItemLogic';
 
 export function formatCurrency(value, currency = 'CAD') {
   return new Intl.NumberFormat('en-CA', {
@@ -26,18 +29,6 @@ export function sumLineItems(lineItems = []) {
     const amount = Number(item.amount);
     return total + (Number.isNaN(amount) ? 0 : amount);
   }, 0);
-}
-
-function shouldPlaceBiweeklyItem(item, period, settings) {
-  if (!item.startDate) {
-    return false;
-  }
-
-  return isSameBiweeklyCycle(
-    item.startDate,
-    period.date,
-    settings.payFrequencyDays
-  );
 }
 
 function getMonthlyBillAssignmentRule(settings) {
@@ -97,52 +88,41 @@ function isSameCalendarMonth(leftDate, rightDate) {
   );
 }
 
-function buildMonthlyPlacements(item, payPeriods, settings) {
-  const placements = new Set();
-
-  if (payPeriods.length === 0) {
-    return placements;
+function findAssignedPayPeriod(item, payPeriods, occurrenceDate, settings) {
+  if (payPeriods.length === 0 || Number.isNaN(occurrenceDate.getTime())) {
+    return null;
   }
 
   const firstPeriodDate = parseLocalDate(payPeriods[0].date);
   const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
-  const assignmentRule = getMonthlyBillAssignmentRule(settings);
 
-  for (
-    let year = firstPeriodDate.getFullYear();
-    year <= lastPeriodDate.getFullYear();
-    year += 1
-  ) {
-    for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
-      const dueDate = getMonthDate(year, monthIndex, item.dueDay || 1);
-
-      if (dueDate < firstPeriodDate) {
-        // If a due date lands just before the first generated pay period,
-        // keep it visible by placing it in the first period instead of dropping it.
-        if (isSameCalendarMonth(dueDate, firstPeriodDate)) {
-          placements.add(payPeriods[0].date);
-        }
-
-        continue;
-      }
-
-      if (dueDate > lastPeriodDate) {
-        continue;
-      }
-
-      const assignedPeriod =
-        assignmentRule === 'same-pay-period'
-          ? findSamePayPeriod(payPeriods, dueDate)
-          : findPreviousPayPeriod(payPeriods, dueDate);
-      placements.add(assignedPeriod.date);
+  if (occurrenceDate < firstPeriodDate) {
+    if (item.frequency === 'monthly' && isSameCalendarMonth(occurrenceDate, firstPeriodDate)) {
+      return payPeriods[0];
     }
+
+    return null;
   }
 
-  return placements;
+  if (occurrenceDate > lastPeriodDate) {
+    return null;
+  }
+
+  if (item.frequency === 'monthly') {
+    return getMonthlyBillAssignmentRule(settings) === 'same-pay-period'
+      ? findSamePayPeriod(payPeriods, occurrenceDate)
+      : findPreviousPayPeriod(payPeriods, occurrenceDate);
+  }
+
+  if (item.frequency === 'yearly') {
+    return findPreviousPayPeriod(payPeriods, occurrenceDate);
+  }
+
+  return findSamePayPeriod(payPeriods, occurrenceDate);
 }
 
-function buildAnnualPlacements(item, payPeriods) {
-  const placements = new Set();
+function buildScheduledItemPlacements(item, payPeriods, settings) {
+  const placements = new Map();
 
   if (payPeriods.length === 0) {
     return placements;
@@ -150,34 +130,34 @@ function buildAnnualPlacements(item, payPeriods) {
 
   const firstPeriodDate = parseLocalDate(payPeriods[0].date);
   const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
+  const occurrenceRangeStart =
+    item.frequency === 'monthly'
+      ? new Date(firstPeriodDate.getFullYear(), firstPeriodDate.getMonth(), 1)
+      : firstPeriodDate;
+  const occurrences = getScheduledItemOccurrences(
+    item,
+    occurrenceRangeStart,
+    lastPeriodDate
+  );
 
-  for (
-    let year = firstPeriodDate.getFullYear();
-    year <= lastPeriodDate.getFullYear();
-    year += 1
-  ) {
-    const dueDate = getMonthDate(
-      year,
-      (item.dueMonth || 1) - 1,
-      item.dueDay || 1
+  occurrences.forEach((occurrence) => {
+    const occurrenceDate = parseLocalDate(occurrence);
+    const assignedPeriod = findAssignedPayPeriod(
+      item,
+      payPeriods,
+      occurrenceDate,
+      settings
     );
 
-    if (dueDate < firstPeriodDate) {
-      // Same safe fallback as monthly items for annual due dates near the anchor.
-      if (isSameCalendarMonth(dueDate, firstPeriodDate)) {
-        placements.add(payPeriods[0].date);
-      }
-
-      continue;
+    if (!assignedPeriod) {
+      return;
     }
 
-    if (dueDate > lastPeriodDate) {
-      continue;
-    }
-
-    const assignedPeriod = findPreviousPayPeriod(payPeriods, dueDate);
-    placements.add(assignedPeriod.date);
-  }
+    placements.set(
+      assignedPeriod.date,
+      (placements.get(assignedPeriod.date) || 0) + 1
+    );
+  });
 
   return placements;
 }
@@ -223,38 +203,19 @@ export function buildPlannerRows({
   );
 
   const rows = scheduledItems
+    .map((item) => normalizeScheduledItem(item))
     .filter((item) => item.active)
-    .filter((item) => item.frequency !== 'manual')
     .map((item) => {
-      let placementDates = new Set();
-
-      if (item.frequency === 'biweekly') {
-        placementDates = new Set(
-          payPeriods
-            .filter((period) =>
-              shouldPlaceBiweeklyItem(item, period, normalizedSettings)
-            )
-            .map((period) => period.date)
-        );
-      }
-
-      if (item.frequency === 'monthly') {
-        placementDates = buildMonthlyPlacements(
-          item,
-          payPeriods,
-          normalizedSettings
-        );
-      }
-
-      if (item.frequency === 'annual') {
-        placementDates = buildAnnualPlacements(item, payPeriods);
-      }
-
+      const placements = buildScheduledItemPlacements(
+        item,
+        payPeriods,
+        normalizedSettings
+      );
       const plannedByPeriod = {};
       const amountsByPeriod = {};
 
       payPeriods.forEach((period) => {
-        const plannedAmount = placementDates.has(period.date) ? item.amount : 0;
+        const plannedAmount = (placements.get(period.date) || 0) * item.amount;
 
         plannedByPeriod[period.date] = plannedAmount;
         amountsByPeriod[period.date] = getEffectiveAmount(
@@ -268,7 +229,8 @@ export function buildPlannerRows({
       return {
         id: item.id,
         name: item.name,
-        type: item.type,
+        type: getProjectionType(item.type),
+        scheduledItemType: item.type,
         categoryId: item.categoryId,
         item,
         plannedByPeriod,

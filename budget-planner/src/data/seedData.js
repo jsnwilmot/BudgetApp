@@ -179,7 +179,7 @@ export const scheduledItems = [
     type: 'expense',
     amount: 0,
     categoryId: 'cat-expense-housing',
-    frequency: 'annual',
+    frequency: 'yearly',
     dueMonth: 6,
     dueDay: 30,
     startDate: '2026-06-01',

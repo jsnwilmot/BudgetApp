@@ -103,6 +103,26 @@ Known limitation:
 - Drag-and-drop category sorting is not included yet.
 - Category icons are stored as simple text for now.
 
+## Phase 1S: Scheduled Item Improvements
+
+Completed:
+
+- Hardened scheduled item data normalization.
+- Added improved scheduled item filters.
+- Added active/inactive scheduled item support.
+- Added duplicate scheduled item action.
+- Improved scheduled item validation.
+- Improved recurrence handling for once, weekly, biweekly, monthly, and yearly items.
+- Added scheduled item summary cards.
+- Added upcoming next 30 days section.
+- Preserved category, backup, restore, and projection compatibility.
+
+Known limitation:
+
+- Advanced custom recurrence rules are not included yet.
+- Drag-and-drop ordering is not included yet.
+- Automated bill reminders are not included yet.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

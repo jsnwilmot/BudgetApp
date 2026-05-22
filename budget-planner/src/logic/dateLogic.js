@@ -11,10 +11,24 @@ export function parseLocalDate(dateString) {
     return new Date(Number.NaN);
   }
 
-  return new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return new Date(Number.NaN);
+  }
+
+  return date;
 }
 
 export function formatDateKey(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return '';
+  }
+
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
@@ -23,6 +37,11 @@ export function formatDateKey(date) {
 
 export function formatShortDate(dateString) {
   const date = parseLocalDate(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Invalid date';
+  }
+
   return date.toLocaleDateString('en-CA', {
     month: 'short',
     day: '2-digit',

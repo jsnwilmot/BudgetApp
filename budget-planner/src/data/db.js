@@ -2,6 +2,7 @@ import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
 } from './seedData';
+import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
 
 const DB_NAME = 'budget-planner-db';
 const DB_VERSION = 6;
@@ -336,7 +337,10 @@ export async function replacePlannerEntries(entries = {}) {
 }
 
 export async function replaceScheduledItems(items = []) {
-  return replaceStoreRecords(STORES.scheduledItems, items);
+  return replaceStoreRecords(
+    STORES.scheduledItems,
+    items.map((item) => normalizeScheduledItem(item))
+  );
 }
 
 export async function replaceCategories(categories = []) {
@@ -577,7 +581,7 @@ export async function getAllScheduledItems() {
     };
 
     request.onsuccess = () => {
-      resolve(request.result || []);
+      resolve((request.result || []).map((item) => normalizeScheduledItem(item)));
     };
 
     transaction.oncomplete = () => {
@@ -594,7 +598,7 @@ export async function saveScheduledItem(item) {
     const store = transaction.objectStore(STORES.scheduledItems);
 
     const record = {
-      ...item,
+      ...normalizeScheduledItem(item),
       updatedAt: new Date().toISOString(),
     };
 
@@ -850,6 +854,28 @@ export async function deleteSavingsBucketAdjustment(id) {
 
     request.onerror = () => {
       reject(new Error('Failed to delete savings bucket adjustment.'));
+    };
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function deleteScheduledItem(id) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.scheduledItems, 'readwrite');
+    const store = transaction.objectStore(STORES.scheduledItems);
+    const request = store.delete(id);
+
+    request.onerror = () => {
+      reject(new Error('Failed to delete scheduled item.'));
     };
 
     request.onsuccess = () => {

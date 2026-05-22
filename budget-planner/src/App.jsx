@@ -14,6 +14,7 @@ import {
   archiveCategory,
   deleteManualAdjustment,
   deletePlannerEntry,
+  deleteScheduledItem,
   deleteSavingsBucketAdjustment,
   getAppSettings,
   getAllAccounts,
@@ -44,6 +45,7 @@ import {
   validateAppSettings,
 } from './data/db';
 import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
+import { normalizeScheduledItem } from './logic/scheduledItemLogic';
 import Accounts from './pages/Accounts';
 import Categories from './pages/Categories';
 import Dashboard from './pages/Dashboard';
@@ -91,12 +93,18 @@ function getArrayValue(value) {
   return Array.isArray(value) ? value : [];
 }
 
+const normalizedSeedScheduledItems = seedScheduledItems.map((item) =>
+  normalizeScheduledItem(item)
+);
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [settings, setSettings] = useState(appSettings);
   const [categories, setCategories] = useState(seedCategories);
   const [plannerEntries, setPlannerEntries] = useState({});
-  const [scheduledItems, setScheduledItems] = useState(seedScheduledItems);
+  const [scheduledItems, setScheduledItems] = useState(
+    normalizedSeedScheduledItems
+  );
   const [accounts, setAccounts] = useState(seedAccounts);
   const [manualAdjustments, setManualAdjustments] = useState(
     seedManualAdjustments
@@ -139,11 +147,13 @@ export default function App() {
             savedScheduledItems.map((item) => [item.id, item])
           );
 
-          const mergedSeedItems = seedScheduledItems.map((seedItem) => {
+          const mergedSeedItems = normalizedSeedScheduledItems.map((seedItem) => {
             return savedItemsById.get(seedItem.id) || seedItem;
           });
 
-          const seedIds = new Set(seedScheduledItems.map((item) => item.id));
+          const seedIds = new Set(
+            normalizedSeedScheduledItems.map((item) => item.id)
+          );
 
           const customItems = savedScheduledItems.filter((item) => {
             return !seedIds.has(item.id);
@@ -304,9 +314,41 @@ export default function App() {
       });
 
       setStatusMessage('Scheduled item saved.');
+      return savedItem;
     } catch (error) {
       console.error(error);
       setStatusMessage('Could not save scheduled item.');
+      throw error;
+    }
+  }
+
+  async function handleDuplicateScheduledItem(item) {
+    const timestamp = new Date().toISOString();
+    const duplicateItem = normalizeScheduledItem({
+      ...item,
+      id: `scheduled-${crypto.randomUUID()}`,
+      name: `${item.name} Copy`,
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    return handleSaveScheduledItem(duplicateItem);
+  }
+
+  async function handleDeleteScheduledItem(id) {
+    try {
+      await deleteScheduledItem(id);
+
+      setScheduledItems((currentItems) =>
+        currentItems.filter((item) => item.id !== id)
+      );
+
+      setStatusMessage('Scheduled item deleted.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not delete scheduled item.');
+      throw error;
     }
   }
 
@@ -576,7 +618,7 @@ export default function App() {
       ? importedData.categories
       : seedCategories;
     const importedScheduledItems = Array.isArray(importedData?.scheduledItems)
-      ? importedData.scheduledItems
+      ? importedData.scheduledItems.map((item) => normalizeScheduledItem(item))
       : [];
     const importedAccounts = Array.isArray(importedData?.accounts)
       ? importedData.accounts
@@ -595,24 +637,25 @@ export default function App() {
       ? importedData.savingsBucketAdjustments
       : getArrayValue(importedData?.savings?.transfers);
 
-    const [, savedImportedCategories] = await Promise.all([
-      saveAppSettings(importedSettings),
-      replaceCategories(importedCategories),
-      replacePlannerEntries(importedPlannerEntries),
-      replaceScheduledItems(importedScheduledItems),
-      replaceAccounts(importedAccounts),
-      replaceManualAdjustments(importedManualAdjustments),
-      replaceSavingsBuckets(importedSavingsBuckets),
-      replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
-    ]);
+    const [, savedImportedCategories, , savedImportedScheduledItems] =
+      await Promise.all([
+        saveAppSettings(importedSettings),
+        replaceCategories(importedCategories),
+        replacePlannerEntries(importedPlannerEntries),
+        replaceScheduledItems(importedScheduledItems),
+        replaceAccounts(importedAccounts),
+        replaceManualAdjustments(importedManualAdjustments),
+        replaceSavingsBuckets(importedSavingsBuckets),
+        replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
+      ]);
 
     setSettings(importedSettings);
     setCategories(savedImportedCategories);
     setPlannerEntries(importedPlannerEntries);
     setScheduledItems(
       importedScheduledItems.length > 0
-        ? importedScheduledItems
-        : seedScheduledItems
+        ? savedImportedScheduledItems
+        : normalizedSeedScheduledItems
     );
     setAccounts(importedAccounts.length > 0 ? importedAccounts : seedAccounts);
     setManualAdjustments(importedManualAdjustments);
@@ -630,7 +673,7 @@ export default function App() {
     setSettings(appSettings);
     setCategories(seedCategories);
     setPlannerEntries({});
-    setScheduledItems(seedScheduledItems);
+    setScheduledItems(normalizedSeedScheduledItems);
     setAccounts(seedAccounts);
     setManualAdjustments(seedManualAdjustments);
     setSavingsBuckets(seedSavingsBuckets);
@@ -681,6 +724,8 @@ export default function App() {
             categories={categories}
             settings={settings}
             onSaveScheduledItem={handleSaveScheduledItem}
+            onDuplicateScheduledItem={handleDuplicateScheduledItem}
+            onDeleteScheduledItem={handleDeleteScheduledItem}
           />
         ) : null}
 
