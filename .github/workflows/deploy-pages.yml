@@ -12,14 +12,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: github-pages
+  cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
+    name: Build app
     runs-on: ubuntu-latest
 
     steps:
@@ -37,6 +35,10 @@ jobs:
         working-directory: budget-planner
         run: npm ci
 
+      - name: Run lint
+        working-directory: budget-planner
+        run: npm run lint
+
       - name: Build app
         working-directory: budget-planner
         run: npm run build
@@ -46,6 +48,7 @@ jobs:
           echo "Budget Planner GitHub Pages deploy check" > budget-planner/dist/pages-debug.txt
           echo "Built from budget-planner/dist" >> budget-planner/dist/pages-debug.txt
           echo "Base path: /BudgetApp/" >> budget-planner/dist/pages-debug.txt
+          echo "Commit: $GITHUB_SHA" >> budget-planner/dist/pages-debug.txt
 
       - name: Verify build output
         run: |
@@ -64,6 +67,16 @@ jobs:
         with:
           path: budget-planner/dist
 
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
