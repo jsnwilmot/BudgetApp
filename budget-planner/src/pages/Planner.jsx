@@ -42,8 +42,7 @@ function PlannerRow({
         const validated = Boolean(entry?.validated);
         const hasNote = Boolean(entry?.notes?.trim());
         const hasLineItems = Boolean(entry?.lineItems?.length);
-        const allowLineItems = Boolean(row.item?.allowLineItems);
-        const canEdit = editable && (plannedAmount !== 0 || changed || allowLineItems);
+        const canEdit = editable;
 
         return (
           <td
