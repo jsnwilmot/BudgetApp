@@ -591,22 +591,32 @@ export default function App() {
     }
   }
 
-  async function handleSaveAccount(updatedAccount) {
-    try {
-      const savedAccount = await saveAccount(updatedAccount);
+async function handleSaveAccount(updatedAccount) {
+  try {
+    const savedAccount = await saveAccount(updatedAccount);
 
-      setAccounts((currentAccounts) =>
-        currentAccounts.map((account) =>
-          account.id === savedAccount.id ? savedAccount : account
-        )
+    setAccounts((currentAccounts) => {
+      const accountExists = currentAccounts.some(
+        (account) => account.id === savedAccount.id
       );
 
-      setStatusMessage('Account balance saved.');
-    } catch (error) {
-      console.error(error);
-      setStatusMessage('Could not save account balance.');
-    }
+      if (accountExists) {
+        return currentAccounts.map((account) =>
+          account.id === savedAccount.id ? savedAccount : account
+        );
+      }
+
+      return [...currentAccounts, savedAccount];
+    });
+
+    setStatusMessage('Account saved.');
+    return savedAccount;
+  } catch (error) {
+    console.error(error);
+    setStatusMessage('Could not save account.');
+    throw error;
   }
+}
 
   async function handleSaveManualAdjustment(adjustment) {
     try {
