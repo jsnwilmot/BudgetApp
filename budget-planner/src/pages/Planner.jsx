@@ -28,7 +28,7 @@ function PlannerRow({
 
   return (
     <tr className={getRowClass(row.type)}>
-      <th className="sticky left-0 z-10 min-w-64 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
+      <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
         {row.name}
       </th>
 
@@ -134,18 +134,18 @@ export default function Planner({
       />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-auto">
-          <table className="w-full">
+        <div className="max-h-[72vh] overflow-auto">
+          <table className="w-full border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className="sticky left-0 top-0 z-20 min-w-64 border border-slate-200 bg-slate-900 px-3 py-3 text-left text-sm font-bold text-white">
+                <th className="sticky left-0 top-0 z-40 min-w-64 border border-slate-200 bg-slate-900 px-3 py-3 text-left text-sm font-bold text-white">
                   Item
                 </th>
 
                 {plannerData.payPeriods.map((period) => (
                   <th
                     key={period.date}
-                    className="sticky top-0 z-10 min-w-36 border border-slate-200 bg-slate-900 px-3 py-3 text-right text-sm font-bold text-white"
+                    className="sticky top-0 z-30 min-w-36 border border-slate-200 bg-slate-900 px-3 py-3 text-right text-sm font-bold text-white"
                   >
                     {period.label}
                   </th>
@@ -154,13 +154,14 @@ export default function Planner({
             </thead>
 
             <tbody>
-              <tr>
-                <td
-                  colSpan={plannerData.payPeriods.length + 1}
-                  className="border border-slate-200 bg-emerald-100 px-3 py-2 text-sm font-bold text-emerald-950"
-                >
+              <tr className="bg-emerald-100">
+                <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-emerald-100 px-3 py-2 text-left text-sm font-bold text-emerald-950">
                   Income
-                </td>
+                </th>
+                <td
+                  colSpan={plannerData.payPeriods.length}
+                  className="border border-slate-200 bg-emerald-100 px-3 py-2"
+                />
               </tr>
 
               {incomeRows.map((row) => (
@@ -174,14 +175,15 @@ export default function Planner({
                 />
               ))}
 
-              <tr>
-                <td
-                  colSpan={plannerData.payPeriods.length + 1}
-                  className="border border-slate-200 bg-blue-100 px-3 py-2 text-sm font-bold text-blue-950"
-                >
-                  Expenses
-                </td>
-              </tr>
+              <tr className="bg-blue-100">
+              <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-blue-100 px-3 py-2 text-left text-sm font-bold text-blue-950">
+                Expenses
+              </th>
+              <td
+                colSpan={plannerData.payPeriods.length}
+                className="border border-slate-200 bg-blue-100 px-3 py-2"
+              />
+            </tr>
 
               {expenseRows.map((row) => (
                 <PlannerRow
@@ -194,14 +196,15 @@ export default function Planner({
                 />
               ))}
 
-              <tr>
-                <td
-                  colSpan={plannerData.payPeriods.length + 1}
-                  className="border border-slate-200 bg-slate-200 px-3 py-2 text-sm font-bold text-slate-950"
-                >
-                  Transfers to Savings
-                </td>
-              </tr>
+                <tr className="bg-slate-200">
+                  <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-slate-200 px-3 py-2 text-left text-sm font-bold text-slate-950">
+                    Transfers to Savings
+                  </th>
+                  <td
+                    colSpan={plannerData.payPeriods.length}
+                    className="border border-slate-200 bg-slate-200 px-3 py-2"
+                  />
+                </tr>
 
               {transferRows.map((row) => (
                 <PlannerRow
@@ -214,14 +217,15 @@ export default function Planner({
                 />
               ))}
 
-              <tr>
-                <td
-                  colSpan={plannerData.payPeriods.length + 1}
-                  className="border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-950"
-                >
-                  Totals and Account Projection
-                </td>
-              </tr>
+            <tr className="bg-white">
+              <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-white px-3 py-2 text-left text-sm font-bold text-slate-950">
+                Totals and Account Projection
+              </th>
+              <td
+                colSpan={plannerData.payPeriods.length}
+                className="border border-slate-200 bg-white px-3 py-2"
+              />
+            </tr>
 
               {plannerData.projectionRows.map((row) => (
                 <PlannerRow
