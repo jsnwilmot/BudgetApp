@@ -25,7 +25,11 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Budgets still calculate used, remaining, near-budget, and over-budget states.
 - [ ] Reports still open and charts render.
 - [ ] Backup export still downloads JSON.
+- [ ] Backup JSON includes `appName`, `exportVersion`, `schemaVersion`, `exportedAt`, `source`, `basePath`, and `data`.
+- [ ] Backup JSON includes `transfers`, `savingsBucketAdjustments`, `plannerEntries`, `settings`, and `budgets`.
 - [ ] Backup import preview still opens for a valid backup.
+- [ ] Backup import shows warnings for older backups where applicable.
+- [ ] Backup import requires confirmation before replacing local data.
 - [ ] Settings still shows app version, data version, last backup, and backup status.
 
 ## PWA And Deployment

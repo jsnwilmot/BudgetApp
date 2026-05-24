@@ -359,6 +359,7 @@ export default function App() {
       settings,
       budgetTargets,
       categories,
+      transactions: [],
       plannerEntries,
       scheduledItems,
       accounts,

@@ -124,7 +124,9 @@ function formatBackupDate(timestamp) {
 
 function getCountRows(summary = {}) {
   return [
+    ["Settings", summary.settings],
     ["Accounts", summary.accounts],
+    ["Transactions", summary.transactions],
     ["Scheduled items", summary.scheduledItems],
     ["Savings buckets", summary.savingsBuckets],
     ["Categories", summary.categories],
@@ -481,7 +483,10 @@ export default function DataManagement({
         setPendingImport({
           ...parsedBackup,
           data: validation.data,
-          summary: validation.summary
+          summary: validation.summary,
+          previewMetadata: validation.metadata,
+          warnings: validation.warnings || [],
+          referenceWarningCounts: validation.referenceWarningCounts || {}
         });
         setShowImportConfirm(true);
       } catch {
@@ -736,6 +741,10 @@ export default function DataManagement({
             storage for stronger long-term data safety.
           </p>
           <p className="mt-2 text-sm text-slate-700">
+            Backup files are versioned and designed to support future desktop
+            import without changing saved record IDs.
+          </p>
+          <p className="mt-2 text-sm text-slate-700">
             The public demo uses fictional sample records. You can edit them,
             restore them with Reset to Demo Data, or clear them with Factory
             Reset to Empty App.
@@ -824,6 +833,38 @@ export default function DataManagement({
                 Last backup age: {dataHealth.backupStatus.ageDays} days.
               </p>
             )}
+
+          {dataHealth.referenceWarningCounts ? (
+            <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+              {[
+                [
+                  "Missing transfer account references",
+                  dataHealth.referenceWarningCounts
+                    .missingTransferAccountReferences,
+                ],
+                [
+                  "Missing transfer bucket references",
+                  dataHealth.referenceWarningCounts
+                    .missingTransferBucketReferences,
+                ],
+                [
+                  "Scheduled transfers without buckets",
+                  dataHealth.referenceWarningCounts
+                    .scheduledTransfersWithoutBucketLinks,
+                ],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                >
+                  <dt className="text-slate-600">{label}</dt>
+                  <dd className="font-semibold text-slate-950">
+                    {Number.isFinite(Number(value)) ? Number(value) : 0}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-slate-200 p-4">
@@ -902,10 +943,38 @@ export default function DataManagement({
           {showImportConfirm && (
             <div className="mt-4 rounded-xl border border-amber-300 bg-white p-4">
               <p className="text-sm font-medium text-slate-800">
-                Importing this backup will replace your current local data.
-                Export a backup first if you want to keep your current data. The
-                app will reload after import.
+                Importing this file will replace your current FinPath data on
+                this device. Export a backup first if you want to keep your
+                current data. The app will reload after import.
               </p>
+
+              {pendingImport?.previewMetadata ? (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Backup details
+                  </p>
+                  <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    {[
+                      ["App", pendingImport.previewMetadata.appName],
+                      ["App version", pendingImport.previewMetadata.appVersion],
+                      ["Export version", pendingImport.previewMetadata.exportVersion],
+                      ["Schema version", pendingImport.previewMetadata.schemaVersion],
+                      ["Exported at", pendingImport.previewMetadata.exportedAt],
+                      ["Source", pendingImport.previewMetadata.source],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <dt className="text-slate-600">{label}</dt>
+                        <dd className="text-right font-semibold text-slate-950">
+                          {value || "Unknown"}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ) : null}
 
               {pendingImport?.summary ? (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -931,6 +1000,19 @@ export default function DataManagement({
                   Backup summary unavailable.
                 </p>
               )}
+
+              {pendingImport?.warnings?.length ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Import warnings
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">
+                    {pendingImport.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <div className="mt-4 flex flex-wrap gap-3">
                 <button

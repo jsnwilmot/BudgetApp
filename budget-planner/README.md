@@ -5,7 +5,7 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2p`
+Current release: `2.0.0-phase-2q`
 Data version: `2`
 
 ## Current Status
@@ -76,6 +76,28 @@ Use `Settings > Data Management`.
 
 Keep backup files somewhere you control, especially before browser cleanup or
 device changes.
+
+## Data Portability
+
+FinPath backup files are versioned JSON exports designed for web/PWA restore
+and future desktop migration. Current full backups include:
+
+- `appName`, `appVersion`, `exportVersion`, `schemaVersion`, `exportedAt`,
+  `source`, and `basePath`.
+- `settings`, `accounts`, `categories`, `transactions`, `scheduledItems`,
+  `plannerEntries`, `manualAdjustments`, `savingsBuckets`,
+  `savingsBucketAdjustments`, `transfers`, and `budgets`.
+- Compatibility aliases such as `budgetTargets` for the current web app.
+
+Exports preserve existing record IDs exactly, including account IDs, category
+IDs, scheduled item IDs, savings bucket IDs, transfer IDs, budget IDs, and
+planner entry keys. Import validation checks the file shape, previews record
+counts, shows warnings for older or incomplete backups, and requires
+confirmation before replacing local data.
+
+Older BudgetApp backups remain supported where the data can be normalized
+safely. Transfer records are included in current backups and repairs. The
+GitHub Pages base path remains `/BudgetApp/`.
 
 ## Install And Run
 
@@ -520,6 +542,24 @@ Known limitation:
 - This phase applies brand identity without redesigning the full app UI.
 - Full dark-mode theming and deeper chart recoloring are left for a future
   visual polish phase.
+
+### Phase 2Q: Backup, Export, Import, And Migration Foundation
+
+Completed:
+
+- Added a versioned FinPath full-data export format.
+- Added import validation, warnings, and preview metadata.
+- Preserved stable IDs for future desktop migration.
+- Included transfers, savings bucket adjustments, budgets, settings, and
+  planner entries in the portable backup shape.
+- Improved Data Health checks for transfer references.
+- Kept older BudgetApp backup compatibility where safe.
+
+Known limitation:
+
+- Direct standalone transactions are not stored yet; transaction rows are still
+  derived from source records in the web app.
+- Desktop SQLite import is planned for a later phase.
 
 ## Known Limitations
 

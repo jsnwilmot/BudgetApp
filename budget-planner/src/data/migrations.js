@@ -7,8 +7,9 @@ import {
 } from './seedData';
 
 export const APP_DATA_VERSION = 2;
-export const APP_VERSION = '2.0.0-phase-2p';
+export const APP_VERSION = '2.0.0-phase-2q';
 export const BACKUP_APP_NAME = 'BudgetApp';
+export const EXPORT_APP_NAME = 'FinPath';
 export const BACKUP_REMINDER_DAYS = 30;
 export const APP_METADATA_ID = 'app-metadata';
 
@@ -403,7 +404,9 @@ export function migrateFromVersion0(data = {}) {
     ...safeData,
     appMetadata: safeData.appMetadata || {},
     settings: safeData.settings || safeData.appSettings || defaultAppSettings,
-    budgetTargets: safeArray(safeData.budgetTargets),
+    budgetTargets: safeArray(safeData.budgetTargets).length
+      ? safeData.budgetTargets
+      : safeArray(safeData.budgets),
     categories: safeArray(safeData.categories).length
       ? safeData.categories
       : defaultCategories,
@@ -418,6 +421,7 @@ export function migrateFromVersion0(data = {}) {
       ? safeData.savingsBucketAdjustments
       : safeArray(safeData.savings?.transfers),
     transfers: safeArray(safeData.transfers),
+    transactions: safeArray(safeData.transactions),
   };
 }
 
@@ -480,6 +484,7 @@ export function getSafeAppData(data = {}) {
       normalizeSavingsBucketAdjustmentRecord
     ),
     transfers: normalizeRecords(migratedData.transfers, normalizeTransfer),
+    transactions: safeArray(migratedData.transactions),
   };
 }
 
@@ -501,7 +506,9 @@ export function getBackupSectionSummary(data = {}) {
   );
 
   return {
+    settings: isPlainObject(safeData.settings) ? 1 : 0,
     accounts: safeArray(safeData.accounts).length,
+    transactions: safeArray(safeData.transactions).length,
     scheduledItems: safeArray(safeData.scheduledItems).length,
     savingsBuckets: safeArray(
       safeData.savingsBuckets || safeData.savings?.buckets
@@ -514,6 +521,46 @@ export function getBackupSectionSummary(data = {}) {
     ).length,
     transfers: safeArray(safeData.transfers).length,
     plannerEntries: Object.keys(plannerEntries).length,
+  };
+}
+
+export function getReferenceWarningCounts(data = {}) {
+  const safeData = getSafeAppData(data);
+  const categoryIds = new Set(safeData.categories.map((category) => category.id));
+  const accountIds = new Set(safeData.accounts.map((account) => account.id));
+  const bucketIds = new Set(safeData.savingsBuckets.map((bucket) => bucket.id));
+
+  return {
+    missingCategoryReferences:
+      safeData.scheduledItems.filter((item) => item.categoryId && !categoryIds.has(item.categoryId)).length +
+      safeData.manualAdjustments.filter((adjustment) => adjustment.categoryId && !categoryIds.has(adjustment.categoryId)).length +
+      safeData.budgetTargets.filter((target) => target.categoryId && !categoryIds.has(target.categoryId)).length,
+    missingAccountReferences:
+      safeData.scheduledItems.filter((item) => item.accountId && !accountIds.has(item.accountId)).length +
+      safeData.manualAdjustments.filter((adjustment) => adjustment.accountId && !accountIds.has(adjustment.accountId)).length,
+    missingTransferAccountReferences: safeData.transfers.filter(
+      (transfer) =>
+        (transfer.fromAccountId && !accountIds.has(transfer.fromAccountId)) ||
+        (transfer.toAccountId && !accountIds.has(transfer.toAccountId))
+    ).length,
+    missingTransferBucketReferences: safeData.transfers.filter(
+      (transfer) => transfer.bucketId && !bucketIds.has(transfer.bucketId)
+    ).length,
+    missingSavingsBucketReferences:
+      safeData.scheduledItems.filter((item) => {
+        const bucketId = item.savingsBucketId || item.bucketId;
+        return bucketId && !bucketIds.has(bucketId);
+      }).length +
+      safeData.savingsBucketAdjustments.filter((adjustment) => {
+        const bucketId = adjustment.bucketId || adjustment.savingsBucketId;
+        return bucketId && !bucketIds.has(bucketId);
+      }).length,
+    scheduledTransfersWithoutBucketLinks: safeData.scheduledItems.filter(
+      (item) =>
+        (item.type === 'transfer' || item.type === 'savings') &&
+        !item.savingsBucketId &&
+        !item.bucketId
+    ).length,
   };
 }
 
@@ -585,6 +632,7 @@ export function getDataHealthSummary(data = {}) {
   const safeData = getSafeAppData(data);
   const summary = getBackupSectionSummary(safeData);
   const warnings = getReferenceWarnings(safeData);
+  const referenceWarningCounts = getReferenceWarningCounts(safeData);
   const backupStatus = getBackupReminderStatus(
     safeData.appMetadata?.lastBackupAt
   );
@@ -596,5 +644,6 @@ export function getDataHealthSummary(data = {}) {
     backupStatus,
     counts: summary,
     warningsCount: warnings.length,
+    referenceWarningCounts,
   };
 }

@@ -148,6 +148,22 @@ export default function Help() {
           </p>
         </HelpCard>
 
+        <HelpCard title="Backups and Migration">
+          <p>
+            Export Backup saves a versioned JSON file with your FinPath
+            settings, accounts, categories, scheduled items, planner entries,
+            savings buckets, transfers, budgets, and local metadata.
+          </p>
+          <p>
+            Import Backup validates the file, shows a preview, and requires
+            confirmation before replacing local data on this device.
+          </p>
+          <p>
+            Backup files preserve stable record IDs so relationships can move
+            cleanly into a future desktop version with local database storage.
+          </p>
+        </HelpCard>
+
         <HelpCard title="App Updates">
           <p>
             After a user-facing update, FinPath may show a one-time

@@ -67,17 +67,28 @@ imports before release.
 ## Data Management
 
 - [ ] Export Backup downloads JSON.
+- [ ] Export creates a versioned FinPath backup with `exportVersion`, `schemaVersion`, `exportedAt`, `appName`, `source`, and `data`.
 - [ ] Backup includes `appVersion` and `appDataVersion`.
+- [ ] Backup includes transfers.
+- [ ] Backup includes savings buckets and savings bucket adjustments.
 - [ ] Data Health shows Last backup.
 - [ ] Backup export updates the Last backup timestamp.
 - [ ] Data Health shows Backup status.
+- [ ] Data Health counts transfer records and missing transfer references.
 - [ ] Dashboard shows backup reminder when no backup exists.
 - [ ] Dashboard shows backup reminder when last backup is older than 30 days.
 - [ ] Dashboard does not show backup reminder when backup is current.
 - [ ] Import Backup shows preview counts.
+- [ ] Import Backup shows export version, schema version, exported date, source, and warnings.
+- [ ] Import blocks invalid JSON.
+- [ ] Import warns on older backups with missing optional collections.
+- [ ] Import preserves IDs for accounts, categories, scheduled items, buckets, transfers, budgets, and planner entry keys.
+- [ ] Import requires overwrite confirmation before local data is replaced.
+- [ ] Exported backup can be re-imported successfully.
 - [ ] Import warning says current local data will be replaced.
 - [ ] Valid backup import works.
 - [ ] Newer unsupported app data version is rejected.
+- [ ] App still works after import.
 - [ ] Repair Local Data completes.
 - [ ] Repair Local Data preserves a valid Last backup timestamp.
 - [ ] Reset to Demo Data requires `DEMO`.
