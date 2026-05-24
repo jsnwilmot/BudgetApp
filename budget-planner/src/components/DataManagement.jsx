@@ -381,16 +381,17 @@ export default function DataManagement({
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [, setHealthCheckNonce] = useState(0);
 
   const activeStorageKey = useMemo(() => getActiveStorageKey(), []);
-  const dataHealth = useMemo(() => {
+  const dataHealth = (() => {
     const { data } =
       appData && typeof appData === "object"
         ? { data: appData }
         : getStoredAppData();
 
     return getDataHealthSummary(data);
-  }, [appData]);
+  })();
 
   function clearMessages() {
     setSuccessMessage("");
@@ -625,6 +626,12 @@ export default function DataManagement({
     setSuccessMessage("Local data repaired successfully.");
   }
 
+  function handleRunHealthCheck() {
+    clearMessages();
+    setHealthCheckNonce(Date.now());
+    setSuccessMessage("Data Health rechecked. No records were changed.");
+  }
+
   async function handleResetLocalData() {
     clearMessages();
 
@@ -798,6 +805,15 @@ export default function DataManagement({
 
             <div className="rounded-xl bg-slate-50 p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Data errors
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-950">
+                {dataHealth.errorsCount || 0}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Last backup
               </p>
               <p className="mt-1 text-base font-bold text-slate-950">
@@ -865,6 +881,67 @@ export default function DataManagement({
               ))}
             </dl>
           ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleRunHealthCheck}
+              className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Run Health Check
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {dataHealth.healthDetails?.errors?.length ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+                <p className="text-sm font-semibold text-red-900">
+                  Errors
+                </p>
+                <div className="mt-2 space-y-2">
+                  {dataHealth.healthDetails.errors.map((issue) => (
+                    <div key={issue.id} className="text-sm text-red-900">
+                      <p className="font-semibold">{issue.title}</p>
+                      <p>{issue.message}</p>
+                      <p className="mt-1 text-red-800">{issue.guidance}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {dataHealth.healthDetails?.warnings?.length ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-semibold text-amber-900">
+                  Warnings
+                </p>
+                <div className="mt-2 space-y-2">
+                  {dataHealth.healthDetails.warnings.map((issue) => (
+                    <div key={issue.id} className="text-sm text-amber-900">
+                      <p className="font-semibold">{issue.title}</p>
+                      <p>{issue.message}</p>
+                      <p className="mt-1 text-amber-800">{issue.guidance}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : !dataHealth.healthDetails?.errors?.length ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                No serious data health warnings found in the loaded records.
+              </div>
+            ) : null}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p className="font-semibold text-slate-950">
+                Health check guidance
+              </p>
+              <p className="mt-1">
+                Data Health does not delete records, generate IDs, merge
+                duplicates, or rewrite planner keys. Export a backup before
+                making manual corrections.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 p-4">

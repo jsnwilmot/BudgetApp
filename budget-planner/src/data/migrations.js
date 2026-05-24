@@ -7,7 +7,7 @@ import {
 } from './seedData';
 
 export const APP_DATA_VERSION = 2;
-export const APP_VERSION = '2.0.0-phase-2r';
+export const APP_VERSION = '2.0.0-phase-2s';
 export const BACKUP_APP_NAME = 'BudgetApp';
 export const EXPORT_APP_NAME = 'FinPath';
 export const BACKUP_REMINDER_DAYS = 30;
@@ -148,6 +148,18 @@ export function normalizeAppSettingsRecord(settings = {}) {
       safeSettings.monthlyBillAssignmentRule
     ),
   };
+}
+
+function isValidDateString(value) {
+  return safeDateString(value, '') === value;
+}
+
+function isValidTimestampString(value) {
+  return safeTimestampString(value, '') !== '';
+}
+
+function hasFiniteNumber(value) {
+  return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value));
 }
 
 export function normalizeAppMetadataRecord(metadata = {}) {
@@ -628,11 +640,540 @@ export function getReferenceWarnings(data = {}) {
   return warnings;
 }
 
+function getHealthSourceData(data = {}) {
+  const safeData = isPlainObject(data) ? data : {};
+  const appDataVersion = Number(safeData.appDataVersion || 0);
+
+  return migrateAppData(safeData, appDataVersion);
+}
+
+function addHealthIssue(issues, severity, title, message, guidance) {
+  issues.push({
+    id: `${severity}-${issues.length + 1}`,
+    severity,
+    title,
+    message,
+    guidance,
+  });
+}
+
+function getHealthCollectionRows(data = {}) {
+  return [
+    ['accounts', 'Accounts', safeArray(data.accounts)],
+    ['categories', 'Categories', safeArray(data.categories)],
+    ['scheduledItems', 'Scheduled items', safeArray(data.scheduledItems)],
+    ['manualAdjustments', 'Manual adjustments', safeArray(data.manualAdjustments)],
+    ['savingsBuckets', 'Savings buckets', safeArray(data.savingsBuckets)],
+    [
+      'savingsBucketAdjustments',
+      'Savings bucket adjustments',
+      safeArray(data.savingsBucketAdjustments),
+    ],
+    ['transfers', 'Transfers', safeArray(data.transfers)],
+    ['budgetTargets', 'Budget targets', safeArray(data.budgetTargets || data.budgets)],
+  ];
+}
+
+function checkRequiredIds(collections, issues) {
+  collections.forEach(([, label, records]) => {
+    const seenIds = new Set();
+    let missingIds = 0;
+    const duplicateIds = new Set();
+
+    records.forEach((record) => {
+      if (!isPlainObject(record) || !record.id) {
+        missingIds += 1;
+        return;
+      }
+
+      if (seenIds.has(record.id)) {
+        duplicateIds.add(record.id);
+        return;
+      }
+
+      seenIds.add(record.id);
+    });
+
+    if (missingIds > 0) {
+      addHealthIssue(
+        issues,
+        'error',
+        `${label} missing IDs`,
+        `${missingIds} ${label.toLowerCase()} records are missing stable IDs.`,
+        'Export a backup before making manual corrections. Missing IDs should be fixed before future desktop migration.'
+      );
+    }
+
+    if (duplicateIds.size > 0) {
+      addHealthIssue(
+        issues,
+        'error',
+        `${label} duplicate IDs`,
+        `${duplicateIds.size} duplicate ${label.toLowerCase()} IDs were detected.`,
+        'Do not merge or delete records automatically. Review the affected records before relying on exports or reports.'
+      );
+    }
+  });
+}
+
+function checkDateFields(data, issues) {
+  const dateChecks = [
+    ['Scheduled items', safeArray(data.scheduledItems), ['startDate', 'endDate']],
+    ['Manual adjustments', safeArray(data.manualAdjustments), ['date', 'payPeriodDate']],
+    [
+      'Savings bucket adjustments',
+      safeArray(data.savingsBucketAdjustments),
+      ['date', 'payPeriodDate'],
+    ],
+    ['Transfers', safeArray(data.transfers), ['date', 'payPeriodDate']],
+  ];
+  const timestampChecks = [
+    ...getHealthCollectionRows(data).map(([, label, records]) => [
+      label,
+      records,
+      ['createdAt', 'updatedAt'],
+    ]),
+  ];
+  let invalidDates = 0;
+  let invalidTimestamps = 0;
+
+  dateChecks.forEach(([, records, fields]) => {
+    records.forEach((record) => {
+      fields.forEach((field) => {
+        if (record?.[field] && !isValidDateString(record[field])) {
+          invalidDates += 1;
+        }
+      });
+    });
+  });
+
+  timestampChecks.forEach(([, records, fields]) => {
+    records.forEach((record) => {
+      fields.forEach((field) => {
+        if (record?.[field] && !isValidTimestampString(record[field])) {
+          invalidTimestamps += 1;
+        }
+      });
+    });
+  });
+
+  const plannerEntries = isPlainObject(data.plannerEntries)
+    ? data.plannerEntries
+    : data.planner?.entries || {};
+  Object.keys(isPlainObject(plannerEntries) ? plannerEntries : {}).forEach((entryKey) => {
+    const [, payPeriodDate] = String(entryKey).split('__');
+
+    if (payPeriodDate && !isValidDateString(payPeriodDate)) {
+      invalidDates += 1;
+    }
+  });
+
+  if (invalidDates > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Invalid dates detected',
+      `${invalidDates} date fields are invalid or not in YYYY-MM-DD format.`,
+      'Review dated records before relying on reports, pay-period filters, or future desktop import.'
+    );
+  }
+
+  if (invalidTimestamps > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Invalid timestamps detected',
+      `${invalidTimestamps} created/updated timestamp fields are invalid.`,
+      'Timestamps do not usually affect totals, but cleaning them up can improve migration readiness.'
+    );
+  }
+}
+
+function checkAmountFields(data, issues) {
+  const amountChecks = [
+    ['Scheduled items', safeArray(data.scheduledItems), 'amount', false],
+    ['Manual adjustments', safeArray(data.manualAdjustments), 'amount', true],
+    [
+      'Savings bucket adjustments',
+      safeArray(data.savingsBucketAdjustments),
+      'amount',
+      true,
+    ],
+    ['Transfers', safeArray(data.transfers), 'amount', false],
+    ['Budget targets', safeArray(data.budgetTargets || data.budgets), 'amount', false],
+  ];
+  let invalidAmounts = 0;
+  let invalidNegativeAmounts = 0;
+
+  amountChecks.forEach(([, records, field, allowsNegative]) => {
+    records.forEach((record) => {
+      if (!hasFiniteNumber(record?.[field])) {
+        invalidAmounts += 1;
+        return;
+      }
+
+      if (!allowsNegative && Number(record[field]) < 0) {
+        invalidNegativeAmounts += 1;
+      }
+    });
+  });
+
+  safeArray(data.accounts).forEach((account) => {
+    if (!hasFiniteNumber(account.startingBalance)) {
+      invalidAmounts += 1;
+    }
+  });
+
+  safeArray(data.savingsBuckets).forEach((bucket) => {
+    if (!hasFiniteNumber(bucket.startingAmount ?? bucket.balance ?? bucket.amount)) {
+      invalidAmounts += 1;
+    }
+  });
+
+  if (invalidAmounts > 0) {
+    addHealthIssue(
+      issues,
+      'error',
+      'Invalid amounts detected',
+      `${invalidAmounts} amount fields are missing or not valid numbers.`,
+      'Review affected records before relying on totals, reports, backups, or future desktop import.'
+    );
+  }
+
+  if (invalidNegativeAmounts > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Unexpected negative amounts',
+      `${invalidNegativeAmounts} records have negative amounts where the current form expects zero or positive values.`,
+      'Negative manual and savings adjustments can be valid. Other negative values should be reviewed.'
+    );
+  }
+}
+
+function checkReferenceHealth(data, issues) {
+  const categoryIds = new Set(safeArray(data.categories).map((category) => category.id));
+  const accountIds = new Set(safeArray(data.accounts).map((account) => account.id));
+  const bucketIds = new Set(safeArray(data.savingsBuckets).map((bucket) => bucket.id));
+  let missingAccounts = 0;
+  let missingCategories = 0;
+  let missingBuckets = 0;
+  let transferAccountIssues = 0;
+  let sameAccountTransfers = 0;
+  let scheduledTransfersWithoutBuckets = 0;
+
+  safeArray(data.scheduledItems).forEach((item) => {
+    if (item.accountId && !accountIds.has(item.accountId)) missingAccounts += 1;
+    if (item.categoryId && !categoryIds.has(item.categoryId)) missingCategories += 1;
+
+    const bucketId = item.savingsBucketId || item.bucketId;
+    if (bucketId && !bucketIds.has(bucketId)) missingBuckets += 1;
+    if (
+      (item.type === 'transfer' || item.type === 'savings') &&
+      !bucketId
+    ) {
+      scheduledTransfersWithoutBuckets += 1;
+    }
+  });
+
+  safeArray(data.manualAdjustments).forEach((adjustment) => {
+    if (adjustment.accountId && !accountIds.has(adjustment.accountId)) missingAccounts += 1;
+    if (adjustment.categoryId && !categoryIds.has(adjustment.categoryId)) missingCategories += 1;
+  });
+
+  safeArray(data.budgetTargets || data.budgets).forEach((target) => {
+    if (target.categoryId && !categoryIds.has(target.categoryId)) missingCategories += 1;
+  });
+
+  safeArray(data.savingsBucketAdjustments).forEach((adjustment) => {
+    const bucketId = adjustment.bucketId || adjustment.savingsBucketId;
+    if (bucketId && !bucketIds.has(bucketId)) missingBuckets += 1;
+  });
+
+  safeArray(data.transfers).forEach((transfer) => {
+    if (!transfer.fromAccountId || !transfer.toAccountId) {
+      transferAccountIssues += 1;
+    }
+
+    if (transfer.fromAccountId && !accountIds.has(transfer.fromAccountId)) {
+      missingAccounts += 1;
+      transferAccountIssues += 1;
+    }
+
+    if (transfer.toAccountId && !accountIds.has(transfer.toAccountId)) {
+      missingAccounts += 1;
+      transferAccountIssues += 1;
+    }
+
+    if (
+      transfer.fromAccountId &&
+      transfer.toAccountId &&
+      transfer.fromAccountId === transfer.toAccountId
+    ) {
+      sameAccountTransfers += 1;
+    }
+
+    const bucketId = transfer.bucketId || transfer.savingsBucketId;
+    if (bucketId && !bucketIds.has(bucketId)) missingBuckets += 1;
+  });
+
+  if (missingAccounts > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Missing account references',
+      `${missingAccounts} records reference missing accounts.`,
+      'Review account-linked scheduled items, adjustments, and transfers before relying on account totals.'
+    );
+  }
+
+  if (missingCategories > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Missing category references',
+      `${missingCategories} records reference missing categories.`,
+      'Review categories used by scheduled items, manual adjustments, and budget targets.'
+    );
+  }
+
+  if (missingBuckets > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Missing savings bucket references',
+      `${missingBuckets} records reference missing savings buckets.`,
+      'Review savings transfers, bucket adjustments, and linked scheduled items.'
+    );
+  }
+
+  if (transferAccountIssues > 0) {
+    addHealthIssue(
+      issues,
+      'error',
+      'Transfer account issues',
+      `${transferAccountIssues} transfers are missing source/destination accounts or point to accounts that do not exist.`,
+      'Review the affected transfer and choose valid accounts before relying on reports or future desktop import.'
+    );
+  }
+
+  if (sameAccountTransfers > 0) {
+    addHealthIssue(
+      issues,
+      'error',
+      'Transfers use the same account',
+      `${sameAccountTransfers} transfers have the same source and destination account.`,
+      'Edit the transfer so money moves between two different accounts.'
+    );
+  }
+
+  if (scheduledTransfersWithoutBuckets > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Scheduled transfers without bucket links',
+      `${scheduledTransfersWithoutBuckets} scheduled transfers are not linked to savings buckets.`,
+      'This can be okay for account-only transfers. Link a bucket when the transfer should affect savings bucket reporting.'
+    );
+  }
+}
+
+function checkPlannerEntries(data, issues) {
+  const plannerEntries = isPlainObject(data.plannerEntries)
+    ? data.plannerEntries
+    : data.planner?.entries || {};
+
+  if (!isPlainObject(plannerEntries)) {
+    addHealthIssue(
+      issues,
+      'error',
+      'Planner entries structure issue',
+      'Planner entries are not stored as an object.',
+      'Export a backup before attempting repair. Planner entry keys should not be rewritten manually.'
+    );
+    return;
+  }
+
+  const scheduledIds = new Set(safeArray(data.scheduledItems).map((item) => item.id));
+  let emptyKeys = 0;
+  let missingScheduledReferences = 0;
+  let invalidEntryShapes = 0;
+
+  Object.entries(plannerEntries).forEach(([entryKey, entry]) => {
+    if (!entryKey) emptyKeys += 1;
+    if (!isPlainObject(entry)) {
+      invalidEntryShapes += 1;
+      return;
+    }
+
+    const [scheduledItemId] = String(entryKey).split('__');
+    if (scheduledItemId && !scheduledIds.has(scheduledItemId)) {
+      missingScheduledReferences += 1;
+    }
+
+    if (
+      entry.actualAmount !== undefined &&
+      entry.actualAmount !== '' &&
+      !Number.isFinite(Number(entry.actualAmount))
+    ) {
+      invalidEntryShapes += 1;
+    }
+
+    safeArray(entry.lineItems).forEach((lineItem) => {
+      if (!hasFiniteNumber(lineItem?.amount)) {
+        invalidEntryShapes += 1;
+      }
+    });
+  });
+
+  if (emptyKeys > 0 || invalidEntryShapes > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Planner entry issues',
+      `${emptyKeys + invalidEntryShapes} planner entries have empty keys, invalid values, or invalid line item amounts.`,
+      'Review planner edits before relying on pay-period totals.'
+    );
+  }
+
+  if (missingScheduledReferences > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Planner entries reference missing scheduled items',
+      `${missingScheduledReferences} planner entries reference scheduled items that are not currently saved.`,
+      'This can happen after old imports or deleted scheduled items. Do not rewrite keys unless you are intentionally cleaning data.'
+    );
+  }
+}
+
+function checkBudgetTargets(data, issues) {
+  const activeCategoryTargets = new Set();
+  let duplicateActiveTargets = 0;
+  let invalidBudgetAmounts = 0;
+
+  safeArray(data.budgetTargets || data.budgets).forEach((target) => {
+    if (!hasFiniteNumber(target.amount) || Number(target.amount) < 0) {
+      invalidBudgetAmounts += 1;
+    }
+
+    if (target.active === false || !target.categoryId) {
+      return;
+    }
+
+    if (activeCategoryTargets.has(target.categoryId)) {
+      duplicateActiveTargets += 1;
+      return;
+    }
+
+    activeCategoryTargets.add(target.categoryId);
+  });
+
+  if (duplicateActiveTargets > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Duplicate active budget targets',
+      `${duplicateActiveTargets} categories have more than one active budget target.`,
+      'Budgets should normally have one active monthly target per category.'
+    );
+  }
+
+  if (invalidBudgetAmounts > 0) {
+    addHealthIssue(
+      issues,
+      'error',
+      'Invalid budget amounts',
+      `${invalidBudgetAmounts} budget targets have invalid or negative amounts.`,
+      'Review budget targets before relying on budget reports.'
+    );
+  }
+}
+
+function getMovementKey(record = {}) {
+  const date = record.date || record.payPeriodDate || '';
+  const bucketId =
+    record.bucketId ||
+    record.savingsBucketId ||
+    record.toBucketId ||
+    record.fromBucketId ||
+    '';
+  const amount = Number(record.amount) || 0;
+  const direction =
+    record.transferType === 'from_savings_bucket' ||
+    record.adjustmentType === 'transfer_out' ||
+    amount < 0
+      ? 'out'
+      : 'in';
+
+  return `${date}|${bucketId}|${direction}|${Math.abs(amount).toFixed(2)}`;
+}
+
+function checkSavingsMovementRisks(data, issues) {
+  const adjustmentKeys = new Set(
+    safeArray(data.savingsBucketAdjustments).map((adjustment) =>
+      getMovementKey(adjustment)
+    )
+  );
+  const duplicateMovementRisks = safeArray(data.transfers).filter(
+    (transfer) =>
+      transfer.bucketId &&
+      (transfer.transferType === 'to_savings_bucket' ||
+        transfer.transferType === 'from_savings_bucket') &&
+      adjustmentKeys.has(getMovementKey(transfer))
+  ).length;
+
+  if (duplicateMovementRisks > 0) {
+    addHealthIssue(
+      issues,
+      'warning',
+      'Possible duplicate savings movement',
+      `${duplicateMovementRisks} bucket-linked transfers match savings bucket adjustments by date, bucket, direction, and amount.`,
+      'Reports try to avoid double counting matching movements, but review these records if savings totals look unexpected.'
+    );
+  }
+}
+
+export function getDataHealthDetails(data = {}) {
+  const sourceData = getHealthSourceData(data);
+  const issues = [];
+  const collections = getHealthCollectionRows(sourceData);
+
+  checkRequiredIds(collections, issues);
+  checkDateFields(sourceData, issues);
+  checkAmountFields(sourceData, issues);
+  checkReferenceHealth(sourceData, issues);
+  checkPlannerEntries(sourceData, issues);
+  checkBudgetTargets(sourceData, issues);
+  checkSavingsMovementRisks(sourceData, issues);
+
+  const errors = issues.filter((issue) => issue.severity === 'error');
+  const warnings = issues.filter((issue) => issue.severity === 'warning');
+
+  return {
+    errors,
+    warnings,
+    info: [
+      {
+        id: 'info-backup-first',
+        severity: 'info',
+        title: 'Backup before major cleanup',
+        message:
+          'Export a backup before making manual corrections or clearing browser data.',
+        guidance:
+          'Data Health does not delete records or rewrite IDs. It only reports issues.',
+      },
+    ],
+    allIssues: issues,
+  };
+}
+
 export function getDataHealthSummary(data = {}) {
   const safeData = getSafeAppData(data);
   const summary = getBackupSectionSummary(safeData);
   const warnings = getReferenceWarnings(safeData);
   const referenceWarningCounts = getReferenceWarningCounts(safeData);
+  const healthDetails = getDataHealthDetails(data);
   const backupStatus = getBackupReminderStatus(
     safeData.appMetadata?.lastBackupAt
   );
@@ -643,7 +1184,9 @@ export function getDataHealthSummary(data = {}) {
     lastBackupAt: backupStatus.lastBackupAt,
     backupStatus,
     counts: summary,
-    warningsCount: warnings.length,
+    warningsCount: Math.max(warnings.length, healthDetails.warnings.length),
+    errorsCount: healthDetails.errors.length,
     referenceWarningCounts,
+    healthDetails,
   };
 }

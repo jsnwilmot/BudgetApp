@@ -86,6 +86,16 @@ imports before release.
 - [ ] Backup export updates the Last backup timestamp.
 - [ ] Data Health shows Backup status.
 - [ ] Data Health counts transfer records and missing transfer references.
+- [ ] Data Health runs without changing data.
+- [ ] Data Health shows collection counts.
+- [ ] Duplicate IDs are detected.
+- [ ] Missing account references are detected.
+- [ ] Missing category references are detected.
+- [ ] Missing savings bucket references are detected.
+- [ ] Invalid dates are detected.
+- [ ] Invalid amounts are detected.
+- [ ] Transfer issues are detected.
+- [ ] Budget target issues are detected.
 - [ ] Dashboard shows backup reminder when no backup exists.
 - [ ] Dashboard shows backup reminder when last backup is older than 30 days.
 - [ ] Dashboard does not show backup reminder when backup is current.

@@ -148,7 +148,7 @@ export default function Help() {
           </p>
         </HelpCard>
 
-        <HelpCard title="Backups and Migration">
+      <HelpCard title="Backups and Migration">
           <p>
             Export Backup saves a versioned JSON file with your FinPath
             settings, accounts, categories, scheduled items, planner entries,
@@ -161,6 +161,21 @@ export default function Help() {
           <p>
             Backup files preserve stable record IDs so relationships can move
             cleanly into a future desktop version with local database storage.
+          </p>
+        </HelpCard>
+
+        <HelpCard title="Data Health">
+          <p>
+            Data Health checks your local FinPath records for missing links,
+            duplicate IDs, invalid dates, invalid amounts, and transfer risks.
+          </p>
+          <p>
+            Errors should be fixed before relying on reports, backups, or a
+            future desktop import. Warnings may affect totals or filtered views.
+          </p>
+          <p>
+            Export a backup before making major changes. The health check does
+            not delete records or rewrite IDs.
           </p>
         </HelpCard>
 

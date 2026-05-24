@@ -5,7 +5,7 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2r`
+Current release: `2.0.0-phase-2s`
 Data version: `2`
 
 ## Current Status
@@ -113,6 +113,30 @@ Savings Buckets, Budgets, Accounts, and Unified Transfers.
   events.
 - Budget reporting uses the same derived transaction helper as the Budgets
   page, so category budget status should match between Budgets and Reports.
+
+## Data Health Checks
+
+Settings > Data Management includes a non-destructive Data Health section. It
+shows record counts, detected warning/error counts, transfer reference counts,
+and plain-language guidance.
+
+Current checks include:
+
+- Duplicate and missing stable IDs for accounts, categories, scheduled items,
+  adjustments, savings buckets, transfers, and budget targets.
+- Missing account, category, and savings bucket references.
+- Invalid dates and timestamps on date-dependent records.
+- Invalid amounts and unexpected negative amounts where the current forms
+  expect positive values.
+- Planner entry shape issues without rewriting planner keys.
+- Budget target issues, including duplicate active targets for the same
+  category.
+- Transfer risks, same-account transfers, missing transfer accounts, bucket
+  reference issues, and possible duplicate savings movement.
+
+Data Health does not delete records, generate IDs, merge duplicates, rewrite
+planner keys, or change account/category/bucket references automatically. These
+checks are intended to make reports and future desktop migration safer.
 
 ## Install And Run
 
@@ -594,6 +618,25 @@ Known limitation:
   custom date ranges yet.
 - Transaction rows are still derived from source records rather than stored as
   standalone transactions.
+
+### Phase 2S: Data Health And Repair Polish
+
+Completed:
+
+- Added stronger Data Health checks.
+- Added duplicate and missing ID detection.
+- Added missing account, category, and savings bucket reference checks.
+- Added invalid date and invalid amount checks.
+- Added transfer and savings movement health checks.
+- Added non-destructive recheck flow and clearer repair guidance.
+- Improved migration readiness for future desktop import.
+
+Known limitation:
+
+- Data Health is intentionally conservative and does not automatically repair
+  duplicate IDs, missing references, or planner entry keys.
+- A future desktop migration may add deeper validation before importing into a
+  local database.
 
 ## Known Limitations
 

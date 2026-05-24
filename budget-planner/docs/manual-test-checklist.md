@@ -24,6 +24,14 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.
 - [ ] Budgets still calculate used, remaining, near-budget, and over-budget states.
 - [ ] Reports still open and charts render.
+- [ ] Data Health loads.
+- [ ] Data Health shows collection counts.
+- [ ] Run Health Check button works without changing data.
+- [ ] Existing healthy data shows no serious errors.
+- [ ] Transfer counts appear.
+- [ ] Savings bucket adjustment counts appear.
+- [ ] Reports still open after running Data Health.
+- [ ] App still loads after refresh.
 - [ ] Add income and confirm Reports income changes.
 - [ ] Add expense and confirm Reports expense and category totals change.
 - [ ] Add transfer and confirm Reports transfer totals change without inflating income or expenses.
