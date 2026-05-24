@@ -258,7 +258,7 @@ export function calculatePeriodTotals(rows, periodDate) {
     .filter((row) => row.type === 'income')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
-  const expenses = rows
+  const expensesOnly = rows
     .filter((row) => row.type === 'expense')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
@@ -266,11 +266,14 @@ export function calculatePeriodTotals(rows, periodDate) {
     .filter((row) => row.type === 'transfer')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
+  const expenses = expensesOnly + transfers;
+
   return {
     income,
     expenses,
+    expensesOnly,
     transfers,
-    netChequing: income - expenses - transfers,
+    netChequing: income - expenses,
     netSavings: transfers,
   };
 }
@@ -300,21 +303,35 @@ function calculateProjectionRows({
   payPeriods.forEach((period) => {
     const totals = calculatePeriodTotals(rows, period.date);
 
+    const chequingAccountIds = accounts
+  .filter((account) => account.type === 'chequing')
+  .map((account) => account.id);
+
+    const savingsAccountIds = accounts
+      .filter((account) => account.type === 'savings')
+      .map((account) => account.id);
+
     const chequingAdjustments = manualAdjustments
       .filter(
         (adjustment) =>
           adjustment.payPeriodDate === period.date &&
-          adjustment.accountId === 'acct-chequing'
+          chequingAccountIds.includes(adjustment.accountId)
       )
-      .reduce((total, adjustment) => total + adjustment.amount, 0);
+      .reduce(
+        (total, adjustment) => total + (Number(adjustment.amount) || 0),
+        0
+      );
 
     const savingsAdjustments = manualAdjustments
       .filter(
         (adjustment) =>
           adjustment.payPeriodDate === period.date &&
-          adjustment.accountId === 'acct-savings'
+          savingsAccountIds.includes(adjustment.accountId)
       )
-      .reduce((total, adjustment) => total + adjustment.amount, 0);
+      .reduce(
+        (total, adjustment) => total + (Number(adjustment.amount) || 0),
+        0
+      );
 
     const savingsBucketAdjustmentsForPeriod = savingsBucketAdjustments
       .filter((adjustment) => adjustment.payPeriodDate === period.date)
@@ -341,7 +358,7 @@ function calculateProjectionRows({
     },
     {
       id: 'total-expenses',
-      name: 'Total Expenses',
+      name: 'Total Expenses and Transfers',
       type: 'total',
       amountsByPeriod: totalExpenses,
     },
