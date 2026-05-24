@@ -436,6 +436,29 @@ Known limitation:
 - Release note visibility is tracked per browser/device with localStorage.
 - Users should still export backups manually after major updates.
 
+### Phase 2O: Unified Transfer And Bucket Automation
+
+Completed:
+
+- Added a unified transfer workflow for money moving between user-owned
+  accounts.
+- Added transfer records for chequing-to-savings bucket transfers,
+  savings-bucket-to-chequing transfers, and account transfers without buckets.
+- Added transfer history with edit and delete actions.
+- Connected transfer records to projected account balances, validated chequing,
+  projected savings, bucket projections, transactions, reports, backups, import,
+  repair, and reset-safe defaults.
+- Clarified when to use transfers versus manual adjustments.
+- Added Help guidance for transfer types and examples.
+
+Known limitation:
+
+- Scheduled transfers remain planned recurring items; transfer records are
+  one-off or confirmed account movements.
+- No bank sync or automatic matching is included.
+- Future desktop import/export should preserve stable transfer ids and the
+  versioned `transfers` collection.
+
 ## Known Limitations
 
 - Data is local-only and does not sync across devices.

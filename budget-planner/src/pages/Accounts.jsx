@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react';
 
 import { Plus, Trash2 } from 'lucide-react';
 
+import TransferEditor from '../components/TransferEditor';
+import TransferHistory from '../components/TransferHistory';
 import { formatCurrency } from '../logic/projectionLogic';
+import { createNewTransfer } from '../logic/transferLogic';
 
 const ACCOUNT_TYPES = [
   { value: 'chequing', label: 'Chequing' },
@@ -527,13 +530,18 @@ export default function Accounts({
   accounts = [],
   categories = [],
   manualAdjustments = [],
+  transfers = [],
+  savingsBuckets = [],
   payPeriods = [],
   settings,
   onSaveAccount,
   onSaveManualAdjustment,
   onDeleteManualAdjustment,
+  onSaveTransfer,
+  onDeleteTransfer,
 }) {
   const [selectedAdjustment, setSelectedAdjustment] = useState(null);
+  const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [isAddingAccount, setIsAddingAccount] = useState(false);
 
   const currency = settings?.currency || 'CAD';
@@ -570,6 +578,10 @@ export default function Accounts({
     setSelectedAdjustment(createNewAdjustment(accounts, payPeriods));
   }
 
+  function handleAddTransfer() {
+    setSelectedTransfer(createNewTransfer(accounts, savingsBuckets, payPeriods));
+  }
+
   async function handleSaveAdjustment(adjustment) {
     await onSaveManualAdjustment(adjustment);
     setSelectedAdjustment(null);
@@ -578,6 +590,11 @@ export default function Accounts({
   async function handleSaveNewAccount(account) {
     await onSaveAccount(account);
     setIsAddingAccount(false);
+  }
+
+  async function handleSaveTransfer(transfer) {
+    await onSaveTransfer(transfer);
+    setSelectedTransfer(null);
   }
 
   return (
@@ -615,8 +632,28 @@ export default function Accounts({
             <Plus size={16} />
             Add Adjustment
           </button>
+
+          <button
+            type="button"
+            onClick={handleAddTransfer}
+            disabled={activeAccounts.length < 2}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <Plus size={16} />
+            Add Transfer
+          </button>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <h3 className="text-lg font-bold text-slate-950">
+          Transfers vs adjustments
+        </h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Use transfers when money moves between your own accounts. Use manual
+          adjustments for corrections, fees, interest, or unexpected changes.
+        </p>
+      </section>
 
       {hasAccounts ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -781,6 +818,15 @@ export default function Accounts({
         </div>
       </section>
 
+      <TransferHistory
+        transfers={transfers}
+        accounts={accounts}
+        savingsBuckets={savingsBuckets}
+        currency={currency}
+        onEdit={setSelectedTransfer}
+        onDelete={onDeleteTransfer}
+      />
+
       {isAddingAccount ? (
         <AccountCreateForm
           accounts={accounts}
@@ -797,6 +843,17 @@ export default function Accounts({
           payPeriods={payPeriods}
           onCancel={() => setSelectedAdjustment(null)}
           onSave={handleSaveAdjustment}
+        />
+      ) : null}
+
+      {selectedTransfer ? (
+        <TransferEditor
+          transfer={selectedTransfer}
+          accounts={accounts}
+          savingsBuckets={savingsBuckets}
+          payPeriods={payPeriods}
+          onCancel={() => setSelectedTransfer(null)}
+          onSave={handleSaveTransfer}
         />
       ) : null}
     </div>

@@ -91,6 +91,10 @@ function getTransactionSignedAmount(transaction) {
     return Math.abs(amount);
   }
 
+  if (transaction.type === 'transfer') {
+    return 0;
+  }
+
   if (
     transaction.type === 'expense' ||
     transaction.type === 'transfer-out' ||
@@ -106,6 +110,7 @@ export function buildTransactionsFromAppData({
   scheduledItems = [],
   manualAdjustments = [],
   savingsBucketAdjustments = [],
+  transfers = [],
   savingsBuckets = [],
   accounts = [],
   categories = [],
@@ -187,6 +192,51 @@ export function buildTransactionsFromAppData({
     };
   });
 
+  const transferRows = transfers.map((transfer) => {
+    const bucketId = transfer.bucketId || transfer.savingsBucketId || null;
+    const fromAccountName = resolveName(
+      transfer.fromAccountId,
+      accountNames,
+      'No account',
+      'Missing account'
+    );
+    const toAccountName = resolveName(
+      transfer.toAccountId,
+      accountNames,
+      'No account',
+      'Missing account'
+    );
+    const transferType =
+      transfer.transferType === 'from_savings_bucket'
+        ? 'transfer-in'
+        : 'transfer-out';
+
+    return {
+      id: `transfer-${transfer.id}`,
+      date: getDateValue(transfer.date || transfer.payPeriodDate),
+      description: transfer.notes || `${fromAccountName} to ${toAccountName}`,
+      type:
+        transfer.transferType === 'account_transfer'
+          ? 'transfer'
+          : transferType,
+      amount: Math.abs(normalizeNumber(transfer.amount)),
+      categoryId: null,
+      categoryName: 'Uncategorized',
+      accountId: transfer.toAccountId || transfer.fromAccountId || null,
+      accountName: `${fromAccountName} to ${toAccountName}`,
+      savingsBucketId: bucketId,
+      savingsBucketName: resolveName(
+        bucketId,
+        bucketNames,
+        'No bucket',
+        'Missing savings bucket'
+      ),
+      source: 'transfer',
+      sourceId: transfer.id,
+      notes: transfer.notes || '',
+    };
+  });
+
   const scheduledRows = scheduledItems
     .map((item) => normalizeScheduledItem(item))
     .filter((item) => item.active)
@@ -235,7 +285,7 @@ export function buildTransactionsFromAppData({
     })
     .filter(Boolean);
 
-  return [...manualRows, ...savingsRows, ...scheduledRows];
+  return [...manualRows, ...savingsRows, ...transferRows, ...scheduledRows];
 }
 
 export function getTransactionAmountLabel(transaction) {
@@ -260,6 +310,7 @@ export function calculateTransactionSummary(transactions = []) {
       if (
         transaction.type === 'transfer-in' ||
         transaction.type === 'transfer-out' ||
+        transaction.type === 'transfer' ||
         transaction.type === 'savings'
       ) {
         summary.transfers += Math.abs(amount);

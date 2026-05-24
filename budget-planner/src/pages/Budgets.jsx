@@ -277,6 +277,7 @@ export default function Budgets({
   scheduledItems = [],
   manualAdjustments = [],
   savingsBucketAdjustments = [],
+  transfers = [],
   savingsBuckets = [],
   accounts = [],
   alerts = [],
@@ -298,6 +299,7 @@ export default function Budgets({
         scheduledItems,
         manualAdjustments,
         savingsBucketAdjustments,
+        transfers,
         savingsBuckets,
         accounts,
         categories,
@@ -307,6 +309,7 @@ export default function Budgets({
       categories,
       manualAdjustments,
       savingsBucketAdjustments,
+      transfers,
       savingsBuckets,
       scheduledItems,
     ]

@@ -12,6 +12,7 @@ import {
   getScheduledItemOccurrences,
   normalizeScheduledItem,
 } from './scheduledItemLogic';
+import { getTransferAccountEffects } from './transferLogic';
 
 export function formatCurrency(value, currency = 'CAD') {
   return new Intl.NumberFormat('en-CA', {
@@ -193,6 +194,7 @@ export function buildPlannerRows({
   scheduledItems,
   manualAdjustments,
   savingsBucketAdjustments = [],
+  transfers = [],
   plannerEntries = {},
 }) {
   const normalizedSettings = normalizeProjectionSettings(settings);
@@ -244,6 +246,7 @@ export function buildPlannerRows({
     accounts,
     manualAdjustments,
     savingsBucketAdjustments,
+    transfers,
     plannerEntries,
   });
 
@@ -321,6 +324,7 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
     accounts,
     manualAdjustments,
     savingsBucketAdjustments,
+    transfers = [],
     plannerEntries = {},
   }) {
   const startingChequingBalance =
@@ -384,16 +388,78 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
       .filter((adjustment) => adjustment.payPeriodDate === period.date)
       .reduce((total, adjustment) => total + adjustment.amount, 0);
 
-    chequingBalance += totals.netChequing + chequingAdjustments;
-    validatedChequingBalance += validatedTotals.netChequing + chequingAdjustments;
+    const transferRecordsForPeriod = transfers.filter(
+      (transfer) => transfer.payPeriodDate === period.date
+    );
+    const transferEffectsForPeriod = transferRecordsForPeriod.map((transfer) =>
+      getTransferAccountEffects(transfer)
+    );
+
+    const chequingTransferEffect = transferEffectsForPeriod.reduce(
+      (total, effect) => {
+        if (chequingAccountIds.includes(effect.fromAccountId)) {
+          return total + effect.fromAmount;
+        }
+
+        if (chequingAccountIds.includes(effect.toAccountId)) {
+          return total + effect.toAmount;
+        }
+
+        return total;
+      },
+      0
+    );
+    const validatedChequingTransferEffect = transferRecordsForPeriod
+      .filter((transfer) => transfer.validated)
+      .map((transfer) => getTransferAccountEffects(transfer))
+      .reduce((total, effect) => {
+        if (chequingAccountIds.includes(effect.fromAccountId)) {
+          return total + effect.fromAmount;
+        }
+
+        if (chequingAccountIds.includes(effect.toAccountId)) {
+          return total + effect.toAmount;
+        }
+
+        return total;
+      }, 0);
+    const savingsTransferEffect = transferEffectsForPeriod.reduce(
+      (total, effect) => {
+        if (savingsAccountIds.includes(effect.fromAccountId)) {
+          return total + effect.fromAmount;
+        }
+
+        if (savingsAccountIds.includes(effect.toAccountId)) {
+          return total + effect.toAmount;
+        }
+
+        return total;
+      },
+      0
+    );
+
+    chequingBalance +=
+      totals.netChequing + chequingAdjustments + chequingTransferEffect;
+    validatedChequingBalance +=
+      validatedTotals.netChequing +
+      chequingAdjustments +
+      validatedChequingTransferEffect;
 
     savingsBalance +=
-      totals.netSavings + savingsAdjustments + savingsBucketAdjustmentsForPeriod;
+      totals.netSavings +
+      savingsAdjustments +
+      savingsBucketAdjustmentsForPeriod +
+      savingsTransferEffect;
 
     totalIncome[period.date] = totals.income;
     totalExpenses[period.date] = totals.expenses;
-    totalTransfers[period.date] = totals.transfers;
-    netChequingChange[period.date] = totals.netChequing;
+    totalTransfers[period.date] =
+      totals.transfers +
+      transferRecordsForPeriod
+        .filter((transfer) => transfer.transferType === 'to_savings_bucket')
+        .reduce((total, transfer) => total + (Number(transfer.amount) || 0), 0);
+    netChequingChange[period.date] =
+      totals.netChequing + chequingTransferEffect;
     projectedChequing[period.date] = chequingBalance;
     validatedChequing[period.date] = validatedChequingBalance;
     projectedSavings[period.date] = savingsBalance;
@@ -496,11 +562,14 @@ export function buildSavingsBucketProjection({
   rows,
   savingsBuckets,
   savingsBucketAdjustments,
+  transfers = [],
 }) {
   return savingsBuckets.map((bucket) => {
     let balance = Number(bucket.startingAmount) || 0;
 
     const transfersInByPeriod = {};
+    const transferRecordsInByPeriod = {};
+    const transferRecordsOutByPeriod = {};
     const adjustmentsByPeriod = {};
     const balanceByPeriod = {};
 
@@ -518,10 +587,35 @@ export function buildSavingsBucketProjection({
         .reduce((total, adjustment) => {
           return total + (Number(adjustment.amount) || 0);
         }, 0);
+      const transferRecordTotals = transfers
+        .filter((transfer) => transfer.bucketId === bucket.id)
+        .filter((transfer) => transfer.payPeriodDate === period.date)
+        .reduce(
+          (totals, transfer) => {
+            const amount = Number(transfer.amount) || 0;
 
-      balance += transferIn + adjustmentTotal;
+            if (transfer.transferType === 'to_savings_bucket') {
+              totals.in += amount;
+            }
+
+            if (transfer.transferType === 'from_savings_bucket') {
+              totals.out += amount;
+            }
+
+            return totals;
+          },
+          { in: 0, out: 0 }
+        );
+
+      balance +=
+        transferIn +
+        adjustmentTotal +
+        transferRecordTotals.in -
+        transferRecordTotals.out;
 
       transfersInByPeriod[period.date] = transferIn;
+      transferRecordsInByPeriod[period.date] = transferRecordTotals.in;
+      transferRecordsOutByPeriod[period.date] = transferRecordTotals.out;
       adjustmentsByPeriod[period.date] = adjustmentTotal;
       balanceByPeriod[period.date] = balance;
     });
@@ -529,6 +623,8 @@ export function buildSavingsBucketProjection({
     return {
       bucket,
       transfersInByPeriod,
+      transferRecordsInByPeriod,
+      transferRecordsOutByPeriod,
       adjustmentsByPeriod,
       balanceByPeriod,
     };

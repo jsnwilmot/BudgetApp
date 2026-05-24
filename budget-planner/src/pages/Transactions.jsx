@@ -15,6 +15,7 @@ const typeLabels = {
   expense: 'Expense',
   'transfer-in': 'Transfer In',
   'transfer-out': 'Transfer Out',
+  transfer: 'Transfer',
   savings: 'Savings',
   adjustment: 'Adjustment',
 };
@@ -23,6 +24,7 @@ const sourceLabels = {
   'scheduled-item': 'Scheduled Item',
   'manual-adjustment': 'Manual Adjustment',
   'savings-bucket-adjustment': 'Savings Bucket',
+  transfer: 'Transfer',
 };
 
 function formatDate(value) {
@@ -79,6 +81,7 @@ export default function Transactions({
   scheduledItems = [],
   manualAdjustments = [],
   savingsBucketAdjustments = [],
+  transfers = [],
   savingsBuckets = [],
   accounts = [],
   categories = [],
@@ -101,6 +104,7 @@ export default function Transactions({
         scheduledItems,
         manualAdjustments,
         savingsBucketAdjustments,
+        transfers,
         savingsBuckets,
         accounts,
         categories,
@@ -110,6 +114,7 @@ export default function Transactions({
       categories,
       manualAdjustments,
       savingsBucketAdjustments,
+      transfers,
       savingsBuckets,
       scheduledItems,
     ]

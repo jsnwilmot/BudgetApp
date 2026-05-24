@@ -49,7 +49,8 @@ const defaultAppState = {
   savings: {
     buckets: [],
     transfers: []
-  }
+  },
+  transfers: []
 };
 
 function getActiveStorageKey() {
@@ -130,6 +131,7 @@ function getCountRows(summary = {}) {
     ["Budget targets", summary.budgetTargets],
     ["Manual adjustments", summary.manualAdjustments],
     ["Savings adjustments", summary.savingsAdjustments],
+    ["Transfers", summary.transfers],
     ["Planner entries", summary.plannerEntries]
   ].map(([label, value]) => ({
     label,
@@ -183,6 +185,7 @@ function calculateTransferTotals(bucketId, transfers = []) {
         transfer.type ||
         transfer.direction ||
         transfer.transferType;
+      const normalizedTransferType = String(transferType || "").toLowerCase();
 
       if (toBucketId === bucketId) {
         totals.totalTransfersIn += amount;
@@ -192,11 +195,21 @@ function calculateTransferTotals(bucketId, transfers = []) {
         totals.totalTransfersOut += amount;
       }
 
-      if (directBucketId === bucketId && transferType === "in") {
+      if (
+        directBucketId === bucketId &&
+        (normalizedTransferType === "in" ||
+          normalizedTransferType === "transfer_in" ||
+          normalizedTransferType === "to_savings_bucket")
+      ) {
         totals.totalTransfersIn += amount;
       }
 
-      if (directBucketId === bucketId && transferType === "out") {
+      if (
+        directBucketId === bucketId &&
+        (normalizedTransferType === "out" ||
+          normalizedTransferType === "transfer_out" ||
+          normalizedTransferType === "from_savings_bucket")
+      ) {
         totals.totalTransfersOut += amount;
       }
 

@@ -1,11 +1,12 @@
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
+import { normalizeTransfer } from '../logic/transferLogic';
 import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
 } from './seedData';
 
-export const APP_DATA_VERSION = 1;
+export const APP_DATA_VERSION = 2;
 export const APP_VERSION = '1.0.0-local-mvp';
 export const BACKUP_APP_NAME = 'BudgetApp';
 export const BACKUP_REMINDER_DAYS = 30;
@@ -416,6 +417,7 @@ export function migrateFromVersion0(data = {}) {
     savingsBucketAdjustments: safeArray(safeData.savingsBucketAdjustments).length
       ? safeData.savingsBucketAdjustments
       : safeArray(safeData.savings?.transfers),
+    transfers: safeArray(safeData.transfers),
   };
 }
 
@@ -477,6 +479,7 @@ export function getSafeAppData(data = {}) {
       migratedData.savingsBucketAdjustments,
       normalizeSavingsBucketAdjustmentRecord
     ),
+    transfers: normalizeRecords(migratedData.transfers, normalizeTransfer),
   };
 }
 
@@ -509,6 +512,7 @@ export function getBackupSectionSummary(data = {}) {
     savingsAdjustments: safeArray(
       safeData.savingsBucketAdjustments || safeData.savings?.transfers
     ).length,
+    transfers: safeArray(safeData.transfers).length,
     plannerEntries: Object.keys(plannerEntries).length,
   };
 }
@@ -557,6 +561,20 @@ export function getReferenceWarnings(data = {}) {
 
     if (bucketId && !bucketIds.has(bucketId)) {
       warnings.push('A savings bucket adjustment references a missing savings bucket.');
+    }
+  });
+
+  safeData.transfers.forEach((transfer) => {
+    if (transfer.fromAccountId && !accountIds.has(transfer.fromAccountId)) {
+      warnings.push('A transfer references a missing from account.');
+    }
+
+    if (transfer.toAccountId && !accountIds.has(transfer.toAccountId)) {
+      warnings.push('A transfer references a missing to account.');
+    }
+
+    if (transfer.bucketId && !bucketIds.has(transfer.bucketId)) {
+      warnings.push('A transfer references a missing savings bucket.');
     }
   });
 

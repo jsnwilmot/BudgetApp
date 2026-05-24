@@ -305,6 +305,7 @@ export function getDataWarningAlerts({
   accounts = [],
   savingsBuckets = [],
   savingsBucketAdjustments = [],
+  transfers = [],
 } = {}) {
   const alerts = [];
   const categoryMap = buildCategoryMap(categories);
@@ -393,6 +394,50 @@ export function getDataWarningAlerts({
     }
   });
 
+  transfers.forEach((transfer) => {
+    if (transfer.fromAccountId && !accountMap.has(transfer.fromAccountId)) {
+      alerts.push({
+        id: `data-warning-transfer-from-account-${transfer.id}`,
+        type: 'data-warning',
+        severity: 'warning',
+        title: 'Transfer account missing',
+        message: 'A transfer references a missing from account.',
+        source: 'data',
+        sourceId: transfer.id || null,
+        actionLabel: 'Review accounts',
+        actionPage: 'accounts',
+      });
+    }
+
+    if (transfer.toAccountId && !accountMap.has(transfer.toAccountId)) {
+      alerts.push({
+        id: `data-warning-transfer-to-account-${transfer.id}`,
+        type: 'data-warning',
+        severity: 'warning',
+        title: 'Transfer account missing',
+        message: 'A transfer references a missing to account.',
+        source: 'data',
+        sourceId: transfer.id || null,
+        actionLabel: 'Review accounts',
+        actionPage: 'accounts',
+      });
+    }
+
+    if (transfer.bucketId && !bucketMap.has(transfer.bucketId)) {
+      alerts.push({
+        id: `data-warning-transfer-bucket-${transfer.id}`,
+        type: 'data-warning',
+        severity: 'warning',
+        title: 'Transfer bucket missing',
+        message: 'A transfer references a missing savings bucket.',
+        source: 'data',
+        sourceId: transfer.id || null,
+        actionLabel: 'Review savings buckets',
+        actionPage: 'savings-buckets',
+      });
+    }
+  });
+
   return alerts;
 }
 
@@ -472,6 +517,7 @@ export function generateAlerts({
   transactions = [],
   savingsBuckets = [],
   savingsBucketAdjustments = [],
+  transfers = [],
   settings = {},
   appMetadata = {},
   currentDate = new Date(),
@@ -495,6 +541,7 @@ export function generateAlerts({
       accounts,
       savingsBuckets,
       savingsBucketAdjustments,
+      transfers,
     }),
   ];
 

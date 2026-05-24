@@ -125,6 +125,14 @@ imports before release.
 - [ ] Scheduled item add/edit/duplicate/toggle works.
 - [ ] Account adjustment add/edit/delete works.
 - [ ] Savings bucket adjustment add/edit/delete works.
+- [ ] Transfer to Savings Bucket moves money from chequing to savings and increases the selected bucket.
+- [ ] Transfer from Savings Bucket moves money from savings to chequing and decreases the selected bucket.
+- [ ] Account Transfer without a bucket affects only the selected accounts.
+- [ ] Transfer edit updates account and bucket projections.
+- [ ] Transfer delete removes only the transfer record and updates totals.
+- [ ] Backup export includes transfer records.
+- [ ] Backup import restores transfer records.
+- [ ] Projections still include transfers after refresh.
 - [ ] Budget target add/edit/archive works.
 - [ ] Category add/edit/archive works.
 - [ ] Transactions CSV export downloads.

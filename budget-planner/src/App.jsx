@@ -21,6 +21,7 @@ import {
   savingsBucketAdjustments as seedSavingsBucketAdjustments,
   savingsBuckets as seedSavingsBuckets,
   scheduledItems as seedScheduledItems,
+  transfers as seedTransfers,
 } from './data/seedData';
 import {
   archiveCategory,
@@ -29,6 +30,7 @@ import {
   deletePlannerEntry,
   deleteScheduledItem,
   deleteSavingsBucketAdjustment,
+  deleteTransfer,
   getAppMetadata,
   getAppSettings,
   getAllAccounts,
@@ -39,6 +41,7 @@ import {
   getAllSavingsBucketAdjustments,
   getAllSavingsBuckets,
   getAllScheduledItems,
+  getAllTransfers,
   normalizeAppSettings,
   normalizeAppMetadata,
   replaceAccounts,
@@ -49,6 +52,7 @@ import {
   replaceSavingsBucketAdjustments,
   replaceSavingsBuckets,
   replaceScheduledItems,
+  replaceTransfers,
   repairLocalData,
   resetAppToDemoData,
   resetAppToEmptyState,
@@ -66,6 +70,7 @@ import {
   saveSavingsBucket,
   saveSavingsBucketAdjustment,
   saveScheduledItem,
+  saveTransfer,
   validateAppSettings,
 } from './data/db';
 import {
@@ -177,6 +182,7 @@ function hasNoUserRecords({
   manualAdjustments = [],
   savingsBuckets = [],
   savingsBucketAdjustments = [],
+  transfers = [],
   budgetTargets = [],
   plannerEntries = {},
 }) {
@@ -186,6 +192,7 @@ function hasNoUserRecords({
     manualAdjustments.length === 0 &&
     savingsBuckets.length === 0 &&
     savingsBucketAdjustments.length === 0 &&
+    transfers.length === 0 &&
     budgetTargets.length === 0 &&
     Object.keys(plannerEntries).length === 0
   );
@@ -208,6 +215,7 @@ export default function App() {
   const [savingsBucketAdjustments, setSavingsBucketAdjustments] = useState(
     seedSavingsBucketAdjustments
   );
+  const [transfers, setTransfers] = useState(seedTransfers);
   const [appMetadata, setAppMetadata] = useState(() =>
     normalizeAppMetadata({})
   );
@@ -235,6 +243,7 @@ export default function App() {
       loadedData.savingsBuckets.filter((bucket) => !bucket.deletedAt)
     );
     setSavingsBucketAdjustments(loadedData.savingsBucketAdjustments);
+    setTransfers(loadedData.transfers || []);
     setAppMetadata(loadedData.appMetadata);
   }
 
@@ -251,6 +260,7 @@ export default function App() {
           savedManualAdjustments,
           savedSavingsBuckets,
           savedSavingsBucketAdjustments,
+          savedTransfers,
           savedAppMetadata,
         ] = await Promise.all([
           getAppSettings(),
@@ -262,6 +272,7 @@ export default function App() {
           getAllManualAdjustments(),
           getAllSavingsBuckets(),
           getAllSavingsBucketAdjustments(),
+          getAllTransfers(),
           getAppMetadata(),
         ]);
 
@@ -272,7 +283,8 @@ export default function App() {
           savedAccounts.length > 0 ||
           savedManualAdjustments.length > 0 ||
           savedSavingsBuckets.length > 0 ||
-          savedSavingsBucketAdjustments.length > 0;
+          savedSavingsBucketAdjustments.length > 0 ||
+          savedTransfers.length > 0;
         const hasExistingUserData =
           hasSavedRecords ||
           hasCustomSavedSettings(savedSettings) ||
@@ -295,6 +307,7 @@ export default function App() {
           manualAdjustments: savedManualAdjustments,
           savingsBuckets: savedSavingsBuckets,
           savingsBucketAdjustments: savedSavingsBucketAdjustments,
+          transfers: savedTransfers,
           appMetadata: savedAppMetadata,
         });
       } catch (error) {
@@ -315,6 +328,7 @@ export default function App() {
       scheduledItems,
       manualAdjustments,
       savingsBucketAdjustments,
+      transfers,
       plannerEntries,
     });
   }, [
@@ -324,6 +338,7 @@ export default function App() {
     accounts,
     manualAdjustments,
     savingsBucketAdjustments,
+    transfers,
   ]);
 
   const appData = useMemo(
@@ -339,6 +354,7 @@ export default function App() {
       manualAdjustments,
       savingsBuckets,
       savingsBucketAdjustments,
+      transfers,
       appMetadata,
       planner: {
         entries: plannerEntries,
@@ -347,7 +363,7 @@ export default function App() {
       },
       savings: {
         buckets: savingsBuckets,
-        transfers: savingsBucketAdjustments,
+        transfers: [...savingsBucketAdjustments, ...transfers],
       },
     }),
     [
@@ -357,6 +373,7 @@ export default function App() {
       plannerEntries,
       savingsBucketAdjustments,
       savingsBuckets,
+      transfers,
       scheduledItems,
       settings,
       budgetTargets,
@@ -373,6 +390,7 @@ export default function App() {
         scheduledItems,
         manualAdjustments,
         savingsBucketAdjustments,
+        transfers,
         savingsBuckets,
         accounts,
         categories,
@@ -382,6 +400,7 @@ export default function App() {
       categories,
       manualAdjustments,
       savingsBucketAdjustments,
+      transfers,
       savingsBuckets,
       scheduledItems,
     ]
@@ -410,6 +429,7 @@ export default function App() {
         transactions: alertTransactions,
         savingsBuckets,
         savingsBucketAdjustments,
+        transfers,
         settings,
         appMetadata,
       }),
@@ -424,6 +444,7 @@ export default function App() {
       savingsBuckets,
       scheduledItems,
       settings,
+      transfers,
       appMetadata,
     ]
   );
@@ -449,6 +470,7 @@ export default function App() {
         manualAdjustments,
         savingsBuckets,
         savingsBucketAdjustments,
+        transfers,
         budgetTargets,
         plannerEntries,
       }),
@@ -459,6 +481,7 @@ export default function App() {
       manualAdjustments,
       plannerEntries,
       savingsBucketAdjustments,
+      transfers,
       savingsBuckets,
       scheduledItems,
     ]
@@ -793,6 +816,47 @@ async function handleSaveAccount(updatedAccount) {
     }
   }
 
+  async function handleSaveTransfer(transfer) {
+    try {
+      const savedTransfer = await saveTransfer(transfer);
+
+      setTransfers((currentTransfers) => {
+        const exists = currentTransfers.some((item) => item.id === savedTransfer.id);
+
+        if (exists) {
+          return currentTransfers.map((item) =>
+            item.id === savedTransfer.id ? savedTransfer : item
+          );
+        }
+
+        return [...currentTransfers, savedTransfer];
+      });
+
+      setStatusMessage('Transfer saved.');
+      return savedTransfer;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save transfer.');
+      throw error;
+    }
+  }
+
+  async function handleDeleteTransfer(id) {
+    try {
+      await deleteTransfer(id);
+
+      setTransfers((currentTransfers) =>
+        currentTransfers.filter((transfer) => transfer.id !== id)
+      );
+
+      setStatusMessage('Transfer deleted.');
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not delete transfer.');
+      throw error;
+    }
+  }
+
   async function handleSaveCategory(updatedCategory) {
     try {
       const savedCategory = await saveCategory(updatedCategory);
@@ -985,7 +1049,8 @@ async function handleSaveAccount(updatedAccount) {
       safeImportedData.accounts.length > 0 ||
       safeImportedData.manualAdjustments.length > 0 ||
       safeImportedData.savingsBuckets.length > 0 ||
-      safeImportedData.savingsBucketAdjustments.length > 0;
+      safeImportedData.savingsBucketAdjustments.length > 0 ||
+      safeImportedData.transfers.length > 0;
     const importedAppMetadata = {
       ...safeImportedData.appMetadata,
       dataMode:
@@ -1002,6 +1067,7 @@ async function handleSaveAccount(updatedAccount) {
     const importedSavingsBuckets = safeImportedData.savingsBuckets;
     const importedSavingsBucketAdjustments =
       safeImportedData.savingsBucketAdjustments;
+    const importedTransfers = safeImportedData.transfers;
 
     const [
       savedImportedAppMetadata,
@@ -1022,6 +1088,7 @@ async function handleSaveAccount(updatedAccount) {
         replaceManualAdjustments(importedManualAdjustments),
         replaceSavingsBuckets(importedSavingsBuckets),
         replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
+        replaceTransfers(importedTransfers),
       ]);
 
     setSettings(importedSettings);
@@ -1034,6 +1101,7 @@ async function handleSaveAccount(updatedAccount) {
     setManualAdjustments(importedManualAdjustments);
     setSavingsBuckets(importedSavingsBuckets.filter((bucket) => !bucket.deletedAt));
     setSavingsBucketAdjustments(importedSavingsBucketAdjustments);
+    setTransfers(importedTransfers);
     setStatusMessage('Backup imported successfully.');
   }
 
@@ -1144,6 +1212,7 @@ async function handleSaveAccount(updatedAccount) {
               scheduledItems={scheduledItems}
               manualAdjustments={manualAdjustments}
               savingsBucketAdjustments={savingsBucketAdjustments}
+              transfers={transfers}
               savingsBuckets={savingsBuckets}
               accounts={accounts}
               categories={categories}
@@ -1155,11 +1224,15 @@ async function handleSaveAccount(updatedAccount) {
               accounts={accounts}
               categories={categories}
               manualAdjustments={manualAdjustments}
+              transfers={transfers}
+              savingsBuckets={savingsBuckets}
               payPeriods={plannerData.payPeriods}
               settings={settings}
               onSaveAccount={handleSaveAccount}
               onSaveManualAdjustment={handleSaveManualAdjustment}
               onDeleteManualAdjustment={handleDeleteManualAdjustment}
+              onSaveTransfer={handleSaveTransfer}
+              onDeleteTransfer={handleDeleteTransfer}
             />
           ) : null}
 
@@ -1167,6 +1240,8 @@ async function handleSaveAccount(updatedAccount) {
             <SavingsBuckets
               savingsBuckets={savingsBuckets}
               savingsBucketAdjustments={savingsBucketAdjustments}
+              transfers={transfers}
+              accounts={accounts}
               scheduledItems={scheduledItems}
               plannerData={plannerData}
               settings={settings}
@@ -1174,6 +1249,8 @@ async function handleSaveAccount(updatedAccount) {
               onDeleteSavingsBucket={handleDeleteSavingsBucket}
               onSaveSavingsBucketAdjustment={handleSaveSavingsBucketAdjustment}
               onDeleteSavingsBucketAdjustment={handleDeleteSavingsBucketAdjustment}
+              onSaveTransfer={handleSaveTransfer}
+              onDeleteTransfer={handleDeleteTransfer}
             />
           ) : null}
 
@@ -1185,6 +1262,7 @@ async function handleSaveAccount(updatedAccount) {
               scheduledItems={scheduledItems}
               manualAdjustments={manualAdjustments}
               savingsBucketAdjustments={savingsBucketAdjustments}
+              transfers={transfers}
               savingsBuckets={savingsBuckets}
               accounts={accounts}
               alerts={budgetAlerts}
@@ -1219,7 +1297,7 @@ async function handleSaveAccount(updatedAccount) {
                 (adjustment) => adjustment.type === 'misc-expense'
               )}
               savingsBuckets={savingsBuckets}
-              savingsTransfers={savingsBucketAdjustments}
+              savingsTransfers={[...savingsBucketAdjustments, ...transfers]}
             />
           ) : null}
 

@@ -6,6 +6,7 @@ import {
 } from './seedData';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
+import { normalizeTransfer } from '../logic/transferLogic';
 import {
   APP_DATA_VERSION,
   APP_METADATA_ID,
@@ -22,7 +23,7 @@ import {
 } from './migrations';
 
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 const SETTINGS_ID = 'app-settings';
 
 const STORES = {
@@ -36,6 +37,7 @@ const STORES = {
   manualAdjustments: 'manualAdjustments',
   savingsBuckets: 'savingsBuckets',
   savingsBucketAdjustments: 'savingsBucketAdjustments',
+  transfers: 'transfers',
 };
 
 function openDatabase() {
@@ -109,6 +111,12 @@ function openDatabase() {
 
       if (!db.objectStoreNames.contains(STORES.savingsBucketAdjustments)) {
         db.createObjectStore(STORES.savingsBucketAdjustments, {
+          keyPath: 'id',
+        });
+      }
+
+      if (!db.objectStoreNames.contains(STORES.transfers)) {
+        db.createObjectStore(STORES.transfers, {
           keyPath: 'id',
         });
       }
@@ -374,6 +382,13 @@ export async function replaceSavingsBucketAdjustments(adjustments = []) {
   );
 }
 
+export async function replaceTransfers(transfers = []) {
+  return replaceStoreRecords(
+    STORES.transfers,
+    transfers.map((transfer) => normalizeTransfer(transfer))
+  );
+}
+
 async function replaceCompleteAppData(appData = {}) {
   const safeData = getSafeAppData({
     appDataVersion: APP_DATA_VERSION,
@@ -391,6 +406,7 @@ async function replaceCompleteAppData(appData = {}) {
     savedManualAdjustments,
     savedSavingsBuckets,
     savedSavingsBucketAdjustments,
+    savedTransfers,
   ] = await Promise.all([
     saveAppMetadata(safeData.appMetadata),
     saveAppSettings(safeData.settings),
@@ -402,6 +418,7 @@ async function replaceCompleteAppData(appData = {}) {
     replaceManualAdjustments(safeData.manualAdjustments),
     replaceSavingsBuckets(safeData.savingsBuckets),
     replaceSavingsBucketAdjustments(safeData.savingsBucketAdjustments),
+    replaceTransfers(safeData.transfers),
   ]);
 
   return {
@@ -416,6 +433,7 @@ async function replaceCompleteAppData(appData = {}) {
     manualAdjustments: savedManualAdjustments,
     savingsBuckets: savedSavingsBuckets,
     savingsBucketAdjustments: savedSavingsBucketAdjustments,
+    transfers: savedTransfers,
   };
 }
 
@@ -1046,6 +1064,76 @@ export async function deleteSavingsBucketAdjustment(id) {
   });
 }
 
+export async function getAllTransfers() {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.transfers, 'readonly');
+    const store = transaction.objectStore(STORES.transfers);
+    const request = store.getAll();
+
+    request.onerror = () => {
+      reject(new Error('Failed to load transfers.'));
+    };
+
+    request.onsuccess = () => {
+      resolve((request.result || []).map((transfer) => normalizeTransfer(transfer)));
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function saveTransfer(transfer) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.transfers, 'readwrite');
+    const store = transaction.objectStore(STORES.transfers);
+    const record = normalizeTransfer({
+      ...transfer,
+      updatedAt: new Date().toISOString(),
+    });
+    const request = store.put(record);
+
+    request.onerror = () => {
+      reject(new Error('Failed to save transfer.'));
+    };
+
+    request.onsuccess = () => {
+      resolve(record);
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+export async function deleteTransfer(id) {
+  const db = await openDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.transfers, 'readwrite');
+    const store = transaction.objectStore(STORES.transfers);
+    const request = store.delete(id);
+
+    request.onerror = () => {
+      reject(new Error('Failed to delete transfer.'));
+    };
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
 export async function deleteScheduledItem(id) {
   const db = await openDatabase();
 
@@ -1079,6 +1167,7 @@ export async function repairLocalData() {
     manualAdjustments,
     savingsBuckets,
     savingsBucketAdjustments,
+    transfers,
     appMetadata,
   ] = await Promise.all([
     getAppSettings(),
@@ -1090,6 +1179,7 @@ export async function repairLocalData() {
     getAllManualAdjustments(),
     getAllSavingsBuckets(),
     getAllSavingsBucketAdjustments(),
+    getAllTransfers(),
     getAppMetadata(),
   ]);
 
@@ -1104,6 +1194,7 @@ export async function repairLocalData() {
     manualAdjustments,
     savingsBuckets,
     savingsBucketAdjustments,
+    transfers,
     appMetadata,
   });
 
@@ -1117,6 +1208,7 @@ export async function repairLocalData() {
     savedManualAdjustments,
     savedSavingsBuckets,
     savedSavingsBucketAdjustments,
+    savedTransfers,
     savedAppMetadata,
   ] = await Promise.all([
     saveAppSettings(repairedData.settings),
@@ -1128,6 +1220,7 @@ export async function repairLocalData() {
     replaceManualAdjustments(repairedData.manualAdjustments),
     replaceSavingsBuckets(repairedData.savingsBuckets),
     replaceSavingsBucketAdjustments(repairedData.savingsBucketAdjustments),
+    replaceTransfers(repairedData.transfers),
     saveAppMetadata(repairedData.appMetadata),
   ]);
 
@@ -1142,6 +1235,7 @@ export async function repairLocalData() {
     manualAdjustments: savedManualAdjustments,
     savingsBuckets: savedSavingsBuckets,
     savingsBucketAdjustments: savedSavingsBucketAdjustments,
+    transfers: savedTransfers,
     appMetadata: savedAppMetadata,
   };
 }

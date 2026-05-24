@@ -613,6 +613,8 @@ export const savingsBucketAdjustments = [
   },
 ];
 
+export const transfers = [];
+
 export const budgetTargets = [
   {
     id: 'budget-demo-groceries',
@@ -702,6 +704,7 @@ export function getDemoAppState() {
     manualAdjustments,
     savingsBuckets,
     savingsBucketAdjustments,
+    transfers,
   };
 }
 
@@ -723,5 +726,6 @@ export function getEmptyAppState() {
     manualAdjustments: [],
     savingsBuckets: [],
     savingsBucketAdjustments: [],
+    transfers: [],
   };
 }

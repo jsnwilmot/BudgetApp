@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import TransferEditor from '../components/TransferEditor';
+import TransferHistory from '../components/TransferHistory';
 import {
   buildSavingsBucketProjection,
   formatCurrency,
 } from '../logic/projectionLogic';
+import { createNewTransfer } from '../logic/transferLogic';
 
 function createNewBucket() {
   return {
@@ -193,7 +196,8 @@ function DeleteBucketDialog({
 
         {bucketIsUsedByTransfer ? (
           <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            This bucket is used by a scheduled transfer. Change or remove that transfer before deleting this bucket.
+            This bucket is used by a scheduled transfer or transfer record.
+            Change or remove that transfer before deleting this bucket.
           </div>
         ) : null}
 
@@ -431,6 +435,8 @@ function BucketAdjustmentForm({
 export default function SavingsBuckets({
   savingsBuckets,
   savingsBucketAdjustments,
+  transfers = [],
+  accounts = [],
   scheduledItems,
   plannerData,
   settings,
@@ -438,8 +444,11 @@ export default function SavingsBuckets({
   onDeleteSavingsBucket,
   onSaveSavingsBucketAdjustment,
   onDeleteSavingsBucketAdjustment,
+  onSaveTransfer,
+  onDeleteTransfer,
 }) {
   const [selectedAdjustment, setSelectedAdjustment] = useState(null);
+  const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [selectedBucket, setSelectedBucket] = useState(null);
   const [deleteBucket, setDeleteBucket] = useState(null);
   const currency = settings?.currency || 'CAD';
@@ -450,8 +459,9 @@ export default function SavingsBuckets({
       rows: plannerData.rows,
       savingsBuckets,
       savingsBucketAdjustments,
+      transfers,
     });
-  }, [plannerData, savingsBuckets, savingsBucketAdjustments]);
+  }, [plannerData, savingsBuckets, savingsBucketAdjustments, transfers]);
 
   const finalPeriod = plannerData.payPeriods[plannerData.payPeriods.length - 1];
   const finalPeriodDate = finalPeriod?.date || '';
@@ -484,6 +494,24 @@ export default function SavingsBuckets({
     (total, adjustment) => total + (Number(adjustment.amount) || 0),
     0
   );
+  const totalTransferRecordsIn = bucketProjection.reduce((total, item) => {
+    return (
+      total +
+      Object.values(item.transferRecordsInByPeriod).reduce(
+        (innerTotal, value) => innerTotal + (Number(value) || 0),
+        0
+      )
+    );
+  }, 0);
+  const totalTransferRecordsOut = bucketProjection.reduce((total, item) => {
+    return (
+      total +
+      Object.values(item.transferRecordsOutByPeriod).reduce(
+        (innerTotal, value) => innerTotal + (Number(value) || 0),
+        0
+      )
+    );
+  }, 0);
 
   function getBucketName(bucketId) {
     return savingsBuckets.find((bucket) => bucket.id === bucketId)?.name || bucketId;
@@ -495,17 +523,24 @@ export default function SavingsBuckets({
   }
 
   function bucketIsUsedByTransfer(bucketId) {
-    return scheduledItems.some(
-      (item) =>
-        item.type === 'transfer' &&
-        item.bucketId === bucketId &&
-        item.active !== false
+    return (
+      scheduledItems.some(
+        (item) =>
+          item.type === 'transfer' &&
+          item.bucketId === bucketId &&
+          item.active !== false
+      ) || transfers.some((transfer) => transfer.bucketId === bucketId)
     );
   }
 
   async function handleSaveAdjustment(adjustment) {
     await onSaveSavingsBucketAdjustment(adjustment);
     setSelectedAdjustment(null);
+  }
+
+  async function handleSaveTransfer(transfer) {
+    await onSaveTransfer(transfer);
+    setSelectedTransfer(null);
   }
 
   async function handleSaveBucket(bucket) {
@@ -534,7 +569,8 @@ export default function SavingsBuckets({
           <p className="mt-2 max-w-2xl text-sm text-slate-500">
             Projected values include future planned transfers. Current savings
             should be compared against current bucket balances, not future
-            projections.
+            projections. Transfer records are included when money moves between
+            your accounts and a bucket.
           </p>
         </div>
 
@@ -566,10 +602,24 @@ export default function SavingsBuckets({
             <Plus size={16} />
             Add Bucket Adjustment
           </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSelectedTransfer(
+                createNewTransfer(accounts, savingsBuckets, plannerData.payPeriods)
+              )
+            }
+            disabled={accounts.filter((account) => account.active !== false).length < 2}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <Plus size={16} />
+            Add Transfer
+          </button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
             Bucket Starting Total
@@ -594,6 +644,15 @@ export default function SavingsBuckets({
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
             {formatCurrency(totalBucketAdjustments, currency)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 shadow-sm sm:p-5">
+          <p className="text-sm font-medium text-slate-500">
+            Transfer Records Net
+          </p>
+          <p className="mt-2 text-2xl font-bold text-slate-950">
+            {formatCurrency(totalTransferRecordsIn - totalTransferRecordsOut, currency)}
           </p>
         </div>
 
@@ -622,18 +681,25 @@ export default function SavingsBuckets({
             Bucket Projection
           </h3>
           <p className="text-sm text-slate-500">
-            Starting amount plus scheduled transfers and bucket adjustments.
+            Starting amount plus scheduled transfers, transfer records, and
+            bucket adjustments.
           </p>
         </div>
 
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[840px]">
+        <table className="w-full min-w-[1080px]">
           <thead>
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Bucket</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Starting</th>
               <th className="px-4 py-3 text-right text-sm font-bold">
                 Projected Transfers In
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-bold">
+                Transfer Records In
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-bold">
+                Transfer Records Out
               </th>
               <th className="px-4 py-3 text-right text-sm font-bold">Adjustments</th>
               <th className="px-4 py-3 text-right text-sm font-bold">
@@ -646,7 +712,7 @@ export default function SavingsBuckets({
           <tbody>
             {bucketProjection.length === 0 ? (
               <tr>
-                <td colSpan="6" className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan="8" className="px-4 py-8 text-center text-sm text-slate-500">
                   No savings buckets yet. Add a bucket to start tracking projected balances.
                 </td>
               </tr>
@@ -662,6 +728,12 @@ export default function SavingsBuckets({
                 (total, value) => total + (Number(value) || 0),
                 0
               );
+              const transferRecordsIn = Object.values(
+                item.transferRecordsInByPeriod
+              ).reduce((total, value) => total + (Number(value) || 0), 0);
+              const transferRecordsOut = Object.values(
+                item.transferRecordsOutByPeriod
+              ).reduce((total, value) => total + (Number(value) || 0), 0);
 
               const usedByTransfer = bucketIsUsedByTransfer(item.bucket.id);
 
@@ -671,7 +743,7 @@ export default function SavingsBuckets({
                     <div>{item.bucket.name}</div>
                     {usedByTransfer ? (
                       <div className="mt-1 text-xs font-medium text-slate-500">
-                        Used by scheduled transfer
+                        Used by transfer
                       </div>
                     ) : null}
                   </td>
@@ -682,6 +754,14 @@ export default function SavingsBuckets({
 
                   <td className="px-4 py-3 text-right text-sm text-emerald-700">
                     {formatCurrency(transfersIn, currency)}
+                  </td>
+
+                  <td className="px-4 py-3 text-right text-sm text-emerald-700">
+                    {formatCurrency(transferRecordsIn, currency)}
+                  </td>
+
+                  <td className="px-4 py-3 text-right text-sm text-amber-700">
+                    {formatCurrency(transferRecordsOut, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
@@ -721,6 +801,15 @@ export default function SavingsBuckets({
         </table>
         </div>
       </section>
+
+      <TransferHistory
+        transfers={transfers}
+        accounts={accounts}
+        savingsBuckets={savingsBuckets}
+        currency={currency}
+        onEdit={setSelectedTransfer}
+        onDelete={onDeleteTransfer}
+      />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -835,6 +924,17 @@ export default function SavingsBuckets({
           payPeriods={plannerData.payPeriods}
           onCancel={() => setSelectedAdjustment(null)}
           onSave={handleSaveAdjustment}
+        />
+      ) : null}
+
+      {selectedTransfer ? (
+        <TransferEditor
+          transfer={selectedTransfer}
+          accounts={accounts}
+          savingsBuckets={savingsBuckets}
+          payPeriods={plannerData.payPeriods}
+          onCancel={() => setSelectedTransfer(null)}
+          onSave={handleSaveTransfer}
         />
       ) : null}
     </div>

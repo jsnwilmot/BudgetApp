@@ -8,12 +8,13 @@ const manageItems = [
   {
     id: 'accounts',
     title: 'Accounts',
-    description: 'Set starting balances and make account corrections.',
+    description: 'Set balances, corrections, and transfers between accounts.',
   },
   {
     id: 'savings-buckets',
     title: 'Savings Buckets',
-    description: 'Track what your savings money is assigned to.',
+    description:
+      'Track what savings is assigned to, including transfer in/out activity.',
   },
   {
     id: 'budgets',

@@ -17,6 +17,21 @@ const plannerTotals = [
   ['Projected Savings', 'Forecast savings after transfers and savings adjustments.'],
 ];
 
+const transferTypes = [
+  [
+    'To Savings Bucket',
+    'Moves money from chequing to savings and increases the selected bucket.',
+  ],
+  [
+    'From Savings Bucket',
+    'Moves money from savings back to chequing and decreases the selected bucket.',
+  ],
+  [
+    'Account Transfer',
+    'Moves money between your own accounts without changing any bucket.',
+  ],
+];
+
 const faqs = [
   {
     question: 'Can other users see my data?',
@@ -199,6 +214,31 @@ export default function Help() {
             </div>
           ))}
         </div>
+      </HelpCard>
+
+      <HelpCard title="Transfers">
+        <p>
+          Use Add Transfer when money moves between your own accounts. A
+          transfer updates account projections and, when a savings bucket is
+          selected, updates the bucket projection too.
+        </p>
+        <p>
+          Use manual adjustments for corrections, fees, interest, refunds, or
+          unexpected changes that are not money moving between your own
+          accounts.
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {transferTypes.map(([title, description]) => (
+            <div key={title} className="rounded-xl border border-slate-200 p-3">
+              <p className="font-semibold text-slate-950">{title}</p>
+              <p className="mt-1 text-sm text-slate-600">{description}</p>
+            </div>
+          ))}
+        </div>
+        <p>
+          Example: move $175 from chequing to savings for Property Taxes, or
+          move $1,150 from Deferred Taxes savings back to chequing.
+        </p>
       </HelpCard>
 
       <HelpCard title="Common Questions">

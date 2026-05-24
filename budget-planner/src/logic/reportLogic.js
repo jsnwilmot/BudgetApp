@@ -577,6 +577,7 @@ function getSavingsTransferAmounts(transfer = {}) {
     Boolean(hasToBucket) ||
     transferType === "in" ||
     transferType === "transfer_in" ||
+    transferType === "to_savings_bucket" ||
     adjustmentType === "transfer_in" ||
     (!hasFromBucket && !transferType && amount > 0);
 
@@ -584,6 +585,7 @@ function getSavingsTransferAmounts(transfer = {}) {
     Boolean(hasFromBucket) ||
     transferType === "out" ||
     transferType === "transfer_out" ||
+    transferType === "from_savings_bucket" ||
     adjustmentType === "transfer_out" ||
     (!hasToBucket && !transferType && amount < 0);
 
@@ -883,7 +885,8 @@ export function calculateBucketTransferTotals(bucketId, transfers = []) {
       if (
         isDirectBucketTransfer &&
         (normalizedTransferType === "in" ||
-          normalizedTransferType === "transfer_in")
+          normalizedTransferType === "transfer_in" ||
+          normalizedTransferType === "to_savings_bucket")
       ) {
         totals.transfersIn += Math.abs(amount);
       }
@@ -891,7 +894,8 @@ export function calculateBucketTransferTotals(bucketId, transfers = []) {
       if (
         isDirectBucketTransfer &&
         (normalizedTransferType === "out" ||
-          normalizedTransferType === "transfer_out")
+          normalizedTransferType === "transfer_out" ||
+          normalizedTransferType === "from_savings_bucket")
       ) {
         totals.transfersOut += Math.abs(amount);
       }
