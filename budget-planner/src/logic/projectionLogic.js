@@ -244,6 +244,7 @@ export function buildPlannerRows({
     accounts,
     manualAdjustments,
     savingsBucketAdjustments,
+    plannerEntries,
   });
 
   return {
@@ -278,22 +279,63 @@ export function calculatePeriodTotals(rows, periodDate) {
   };
 }
 
-function calculateProjectionRows({
-  payPeriods,
-  rows,
-  accounts,
-  manualAdjustments,
-  savingsBucketAdjustments,
-}) {
-  let chequingBalance =
-    accounts.find((account) => account.type === 'chequing')?.startingBalance ||
-    0;
+function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
+  const getValidatedAmount = (row) => {
+    const entryKey = getEntryKey(row.id, periodDate);
+    const entry = plannerEntries[entryKey];
+
+    if (!entry?.validated) {
+      return 0;
+    }
+
+    return Number(row.amountsByPeriod[periodDate]) || 0;
+  };
+
+  const income = rows
+    .filter((row) => row.type === 'income')
+    .reduce((total, row) => total + getValidatedAmount(row), 0);
+
+  const expensesOnly = rows
+    .filter((row) => row.type === 'expense')
+    .reduce((total, row) => total + getValidatedAmount(row), 0);
+
+  const transfers = rows
+    .filter((row) => row.type === 'transfer')
+    .reduce((total, row) => total + getValidatedAmount(row), 0);
+
+  const expenses = expensesOnly + transfers;
+
+  return {
+    income,
+    expenses,
+    expensesOnly,
+    transfers,
+    netChequing: income - expenses,
+    netSavings: transfers,
+  };
+}
+
+  function calculateProjectionRows({
+    payPeriods,
+    rows,
+    accounts,
+    manualAdjustments,
+    savingsBucketAdjustments,
+    plannerEntries = {},
+  }) {
+  const startingChequingBalance =
+  accounts.find((account) => account.type === 'chequing')?.startingBalance ||
+  0;
+
+  let chequingBalance = startingChequingBalance;
+  let validatedChequingBalance = startingChequingBalance;
 
   let savingsBalance =
     accounts.find((account) => account.type === 'savings')?.startingBalance ||
     0;
 
   const projectedChequing = {};
+  const validatedChequing = {};
   const projectedSavings = {};
   const totalIncome = {};
   const totalExpenses = {};
@@ -302,6 +344,11 @@ function calculateProjectionRows({
 
   payPeriods.forEach((period) => {
     const totals = calculatePeriodTotals(rows, period.date);
+    const validatedTotals = calculateValidatedPeriodTotals(
+      rows,
+      period.date,
+      plannerEntries
+    );
 
     const chequingAccountIds = accounts
   .filter((account) => account.type === 'chequing')
@@ -338,6 +385,8 @@ function calculateProjectionRows({
       .reduce((total, adjustment) => total + adjustment.amount, 0);
 
     chequingBalance += totals.netChequing + chequingAdjustments;
+    validatedChequingBalance += validatedTotals.netChequing + chequingAdjustments;
+
     savingsBalance +=
       totals.netSavings + savingsAdjustments + savingsBucketAdjustmentsForPeriod;
 
@@ -346,6 +395,7 @@ function calculateProjectionRows({
     totalTransfers[period.date] = totals.transfers;
     netChequingChange[period.date] = totals.netChequing;
     projectedChequing[period.date] = chequingBalance;
+    validatedChequing[period.date] = validatedChequingBalance;
     projectedSavings[period.date] = savingsBalance;
   });
 
@@ -379,6 +429,12 @@ function calculateProjectionRows({
       name: 'Projected Chequing',
       type: 'balance',
       amountsByPeriod: projectedChequing,
+    },
+    {
+      id: 'validated-chequing',
+      name: 'Validated Chequing',
+      type: 'balance',
+      amountsByPeriod: validatedChequing,
     },
     {
       id: 'projected-savings',
