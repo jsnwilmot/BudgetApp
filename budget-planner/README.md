@@ -10,9 +10,12 @@ Data version: `2`
 
 ## Current Status
 
-This is a clean local MVP release. It runs in the browser, can be installed as
-a PWA in supported browsers, stores user data locally, and does not require
-login, cloud sync, bank connections, or a server.
+This is a clean local MVP release with FinPath branding applied. It runs in the
+browser, can be installed as a PWA in supported browsers, stores user data
+locally, and does not require login, cloud sync, bank connections, or a server.
+
+Current cleanup status: Phase 2P documentation, Help, release notes, and manual
+testing notes are being kept current before Phase 2Q begins.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -115,6 +118,16 @@ The production build uses page-level lazy loading so chart-heavy and workflow
 pages are split into separate assets. Run production preview after build to
 verify lazy-loaded pages and PWA assets.
 
+Basic verification before release:
+
+```powershell
+cd budget-planner
+npm.cmd run lint
+npm.cmd run build
+cd ..
+git diff --check
+```
+
 ## GitHub Pages Deployment
 
 Live URL: https://jsnwilmot.github.io/BudgetApp/
@@ -147,6 +160,7 @@ from data saved in another browser, device, or private browsing session.
 - [Quick Start](./QUICK_START.md)
 - [Data Safety](./DATA_SAFETY.md)
 - [Release Checklist](./RELEASE_CHECKLIST.md)
+- [Manual Test Checklist](./docs/manual-test-checklist.md)
 
 ## Brand Assets
 
@@ -162,6 +176,17 @@ PWA install icons live in `budget-planner/public/icons`. Release notes and the
 current user-facing app version are maintained in
 `budget-planner/src/data/releaseNotes.js`; backup metadata uses the app version
 from `budget-planner/src/data/migrations.js`.
+
+FinPath uses a true flat design style with a deep navy base, teal primary
+accents, mint secondary highlights, small gold accents, rounded cards, and
+strong contrast. The tagline is `Track smarter. Save better.` The vendor footer
+is `By Rose & Paw Digital Designs`.
+
+The branded splash screen appears briefly while the app loads and fades out when
+local app data is ready. It does not delay loading artificially.
+
+The PWA manifest, browser metadata, favicon, and install icons use FinPath
+branding. The GitHub Pages base path remains `/BudgetApp/`.
 
 ## Release Notes
 

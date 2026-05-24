@@ -130,10 +130,10 @@ export default function Help() {
             uninstalling the PWA can remove local records.
           </p>
           <p>
-            Export backups regularly, especially before clearing data,
-            importing another backup, changing devices, or uninstalling the PWA.
-            A future desktop version is planned with app-managed local database
-            storage.
+            Export a backup before major updates or before clearing browser
+            data. Also export before importing another backup, changing devices,
+            or uninstalling the PWA. A future desktop version is planned with
+            app-managed local database storage.
           </p>
         </HelpCard>
 
@@ -157,6 +157,16 @@ export default function Help() {
             The popup is local to this browser/device and appears once per app
             version. Export a backup after major updates so your local data has
             a recent recovery file.
+          </p>
+        </HelpCard>
+
+        <HelpCard title="Splash Screen">
+          <p>
+            FinPath shows a brief branded splash screen while the app starts.
+            It uses the same local data and does not upload anything.
+          </p>
+          <p>
+            The splash screen fades out automatically when the app is ready.
           </p>
         </HelpCard>
 
@@ -209,6 +219,10 @@ export default function Help() {
       </div>
 
       <HelpCard title="Using the App">
+        <p>
+          Navigation was simplified so daily pages stay at the top level and
+          setup pages live under Manage.
+        </p>
         <div className="grid gap-3 md:grid-cols-2">
           {appAreas.map(([title, description]) => (
             <div key={title} className="rounded-xl border border-slate-200 p-3">

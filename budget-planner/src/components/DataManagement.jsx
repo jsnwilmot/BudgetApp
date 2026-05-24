@@ -727,6 +727,10 @@ export default function DataManagement({
             devices, or uninstalling the PWA can remove your budget data. Export
             backups regularly and keep them somewhere safe.
           </p>
+          <p className="mt-2 text-sm font-medium text-slate-800">
+            Export a backup before major updates or before clearing browser
+            data.
+          </p>
           <p className="mt-2 text-sm text-slate-700">
             A future desktop version is planned with app-managed local database
             storage for stronger long-term data safety.

@@ -34,7 +34,7 @@ export default function ReleaseNotesModal({
             {releaseNotes.title}
           </h2>
           <p id="release-notes-description" className="mt-2 text-sm text-slate-600">
-            Here are the main changes in this update.
+            FinPath has been updated. Review what changed before continuing.
           </p>
         </div>
 
@@ -46,7 +46,8 @@ export default function ReleaseNotesModal({
 
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Your data stays local in this browser/device. Export a backup from
-          Settings after major updates, or use the button below.
+          Settings before major updates or before clearing browser data, or use
+          the button below.
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">

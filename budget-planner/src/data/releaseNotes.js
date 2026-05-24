@@ -5,10 +5,10 @@ export const RELEASE_NOTES = {
   title: "What's New",
   date: '2026-05-24',
   highlights: [
-    'Added FinPath branding.',
-    'Updated app name, colors, and PWA metadata.',
-    'Added approved logo assets.',
-    'Refined loading and app identity.',
+    'Updated FinPath branding across the app.',
+    'Added the FinPath desktop and web splash screen.',
+    'Improved PWA assets, icons, and app metadata.',
+    'Updated Help and documentation for the FinPath release.',
     'Kept planner data and local backups unchanged.',
   ],
 };
