@@ -1,14 +1,20 @@
 const appAreas = [
-  ['Dashboard', 'Review cash-flow summaries, alerts, and projection charts.'],
-  ['Pay Period Planner', 'Edit projected and actual amounts by pay period.'],
+  ['Dashboard', 'Use this for the daily cash-flow overview, alerts, and projection chart.'],
+  ['Planner', 'Use this for pay-period forecasting and validating planned items.'],
   ['Transactions', 'Review derived income, expenses, transfers, and adjustments.'],
-  ['Scheduled Items', 'Manage recurring income, bills, subscriptions, savings, and debt payments.'],
-  ['Accounts', 'Track local account balances and manual account adjustments.'],
-  ['Savings Buckets', 'Plan savings goals and record bucket transfer activity.'],
-  ['Budgets', 'Set monthly category targets and monitor spending room.'],
-  ['Categories', 'Manage category names used by scheduled items, budgets, and reports.'],
   ['Reports', 'Review filtered summaries, charts, trends, print view, and CSV exports.'],
-  ['Settings', 'Edit planner settings, export backups, import backups, repair data, and reset the app.'],
+  ['Manage', 'Open setup pages for scheduled items, accounts, savings buckets, budgets, and categories.'],
+  ['Settings', 'Use this for backups, restore, reset, repair, and app preferences.'],
+];
+
+const plannerTotals = [
+  ['Total Income', 'Income planned or entered for the pay period.'],
+  ['Total Expenses', 'True expenses plus transfers to savings, matching cash leaving chequing.'],
+  ['Total Transfers to Savings', 'The savings-transfer portion of total expenses.'],
+  ['Net Chequing Change', 'Income minus total expenses.'],
+  ['Projected Chequing', 'Forecast chequing after planned and actual items.'],
+  ['Validated Chequing', 'Chequing based only on confirmed/validated items.'],
+  ['Projected Savings', 'Forecast savings after transfers and savings adjustments.'],
 ];
 
 const faqs = [
@@ -164,6 +170,17 @@ export default function Help() {
       <HelpCard title="Using the App">
         <div className="grid gap-3 md:grid-cols-2">
           {appAreas.map(([title, description]) => (
+            <div key={title} className="rounded-xl border border-slate-200 p-3">
+              <p className="font-semibold text-slate-950">{title}</p>
+              <p className="mt-1 text-sm text-slate-600">{description}</p>
+            </div>
+          ))}
+        </div>
+      </HelpCard>
+
+      <HelpCard title="Planner Total Rows">
+        <div className="grid gap-3 md:grid-cols-2">
+          {plannerTotals.map(([title, description]) => (
             <div key={title} className="rounded-xl border border-slate-200 p-3">
               <p className="font-semibold text-slate-950">{title}</p>
               <p className="mt-1 text-sm text-slate-600">{description}</p>

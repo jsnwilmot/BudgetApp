@@ -18,6 +18,31 @@ function getAmountClass(value) {
   return 'text-slate-300';
 }
 
+function getTypeLabel(type) {
+  if (type === 'income') return 'Income';
+  if (type === 'expense') return 'Expense';
+  if (type === 'transfer') return 'Transfer';
+  return 'Item';
+}
+
+function PeriodSummaryCard({ label, value, helper, currency }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-bold text-slate-950">
+        {typeof value === 'number'
+          ? formatCurrency(value, currency)
+          : value || 'Not available'}
+      </p>
+      {helper ? (
+        <p className="mt-1 text-xs leading-5 text-slate-500">{helper}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function getTodayDateKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -36,6 +61,55 @@ function getCurrentPayPeriodIndex(payPeriods) {
   }
 
   return payPeriods.findIndex((period) => period.date >= today);
+}
+
+function getRowAmount(row, periodDate) {
+  return Number(row?.amountsByPeriod?.[periodDate]) || 0;
+}
+
+function getCurrentPeriodSummary({ plannerData, plannerEntries, period }) {
+  if (!period) {
+    return {
+      totals: {},
+      attentionItems: [],
+      attentionOverflow: 0,
+    };
+  }
+
+  const getProjectionValue = (rowId) =>
+    getRowAmount(
+      plannerData.projectionRows.find((row) => row.id === rowId),
+      period.date
+    );
+  const attentionItems = plannerData.rows
+    .filter((row) => ['income', 'expense', 'transfer'].includes(row.type))
+    .map((row) => {
+      const entryKey = getEntryKey(row.id, period.date);
+      const amount = getRowAmount(row, period.date);
+
+      return {
+        row,
+        entryKey,
+        amount,
+        plannedAmount: Number(row.plannedByPeriod?.[period.date]) || 0,
+        entry: plannerEntries[entryKey],
+      };
+    })
+    .filter((item) => item.amount !== 0 && !item.entry?.validated);
+
+  return {
+    totals: {
+      totalIncome: getProjectionValue('total-income'),
+      totalExpenses: getProjectionValue('total-expenses'),
+      totalTransfers: getProjectionValue('total-transfers'),
+      netChequingChange: getProjectionValue('net-chequing-change'),
+      projectedChequing: getProjectionValue('projected-chequing'),
+      validatedChequing: getProjectionValue('validated-chequing'),
+      projectedSavings: getProjectionValue('projected-savings'),
+    },
+    attentionItems: attentionItems.slice(0, 8),
+    attentionOverflow: Math.max(0, attentionItems.length - 8),
+  };
 }
 
 function PlannerRow({
@@ -132,6 +206,16 @@ export default function Planner({
   const incomeRows = plannerData.rows.filter((row) => row.type === 'income');
   const expenseRows = plannerData.rows.filter((row) => row.type === 'expense');
   const transferRows = plannerData.rows.filter((row) => row.type === 'transfer');
+  const currentPayPeriodIndex = getCurrentPayPeriodIndex(plannerData.payPeriods);
+  const currentPayPeriod =
+    currentPayPeriodIndex >= 0
+      ? plannerData.payPeriods[currentPayPeriodIndex]
+      : null;
+  const currentSummary = getCurrentPeriodSummary({
+    plannerData,
+    plannerEntries,
+    period: currentPayPeriod,
+  });
   useEffect(() => {
   const grid = gridScrollRef.current;
 
@@ -173,6 +257,118 @@ export default function Planner({
         alerts={alerts}
         maxItems={3}
       />
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-950">
+              Current Pay Period Summary
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              The key totals and unvalidated items for the pay period that
+              includes today.
+            </p>
+          </div>
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">
+            {currentPayPeriod?.label || 'No current pay period'}
+          </p>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <PeriodSummaryCard
+            label="Current Pay Period"
+            value={currentPayPeriod?.date || 'Not available'}
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Total Income"
+            value={currentSummary.totals.totalIncome}
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Total Expenses"
+            value={currentSummary.totals.totalExpenses}
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Total Transfers to Savings"
+            value={currentSummary.totals.totalTransfers}
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Net Chequing Change"
+            value={currentSummary.totals.netChequingChange}
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Projected Chequing"
+            value={currentSummary.totals.projectedChequing}
+            helper="Forecast balance after planned and actual items."
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Validated Chequing"
+            value={currentSummary.totals.validatedChequing}
+            helper="Bank-check balance using only confirmed items."
+            currency={currency}
+          />
+          <PeriodSummaryCard
+            label="Projected Savings"
+            value={currentSummary.totals.projectedSavings}
+            helper="Forecast savings after planned transfers and adjustments."
+            currency={currency}
+          />
+        </div>
+
+        <div className="mt-5 rounded-xl border border-slate-200 p-4">
+          <h4 className="text-base font-semibold text-slate-950">
+            What still needs attention
+          </h4>
+
+          {currentSummary.attentionItems.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">
+              No non-zero current-period items need validation.
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-2">
+              {currentSummary.attentionItems.map((item) => (
+                <button
+                  key={item.entryKey}
+                  type="button"
+                  onClick={() =>
+                    onCellClick({
+                      row: item.row,
+                      period: currentPayPeriod,
+                      entryKey: item.entryKey,
+                      plannedAmount: item.plannedAmount,
+                      effectiveAmount: item.amount,
+                    })
+                  }
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm hover:bg-slate-50"
+                >
+                  <span>
+                    <span className="font-semibold text-slate-950">
+                      {item.row.name}
+                    </span>
+                    <span className="ml-2 text-slate-500">
+                      {getTypeLabel(item.row.type)}
+                    </span>
+                  </span>
+                  <span className="font-semibold text-slate-950">
+                    {formatCurrency(item.amount, currency)}
+                  </span>
+                </button>
+              ))}
+
+              {currentSummary.attentionOverflow > 0 ? (
+                <p className="text-sm font-medium text-slate-500">
+                  + {currentSummary.attentionOverflow} more items
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div ref={gridScrollRef} className="max-h-[72vh] overflow-auto">

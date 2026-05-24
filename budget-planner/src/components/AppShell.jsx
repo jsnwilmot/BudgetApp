@@ -1,19 +1,39 @@
 import {
   BarChart3,
-  CalendarClock,
   CalendarDays,
   CircleHelp,
   Menu,
-  Landmark,
   ListChecks,
   LayoutDashboard,
-  PiggyBank,
+  SlidersHorizontal,
   Settings,
-  Tags,
-  WalletCards,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+
+const managePageIds = [
+  'manage',
+  'scheduled-items',
+  'accounts',
+  'savings-buckets',
+  'budgets',
+  'categories',
+];
+
+const pageLabels = {
+  dashboard: 'Dashboard',
+  planner: 'Planner',
+  transactions: 'Transactions',
+  reports: 'Reports',
+  manage: 'Manage',
+  'scheduled-items': 'Scheduled Items',
+  accounts: 'Accounts',
+  'savings-buckets': 'Savings Buckets',
+  budgets: 'Budgets',
+  categories: 'Categories',
+  settings: 'Settings',
+  help: 'Help',
+};
 
 const navItems = [
   {
@@ -23,7 +43,7 @@ const navItems = [
   },
   {
     id: 'planner',
-    label: 'Pay Period Planner',
+    label: 'Planner',
     icon: CalendarDays,
   },
   {
@@ -32,34 +52,14 @@ const navItems = [
     icon: ListChecks,
   },
   {
-    id: 'scheduled-items',
-    label: 'Scheduled Items',
-    icon: CalendarClock,
-  },
-  {
-    id: 'accounts',
-    label: 'Accounts',
-    icon: Landmark,
-  },
-  {
-    id: 'savings-buckets',
-    label: 'Savings Buckets',
-    icon: PiggyBank,
-  },
-  {
-    id: 'budgets',
-    label: 'Budgets',
-    icon: WalletCards,
-  },
-  {
-    id: 'categories',
-    label: 'Categories',
-    icon: Tags,
-  },
-  {
     id: 'reports',
     label: 'Reports',
     icon: BarChart3,
+  },
+  {
+    id: 'manage',
+    label: 'Manage',
+    icon: SlidersHorizontal,
   },
   {
     id: 'settings',
@@ -76,11 +76,21 @@ const navItems = [
 export default function AppShell({ currentPage, onPageChange, children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentItem =
-    navItems.find((item) => item.id === currentPage) || navItems[0];
+    navItems.find((item) => item.id === currentPage) || {
+      label: pageLabels[currentPage] || 'Dashboard',
+    };
 
   function handlePageChange(pageId) {
     onPageChange(pageId);
     setMobileMenuOpen(false);
+  }
+
+  function isNavItemActive(itemId) {
+    if (itemId === 'manage') {
+      return managePageIds.includes(currentPage);
+    }
+
+    return currentPage === itemId;
   }
 
   return (
@@ -112,7 +122,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
           <nav className="mt-3 grid max-h-[70vh] gap-2 overflow-y-auto pb-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = currentPage === item.id;
+              const active = isNavItemActive(item.id);
 
               return (
                 <button
@@ -147,7 +157,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
         <nav className="space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = currentPage === item.id;
+            const active = isNavItemActive(item.id);
 
             return (
               <button

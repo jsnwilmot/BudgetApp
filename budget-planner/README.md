@@ -19,13 +19,9 @@ factory reset to an empty app.
 ## Features
 
 - Dashboard with cash-flow summary, projection chart, and alerts.
-- Pay Period Planner with editable projected and actual amounts.
+- Planner with editable projected and actual amounts plus a current pay period summary.
 - Transactions view derived from scheduled items, adjustments, and savings activity.
-- Scheduled Items with recurrence, categories, filters, duplicate, and active status.
-- Accounts with starting balances and manual adjustments.
-- Savings Buckets with projected balances and adjustment history.
-- Budgets with monthly category targets, usage, remaining amounts, and progress bars.
-- Categories with local create, edit, archive, and reset workflows.
+- Manage area for Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
 - Reports with filters, charts, trends, print view, and report CSV export.
 - Settings with editable planner settings and data management tools.
 - Backup, restore, repair, reset, and CSV export workflows.
@@ -397,6 +393,28 @@ Known limitation:
 - Further performance work may be needed after desktop packaging.
 - Browser storage remains the current PWA storage model until the desktop
   SQLite phase.
+
+### Phase 2M: Simplified User Experience And Navigation Cleanup
+
+Completed:
+
+- Simplified top-level navigation to Dashboard, Planner, Transactions, Reports,
+  Manage, Settings, and Help.
+- Added a Manage page for Scheduled Items, Accounts, Savings Buckets, Budgets,
+  and Categories.
+- Added Current Pay Period Summary to the Planner.
+- Added current-period attention items that open the existing planner cell
+  editor.
+- Clarified projected and validated planner wording.
+- Clarified Savings Buckets projected transfer labels.
+- Updated Help with simplified navigation and planner total explanations.
+
+Known limitation:
+
+- Advanced setup pages are still full-featured and may need additional polish
+  inside Manage in a future UX pass.
+- Data remains local-first browser storage until the future desktop SQLite
+  migration.
 
 ## Known Limitations
 

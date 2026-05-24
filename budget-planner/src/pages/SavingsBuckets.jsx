@@ -531,6 +531,11 @@ export default function SavingsBuckets({
           <p className="mt-1 text-sm text-slate-500">
             Track money set aside for emergency funds, goals, and planned expenses.
           </p>
+          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+            Projected values include future planned transfers. Current savings
+            should be compared against current bucket balances, not future
+            projections.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -627,10 +632,12 @@ export default function SavingsBuckets({
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Bucket</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Starting</th>
-              <th className="px-4 py-3 text-right text-sm font-bold">Transfers In</th>
+              <th className="px-4 py-3 text-right text-sm font-bold">
+                Projected Transfers In
+              </th>
               <th className="px-4 py-3 text-right text-sm font-bold">Adjustments</th>
               <th className="px-4 py-3 text-right text-sm font-bold">
-                Projected End
+                Projected End Balance
               </th>
               <th className="px-4 py-3 text-right text-sm font-bold">Actions</th>
             </tr>

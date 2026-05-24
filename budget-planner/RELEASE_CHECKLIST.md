@@ -18,14 +18,11 @@ imports before release.
 - [ ] App loads in the browser.
 - [ ] Production preview loads.
 - [ ] Dashboard opens.
-- [ ] Pay Period Planner opens.
+- [ ] Planner opens.
 - [ ] Transactions opens.
-- [ ] Scheduled Items opens.
-- [ ] Accounts opens.
-- [ ] Savings Buckets opens.
-- [ ] Budgets opens.
-- [ ] Categories opens.
 - [ ] Reports opens.
+- [ ] Manage opens.
+- [ ] Manage cards open Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
 - [ ] Settings opens.
 - [ ] Help opens.
 - [ ] No console errors appear.
@@ -107,6 +104,11 @@ imports before release.
 - [ ] Settings save works.
 - [ ] Settings reset works.
 - [ ] Planner cell edit works.
+- [ ] Blank planner cells still open for editing.
+- [ ] Planner sticky headers still work.
+- [ ] Planner scrolls to the current pay period.
+- [ ] Current Pay Period Summary shows expected totals.
+- [ ] Current Pay Period Summary attention items open the cell editor.
 - [ ] Scheduled item add/edit/duplicate/toggle works.
 - [ ] Account adjustment add/edit/delete works.
 - [ ] Savings bucket adjustment add/edit/delete works.
@@ -115,6 +117,8 @@ imports before release.
 - [ ] Transactions CSV export downloads.
 - [ ] Report CSV export downloads.
 - [ ] Report print opens browser print.
+- [ ] Help explains simplified navigation and Planner total rows.
+- [ ] Savings Buckets projected labels are clear.
 - [ ] Backup/export still works in installed PWA.
 - [ ] Import backup still works in installed PWA.
 
