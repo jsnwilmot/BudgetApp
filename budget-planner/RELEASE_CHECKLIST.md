@@ -37,6 +37,7 @@ imports before release.
 - [ ] Reports match Dashboard totals where expected.
 - [ ] Income totals are correct.
 - [ ] Expense totals are correct.
+- [ ] Manual account adjustment income and expenses appear in report summaries.
 - [ ] Transfers are shown separately from income and spending.
 - [ ] Savings transfers and bucket movements are not double counted.
 - [ ] Budget report matches the Budgets screen for the same month.
@@ -159,6 +160,10 @@ imports before release.
 
 ## Core Workflows
 
+- [ ] Existing IndexedDB data loads without resetting user data.
+- [ ] Payday workflow works: income, bills, misc expenses/payments, savings transfers, Dashboard totals, Planner totals, and Reports totals are understandable.
+- [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected in totals.
+- [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected in totals.
 - [ ] Settings save works.
 - [ ] Settings reset works.
 - [ ] Planner cell edit works.
@@ -175,6 +180,8 @@ imports before release.
 - [ ] Account Transfer without a bucket affects only the selected accounts.
 - [ ] Transfer edit updates account and bucket projections.
 - [ ] Transfer delete removes only the transfer record and updates totals.
+- [ ] Dashboard next-transfer total reflects planner transfer totals.
+- [ ] Multiple chequing and savings accounts contribute to projected aggregate balances.
 - [ ] Backup export includes transfer records.
 - [ ] Backup import restores transfer records.
 - [ ] Projections still include transfers after refresh.

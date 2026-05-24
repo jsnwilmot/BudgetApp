@@ -5,7 +5,7 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2t`
+Current release: `2.0.0-phase-2u`
 Data version: `2`
 
 ## Current Status
@@ -14,8 +14,9 @@ This is a clean local MVP release with FinPath branding applied. It runs in the
 browser, can be installed as a PWA in supported browsers, stores user data
 locally, and does not require login, cloud sync, bank connections, or a server.
 
-Current phase status: Phase 2T improves mobile, tablet, desktop, and installed
-PWA usability while keeping FinPath's local-first data model unchanged.
+Current phase status: Phase 2U completed a practical real-data QA and bug-fix
+pass across planner, reports, transfers, budgets, data health, backups, mobile
+layouts, and PWA output while keeping `/BudgetApp/` unchanged.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -658,6 +659,25 @@ Known limitation:
 - The Pay Period Planner remains a dense forecasting tool, so some planner
   areas still use intentional internal scrolling on small screens.
 - Further device-specific polish may be useful after more installed PWA testing.
+
+### Phase 2U: Real-Data QA And Bug Fix Pass
+
+Completed:
+
+- Completed a real-data QA pass across Dashboard, Planner, Accounts, Savings
+  Buckets, Transactions, Budgets, Reports, Data Management, Help, and PWA output.
+- Fixed report pay-period syncing for derived transaction rows.
+- Included manual account adjustment income/expense activity in report summary
+  totals without counting transfers as spending.
+- Improved projection totals for multiple chequing and savings accounts.
+- Fixed projected savings math for numeric savings bucket adjustments.
+- Synced Dashboard next-transfer totals with planner transfer totals.
+- Confirmed `/BudgetApp/` remains the GitHub Pages base path.
+
+Known limitation:
+
+- This pass was manual/code-review based; a broader automated regression suite
+  is still recommended before a wider release.
 
 ## Known Limitations
 

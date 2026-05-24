@@ -133,6 +133,7 @@ export function buildTransactionsFromAppData({
     return {
       id: `manual-adjustment-${adjustment.id}`,
       date: getDateValue(adjustment.date || adjustment.payPeriodDate),
+      payPeriodDate: getDateValue(adjustment.payPeriodDate || adjustment.date),
       description: adjustment.notes || adjustment.adjustmentType || 'Manual adjustment',
       type: getManualAdjustmentType(adjustment),
       amount: normalizeNumber(adjustment.amount),
@@ -164,6 +165,7 @@ export function buildTransactionsFromAppData({
     return {
       id: `savings-bucket-adjustment-${adjustment.id}`,
       date: getDateValue(adjustment.date || adjustment.payPeriodDate),
+      payPeriodDate: getDateValue(adjustment.payPeriodDate || adjustment.date),
       description:
         adjustment.notes ||
         adjustment.adjustmentType ||
@@ -214,6 +216,7 @@ export function buildTransactionsFromAppData({
     return {
       id: `transfer-${transfer.id}`,
       date: getDateValue(transfer.date || transfer.payPeriodDate),
+      payPeriodDate: getDateValue(transfer.payPeriodDate || transfer.date),
       description: transfer.notes || `${fromAccountName} to ${toAccountName}`,
       type:
         transfer.transferType === 'account_transfer'
@@ -254,6 +257,7 @@ export function buildTransactionsFromAppData({
       return {
         id: `scheduled-item-${item.id}-${occurrence}`,
         date: occurrence,
+        payPeriodDate: occurrence,
         description: item.name || 'Scheduled item',
         type: getScheduledTransactionType(item),
         amount: normalizeNumber(item.amount),

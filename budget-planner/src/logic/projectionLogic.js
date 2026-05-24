@@ -327,16 +327,22 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
     transfers = [],
     plannerEntries = {},
   }) {
-  const startingChequingBalance =
-  accounts.find((account) => account.type === 'chequing')?.startingBalance ||
-  0;
+  const startingChequingBalance = accounts
+    .filter((account) => account.type === 'chequing')
+    .reduce(
+      (total, account) => total + (Number(account.startingBalance) || 0),
+      0
+    );
 
   let chequingBalance = startingChequingBalance;
   let validatedChequingBalance = startingChequingBalance;
 
-  let savingsBalance =
-    accounts.find((account) => account.type === 'savings')?.startingBalance ||
-    0;
+  let savingsBalance = accounts
+    .filter((account) => account.type === 'savings')
+    .reduce(
+      (total, account) => total + (Number(account.startingBalance) || 0),
+      0
+    );
 
   const projectedChequing = {};
   const validatedChequing = {};
@@ -386,7 +392,10 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
 
     const savingsBucketAdjustmentsForPeriod = savingsBucketAdjustments
       .filter((adjustment) => adjustment.payPeriodDate === period.date)
-      .reduce((total, adjustment) => total + adjustment.amount, 0);
+      .reduce(
+        (total, adjustment) => total + (Number(adjustment.amount) || 0),
+        0
+      );
 
     const transferRecordsForPeriod = transfers.filter(
       (transfer) => transfer.payPeriodDate === period.date
@@ -535,6 +544,7 @@ export function getDashboardSummary(plannerData) {
     (row) => row.id === 'projected-chequing'
   );
   const savingsRow = projectionRows.find((row) => row.id === 'projected-savings');
+  const transferRow = projectionRows.find((row) => row.id === 'total-transfers');
 
   const finalPeriod = payPeriods[payPeriods.length - 1];
   const finalPeriodDate = finalPeriod?.date || nextPeriod.date;
@@ -546,7 +556,8 @@ export function getDashboardSummary(plannerData) {
     nextPayDate: nextPeriod.date,
     nextIncome: totals.income,
     nextExpenses: totals.expenses,
-    nextTransfers: totals.transfers,
+    nextTransfers:
+      transferRow?.amountsByPeriod?.[nextPeriod.date] ?? totals.transfers,
     projectedChequingAfterNext:
       chequingRow?.amountsByPeriod?.[nextPeriod.date] || 0,
     projectedSavingsAfterNext:

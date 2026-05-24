@@ -82,6 +82,27 @@ function chartHasAnyValue(data = []) {
   return data.some((item) => Number(item.value || 0) !== 0);
 }
 
+function summarizeManualTransactions(transactions = []) {
+  return transactions
+    .filter((transaction) => transaction.source === "manual-adjustment")
+    .reduce(
+      (summary, transaction) => {
+        const amount = Math.abs(Number(transaction.amount) || 0);
+
+        if (transaction.type === "income") {
+          summary.income += amount;
+        }
+
+        if (transaction.type === "expense") {
+          summary.expenses += amount;
+        }
+
+        return summary;
+      },
+      { income: 0, expenses: 0 }
+    );
+}
+
 function StatCard({ label, value, helper }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:break-inside-avoid print:border-slate-300 print:shadow-none sm:p-5">
@@ -321,16 +342,6 @@ export default function Reports({
     return getItemsForMonth(transfers, activeSelectedMonth);
   }, [activeSelectedMonth, activeSelectedPayPeriod, reportFilter, transfers]);
 
-  const monthlySummary = useMemo(
-    () => calculateMonthlySummary(selectedRows),
-    [selectedRows]
-  );
-
-  const budgetUsedPercentage = useMemo(
-    () => calculateBudgetUsedPercentage(monthlySummary),
-    [monthlySummary]
-  );
-
   const reportTransactions = useMemo(
     () =>
       buildTransactionsFromAppData({
@@ -377,6 +388,31 @@ export default function Reports({
     reportFilter,
     reportTransactions
   ]);
+
+  const baseMonthlySummary = useMemo(
+    () => calculateMonthlySummary(selectedRows),
+    [selectedRows]
+  );
+
+  const manualTransactionSummary = useMemo(
+    () => summarizeManualTransactions(scopedTransactions),
+    [scopedTransactions]
+  );
+
+  const monthlySummary = useMemo(
+    () => ({
+      ...baseMonthlySummary,
+      income: baseMonthlySummary.income + manualTransactionSummary.income,
+      miscExpenses:
+        baseMonthlySummary.miscExpenses + manualTransactionSummary.expenses
+    }),
+    [baseMonthlySummary, manualTransactionSummary]
+  );
+
+  const budgetUsedPercentage = useMemo(
+    () => calculateBudgetUsedPercentage(monthlySummary),
+    [monthlySummary]
+  );
 
   const scopedExpenseTransactions = useMemo(
     () => scopedTransactions.filter((transaction) => transaction.type === "expense"),

@@ -21,6 +21,12 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 
 ## Core Workflows
 
+- [ ] Existing IndexedDB data loads without migration errors or data reset.
+- [ ] Splash screen does not block app access.
+- [ ] What's New popup appears for `2.0.0-phase-2u` when unseen.
+- [ ] Payday workflow works: add income, regular bills, misc expenses, misc payments, and savings transfers, then compare Dashboard, Planner, and Reports totals.
+- [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
+- [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.
 - [ ] Budgets still calculate used, remaining, near-budget, and over-budget states.
 - [ ] Reports still open and charts render.
@@ -34,8 +40,10 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] App still loads after refresh.
 - [ ] Add income and confirm Reports income changes.
 - [ ] Add expense and confirm Reports expense and category totals change.
+- [ ] Manual account adjustment income/expense activity appears in report summary totals.
 - [ ] Add transfer and confirm Reports transfer totals change without inflating income or expenses.
 - [ ] Add savings transfer or bucket-linked transfer and confirm savings movement updates.
+- [ ] Known sample values show Income 2000, Expenses 100, Transfers 300, and Savings Movement 300 when entered in the same report period.
 - [ ] Add budget target and confirm Reports budget status matches Budgets.
 - [ ] Switch report period or month and confirm totals update.
 - [ ] Check Reports empty state after Factory Reset to Empty App if practical.
