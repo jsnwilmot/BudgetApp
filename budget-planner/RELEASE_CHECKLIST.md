@@ -32,6 +32,17 @@ imports before release.
 - [ ] Manifest loads.
 - [ ] Service worker registers.
 
+## Reports Accuracy
+
+- [ ] Reports match Dashboard totals where expected.
+- [ ] Income totals are correct.
+- [ ] Expense totals are correct.
+- [ ] Transfers are shown separately from income and spending.
+- [ ] Savings transfers and bucket movements are not double counted.
+- [ ] Budget report matches the Budgets screen for the same month.
+- [ ] Empty Reports state is clear.
+- [ ] Production preview `/BudgetApp/` returns HTTP 200.
+
 ## PWA Checks
 
 - [ ] Browser title shows FinPath.

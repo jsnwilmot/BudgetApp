@@ -260,6 +260,22 @@ export default function Help() {
         </div>
       </HelpCard>
 
+      <HelpCard title="Reports">
+        <p>
+          Reports summarize saved FinPath data from the planner, transactions,
+          transfers, savings buckets, budget targets, categories, and
+          adjustments.
+        </p>
+        <p>
+          Transfers are shown separately from income and expenses so internal
+          account movement does not inflate spending.
+        </p>
+        <p>
+          Savings transfers affect savings movement. Budget reports compare
+          category spending against monthly budget targets.
+        </p>
+      </HelpCard>
+
       <HelpCard title="Transfers">
         <p>
           Use Add Transfer when money moves between your own accounts. A

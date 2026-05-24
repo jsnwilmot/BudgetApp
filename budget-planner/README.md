@@ -5,7 +5,7 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2q`
+Current release: `2.0.0-phase-2r`
 Data version: `2`
 
 ## Current Status
@@ -98,6 +98,21 @@ confirmation before replacing local data.
 Older BudgetApp backups remain supported where the data can be normalized
 safely. Transfer records are included in current backups and repairs. The
 GitHub Pages base path remains `/BudgetApp/`.
+
+## Reports Data Notes
+
+Reports use the same saved local data as Dashboard, Planner, Transactions,
+Savings Buckets, Budgets, Accounts, and Unified Transfers.
+
+- Income and expense summaries come from planner rows and derived transaction
+  data.
+- Transfers are shown separately so internal account movement does not inflate
+  income or spending.
+- Savings movement uses savings bucket adjustments and bucket-linked transfer
+  records, with simple duplicate protection for matching transfer/adjustment
+  events.
+- Budget reporting uses the same derived transaction helper as the Budgets
+  page, so category budget status should match between Budgets and Reports.
 
 ## Install And Run
 
@@ -560,6 +575,25 @@ Known limitation:
 - Direct standalone transactions are not stored yet; transaction rows are still
   derived from source records in the web app.
 - Desktop SQLite import is planned for a later phase.
+
+### Phase 2R: Reports Accuracy And Data Sync Fix
+
+Completed:
+
+- Improved Reports source-of-truth logic to use shared transaction and budget
+  helpers.
+- Kept transfers separate from income and spending totals.
+- Improved savings movement reporting for bucket adjustments and transfer
+  records.
+- Aligned budget reporting with monthly budget targets.
+- Improved Reports labels, empty states, Help text, and manual test coverage.
+
+Known limitation:
+
+- Reports remain intentionally simple and do not include advanced analytics or
+  custom date ranges yet.
+- Transaction rows are still derived from source records rather than stored as
+  standalone transactions.
 
 ## Known Limitations
 

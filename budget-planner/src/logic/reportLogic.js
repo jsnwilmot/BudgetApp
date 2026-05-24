@@ -369,9 +369,7 @@ export function calculateBudgetUsedPercentage(summary) {
   }
 
   const used =
-    normalizeNumber(summary.expenses) +
-    normalizeNumber(summary.miscExpenses) +
-    normalizeNumber(summary.transfersIn);
+    normalizeNumber(summary.expenses) + normalizeNumber(summary.miscExpenses);
 
   return Math.round((used / income) * 100);
 }
@@ -428,7 +426,10 @@ export function buildIncomeOutflowChartData(summary = {}) {
       name: "Misc Expenses",
       value: normalizeNumber(summary.miscExpenses)
     },
-    { name: "Transfers In", value: normalizeNumber(summary.transfersIn) }
+    {
+      name: "Transfers to Savings",
+      value: normalizeNumber(summary.transfersIn)
+    }
   ];
 }
 
@@ -436,9 +437,9 @@ export function buildSavingsTransferChartData(savingsSummary = {}) {
   const totals = savingsSummary.totals || {};
 
   return [
-    { name: "Transfers In", value: normalizeNumber(totals.transfersIn) },
-    { name: "Transfers Out", value: normalizeNumber(totals.transfersOut) },
-    { name: "Net Transfers", value: normalizeNumber(totals.netTransfers) }
+    { name: "Movement In", value: normalizeNumber(totals.transfersIn) },
+    { name: "Movement Out", value: normalizeNumber(totals.transfersOut) },
+    { name: "Net Movement", value: normalizeNumber(totals.netTransfers) }
   ];
 }
 
@@ -506,7 +507,7 @@ export function calculateMonthlyTrendRows(rows = []) {
       transfersIn,
       transfersOut,
       netCashFlow:
-        normalizeNumber(summary.income) - totalExpenses - transfersIn + transfersOut,
+        normalizeNumber(summary.income) - totalExpenses,
       remainingBalance: getRemainingBalanceValue(lastRow)
     };
   });
@@ -537,7 +538,7 @@ export function calculatePayPeriodTrendRows(rows = [], limit = 12) {
         totalExpenses,
         transfersIn,
         transfersOut,
-        netCashFlow: getIncomeValue(row) - totalExpenses - transfersIn + transfersOut,
+        netCashFlow: getIncomeValue(row) - totalExpenses,
         remainingBalance: getRemainingBalanceValue(row)
       };
     });
@@ -752,16 +753,14 @@ export function buildReportCsvSections(reportData = {}) {
     budgetUsedPercentage = 0,
     categoryTotals = [],
     savingsSummary = { buckets: [], totals: {} },
+    transferSummary = {},
     trendSummary = {},
     hasReportData = false
   } = reportData;
   const totalExpenses =
     normalizeNumber(summary.expenses) + normalizeNumber(summary.miscExpenses);
   const netCashFlow =
-    normalizeNumber(summary.income) -
-    totalExpenses -
-    normalizeNumber(summary.transfersIn) +
-    normalizeNumber(summary.transfersOut);
+    normalizeNumber(summary.income) - totalExpenses;
   const rows = [
     ["Section", "Field", "Value"],
     [
@@ -785,11 +784,30 @@ export function buildReportCsvSections(reportData = {}) {
     ["Summary", "Scheduled Expenses", normalizeNumber(summary.expenses)],
     ["Summary", "Misc Payments", normalizeNumber(summary.miscPayments)],
     ["Summary", "Misc Expenses", normalizeNumber(summary.miscExpenses)],
-    ["Summary", "Transfers In", normalizeNumber(summary.transfersIn)],
-    ["Summary", "Transfers Out", normalizeNumber(summary.transfersOut)],
+    ["Summary", "Planned Transfers To Savings", normalizeNumber(summary.transfersIn)],
+    ["Summary", "Planned Transfers Out", normalizeNumber(summary.transfersOut)],
     ["Summary", "Net Cash Flow", netCashFlow],
     ["Summary", "Remaining Balance", normalizeNumber(summary.remainingBalance)],
     ["Summary", "Budget Used %", normalizeNumber(budgetUsedPercentage)],
+    [],
+    ["Section", "Field", "Value"],
+    ["Transfers", "Total Transfers", normalizeNumber(transferSummary.total)],
+    [
+      "Transfers",
+      "Planned To Savings",
+      normalizeNumber(transferSummary.plannedToSavings)
+    ],
+    ["Transfers", "Transfers To Savings", normalizeNumber(transferSummary.toSavings)],
+    [
+      "Transfers",
+      "Transfers From Savings",
+      normalizeNumber(transferSummary.fromSavings)
+    ],
+    [
+      "Transfers",
+      "Account Transfers",
+      normalizeNumber(transferSummary.accountTransfers)
+    ],
     [],
     ["Section", "Category", "Total"]
   );
@@ -810,22 +828,22 @@ export function buildReportCsvSections(reportData = {}) {
     [],
     ["Section", "Field", "Value"],
     [
-      "Savings Transfers",
-      "Transfers In",
+      "Savings Movement",
+      "Movement In",
       normalizeNumber(savingsSummary.totals?.transfersIn)
     ],
     [
-      "Savings Transfers",
-      "Transfers Out",
+      "Savings Movement",
+      "Movement Out",
       normalizeNumber(savingsSummary.totals?.transfersOut)
     ],
     [
-      "Savings Transfers",
-      "Net Transfers",
+      "Savings Movement",
+      "Net Movement",
       normalizeNumber(savingsSummary.totals?.netTransfers)
     ],
     [],
-    ["Section", "Bucket", "Balance", "Transfers In", "Transfers Out", "Net Transfers"]
+    ["Section", "Bucket", "Balance", "Movement In", "Movement Out", "Net Movement"]
   );
 
   if ((savingsSummary.buckets || []).length === 0) {
@@ -926,6 +944,43 @@ export function calculateBucketTransferTotals(bucketId, transfers = []) {
       netTransfers: 0
     }
   );
+}
+
+export function dedupeSavingsMovements(movements = []) {
+  const seen = new Set();
+
+  return movements.filter((movement) => {
+    const dateValue = getSavingsTransferDateValue(movement);
+    const directBucketId =
+      movement.bucketId ||
+      movement.savingsBucketId ||
+      movement.toBucketId ||
+      movement.fromBucketId ||
+      movement.destinationBucketId ||
+      movement.sourceBucketId ||
+      "";
+    const amounts = getSavingsTransferAmounts(movement);
+    const direction =
+      amounts.transfersOut > 0
+        ? "out"
+        : amounts.transfersIn > 0
+          ? "in"
+          : "none";
+    const amount = Math.max(amounts.transfersIn, amounts.transfersOut);
+    const key = [
+      dateValue,
+      directBucketId,
+      direction,
+      normalizeNumber(amount).toFixed(2)
+    ].join("|");
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
 }
 
 export function calculateSavingsSummary(buckets = [], transfers = []) {

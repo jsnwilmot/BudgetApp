@@ -1318,7 +1318,9 @@ async function handleSaveAccount(updatedAccount) {
                 (adjustment) => adjustment.type === 'misc-expense'
               )}
               savingsBuckets={savingsBuckets}
+              savingsBucketAdjustments={savingsBucketAdjustments}
               savingsTransfers={[...savingsBucketAdjustments, ...transfers]}
+              transfers={transfers}
             />
           ) : null}
 

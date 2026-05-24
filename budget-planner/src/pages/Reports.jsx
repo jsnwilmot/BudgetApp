@@ -30,6 +30,7 @@ import {
   calculateSavingsSummary,
   calculateSavingsTransferTrendRows,
   calculateTrendSummary,
+  dedupeSavingsMovements,
   getAvailableMonths,
   getAvailablePayPeriods,
   getCurrentMonthKey,
@@ -39,7 +40,10 @@ import {
   getRowsForMonth,
   getRowsForPayPeriod
 } from "../logic/reportLogic";
-import { buildTransactionsFromAppData } from "../logic/transactionLogic";
+import {
+  buildTransactionsFromAppData,
+  transactionMatchesDateRange
+} from "../logic/transactionLogic";
 import { tableRowsToCsv } from "../utils/csv";
 import { downloadTextFile } from "../utils/downloadFile";
 
@@ -234,7 +238,9 @@ export default function Reports({
   accounts = [],
   miscExpenses = [],
   savingsBuckets = [],
-  savingsTransfers = []
+  savingsBucketAdjustments = [],
+  savingsTransfers = [],
+  transfers = []
 }) {
   const currencyFormatter = useMemo(
     () => createCurrencyFormatter(settings?.currency),
@@ -287,26 +293,33 @@ export default function Reports({
     return getRowsForMonth(reportRows, activeSelectedMonth);
   }, [activeSelectedMonth, activeSelectedPayPeriod, reportFilter, reportRows]);
 
-  const scopedMiscExpenses = useMemo(() => {
-    if (reportFilter === "payPeriod") {
-      return getItemsForPayPeriod(miscExpenses, activeSelectedPayPeriod);
-    }
-
-    return getItemsForMonth(miscExpenses, activeSelectedMonth);
-  }, [activeSelectedMonth, activeSelectedPayPeriod, miscExpenses, reportFilter]);
-
   const scopedSavingsTransfers = useMemo(() => {
+    const movementSource =
+      savingsBucketAdjustments.length > 0 || transfers.length > 0
+        ? dedupeSavingsMovements([...transfers, ...savingsBucketAdjustments])
+        : dedupeSavingsMovements(savingsTransfers);
+
     if (reportFilter === "payPeriod") {
-      return getItemsForPayPeriod(savingsTransfers, activeSelectedPayPeriod);
+      return getItemsForPayPeriod(movementSource, activeSelectedPayPeriod);
     }
 
-    return getItemsForMonth(savingsTransfers, activeSelectedMonth);
+    return getItemsForMonth(movementSource, activeSelectedMonth);
   }, [
     activeSelectedMonth,
     activeSelectedPayPeriod,
     reportFilter,
-    savingsTransfers
+    savingsBucketAdjustments,
+    savingsTransfers,
+    transfers
   ]);
+
+  const scopedTransferRecords = useMemo(() => {
+    if (reportFilter === "payPeriod") {
+      return getItemsForPayPeriod(transfers, activeSelectedPayPeriod);
+    }
+
+    return getItemsForMonth(transfers, activeSelectedMonth);
+  }, [activeSelectedMonth, activeSelectedPayPeriod, reportFilter, transfers]);
 
   const monthlySummary = useMemo(
     () => calculateMonthlySummary(selectedRows),
@@ -318,9 +331,61 @@ export default function Reports({
     [monthlySummary]
   );
 
+  const reportTransactions = useMemo(
+    () =>
+      buildTransactionsFromAppData({
+        scheduledItems,
+        manualAdjustments,
+        savingsBucketAdjustments,
+        transfers,
+        savingsBuckets,
+        accounts,
+        categories
+      }),
+    [
+      accounts,
+      categories,
+      manualAdjustments,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      scheduledItems,
+      transfers
+    ]
+  );
+
+  const scopedTransactions = useMemo(() => {
+    if (reportFilter === "payPeriod") {
+      return reportTransactions.filter(
+        (transaction) =>
+          transaction.date === activeSelectedPayPeriod ||
+          transaction.payPeriodDate === activeSelectedPayPeriod
+      );
+    }
+
+    return reportTransactions.filter((transaction) =>
+      transactionMatchesDateRange(
+        transaction,
+        "this-month",
+        "",
+        "",
+        new Date(`${activeSelectedMonth || getCurrentMonthKey()}-01T12:00:00`)
+      )
+    );
+  }, [
+    activeSelectedMonth,
+    activeSelectedPayPeriod,
+    reportFilter,
+    reportTransactions
+  ]);
+
+  const scopedExpenseTransactions = useMemo(
+    () => scopedTransactions.filter((transaction) => transaction.type === "expense"),
+    [scopedTransactions]
+  );
+
   const categoryTotals = useMemo(
-    () => calculateCategoryTotals(scopedMiscExpenses, categories).slice(0, 5),
-    [categories, scopedMiscExpenses]
+    () => calculateCategoryTotals(scopedExpenseTransactions, categories).slice(0, 5),
+    [categories, scopedExpenseTransactions]
   );
 
   const savingsSummary = useMemo(
@@ -363,8 +428,11 @@ export default function Reports({
   );
 
   const savingsTransferTrendRows = useMemo(
-    () => calculateSavingsTransferTrendRows(savingsTransfers),
-    [savingsTransfers]
+    () =>
+      calculateSavingsTransferTrendRows(
+        dedupeSavingsMovements([...transfers, ...savingsBucketAdjustments])
+      ),
+    [savingsBucketAdjustments, transfers]
   );
 
   const trendSummary = useMemo(
@@ -391,41 +459,50 @@ export default function Reports({
     reportFilter === "payPeriod" && activeSelectedPayPeriod
       ? activeSelectedPayPeriod.slice(0, 7)
       : activeSelectedMonth;
-  const budgetTransactions = useMemo(
-    () =>
-      buildTransactionsFromAppData({
-        scheduledItems,
-        manualAdjustments,
-        savingsBucketAdjustments: savingsTransfers,
-        savingsBuckets,
-        accounts,
-        categories
-      }),
-    [
-      accounts,
-      categories,
-      manualAdjustments,
-      savingsBuckets,
-      savingsTransfers,
-      scheduledItems
-    ]
-  );
   const budgetTargetUsage = useMemo(
     () =>
       calculateBudgetUsage({
         budgetTargets,
-        transactions: budgetTransactions,
+        transactions: reportTransactions,
         categories,
         selectedMonth: budgetMonthKey
       }),
-    [budgetMonthKey, budgetTargets, budgetTransactions, categories]
+    [budgetMonthKey, budgetTargets, reportTransactions, categories]
   );
+
+  const transferSummary = useMemo(() => {
+    return scopedTransferRecords.reduce(
+      (summary, transfer) => {
+        const amount = Math.abs(Number(transfer.amount) || 0);
+
+        if (transfer.transferType === "to_savings_bucket") {
+          summary.toSavings += amount;
+        } else if (transfer.transferType === "from_savings_bucket") {
+          summary.fromSavings += amount;
+        } else {
+          summary.accountTransfers += amount;
+        }
+
+        summary.total += amount;
+        return summary;
+      },
+      {
+        total: monthlySummary.transfersIn + monthlySummary.transfersOut,
+        plannedToSavings: monthlySummary.transfersIn,
+        toSavings: 0,
+        fromSavings: 0,
+        accountTransfers: 0
+      }
+    );
+  }, [monthlySummary.transfersIn, monthlySummary.transfersOut, scopedTransferRecords]);
 
   const hasReportData =
     reportRows.length > 0 ||
     miscExpenses.length > 0 ||
     budgetTargets.length > 0 ||
     savingsBuckets.length > 0 ||
+    savingsBucketAdjustments.length > 0 ||
+    transfers.length > 0 ||
     savingsTransfers.length > 0;
 
   function handlePrintReport() {
@@ -442,6 +519,7 @@ export default function Reports({
       budgetUsedPercentage,
       categoryTotals,
       savingsSummary,
+      transferSummary,
       trendSummary,
       hasReportData
     });
@@ -484,8 +562,8 @@ export default function Reports({
             Budget reports
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Review income, expenses, remaining balance, savings transfers, and
-            top spending categories.
+            Review income, expenses, transfers, savings movement, budgets, and
+            top spending categories from saved FinPath data.
           </p>
         </div>
 
@@ -596,12 +674,18 @@ export default function Reports({
       {!hasReportData && (
         <EmptyState
           title="No report data yet"
-          message="Add planner rows, savings buckets, or transfers to see reports."
+          message="Add income, expenses, transfers, savings buckets, or budget targets to see report trends."
         />
       )}
 
       {hasReportData && (
         <>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+            Transfers are shown separately so they do not inflate income or
+            spending totals. Savings movement includes bucket adjustments and
+            bucket-linked transfer records.
+          </div>
+
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Income"
@@ -626,8 +710,47 @@ export default function Reports({
             <StatCard
               label="Budget Used"
               value={`${budgetUsedPercentage}%`}
-              helper="Expenses and savings transfers compared to income"
+              helper="Expenses compared to income; transfers excluded"
             />
+          </section>
+
+          <section className="space-y-4 print:break-inside-avoid">
+            <div>
+              <h3 className="text-xl font-bold text-slate-950">
+                Transfers
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Internal account and savings movements for {reportRangeLabel}.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <StatCard
+                label="Total Transfers"
+                value={formatCurrency(transferSummary.total)}
+                helper="Shown outside income and spending"
+              />
+              <StatCard
+                label="Planned To Savings"
+                value={formatCurrency(transferSummary.plannedToSavings)}
+                helper="Scheduled planner transfers"
+              />
+              <StatCard
+                label="Transfers To Savings"
+                value={formatCurrency(transferSummary.toSavings)}
+                helper="Transfer records into savings"
+              />
+              <StatCard
+                label="Transfers From Savings"
+                value={formatCurrency(transferSummary.fromSavings)}
+                helper="Transfer records back to chequing"
+              />
+              <StatCard
+                label="Account Transfers"
+                value={formatCurrency(transferSummary.accountTransfers)}
+                helper="Transfers without bucket movement"
+              />
+            </div>
           </section>
 
           {budgetTargets.length > 0 ? (
@@ -671,8 +794,8 @@ export default function Reports({
           ) : null}
 
           <ChartCard
-            title="Income vs Outflow"
-            helper="Compares income with planned expenses, misc expenses, and transfers for the selected report."
+            title="Income, Spending, and Transfers"
+            helper="Compares income with spending and shows transfers separately for the selected report."
           >
             {selectedRows.length === 0 ? (
               <EmptyChartState message="No planner rows match this filter." />
@@ -728,7 +851,7 @@ export default function Reports({
           <section className="grid gap-5 xl:grid-cols-2">
             <ChartCard
               title="Top Spending Categories"
-              helper="Shows the top five misc expense categories for the selected report."
+              helper="Shows the top five expense categories from derived transaction data for the selected report."
             >
               {categoryTotals.length === 0 ? (
                 <EmptyChartState message="No category spending found for this filter." />
@@ -794,11 +917,11 @@ export default function Reports({
             </ChartCard>
 
             <ChartCard
-              title="Savings Transfers"
-              helper="Compares transfers into savings, transfers out, and the net movement."
+              title="Savings Movement"
+              helper="Compares bucket-linked transfers and savings bucket adjustments without counting them as regular spending."
             >
               {!chartHasAnyValue(savingsTransferChartData) ? (
-                <EmptyChartState message="No savings transfers found for this filter." />
+                <EmptyChartState message="No transfers or savings movement found for this filter." />
               ) : (
                 <MeasuredChartFrame
                   className="h-64 sm:h-[280px]"
@@ -846,7 +969,7 @@ export default function Reports({
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-sm font-medium text-slate-500">
-                    Transfers In
+                    Movement In
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
                     {formatCurrency(savingsSummary.totals.transfersIn)}
@@ -855,7 +978,7 @@ export default function Reports({
 
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-sm font-medium text-slate-500">
-                    Transfers Out
+                    Movement Out
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
                     {formatCurrency(savingsSummary.totals.transfersOut)}
@@ -864,7 +987,7 @@ export default function Reports({
 
                 <div className="rounded-xl border border-slate-200 p-4">
                   <p className="text-sm font-medium text-slate-500">
-                    Net Transfers
+                    Net Movement
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
                     {formatCurrency(savingsSummary.totals.netTransfers)}
@@ -880,14 +1003,14 @@ export default function Reports({
                 Trend Insights
               </h3>
               <p className="mt-1 text-sm text-slate-600">
-                Follow cash flow, income, expenses, savings transfers, and
+                Follow cash flow, income, expenses, savings movement, and
                 projected balance changes over time.
               </p>
             </div>
 
             <ChartCard
               title="Trend Summary"
-              helper="Highlights the strongest and riskiest points in the available report trends."
+              helper="Highlights the strongest and riskiest points in the available report trends. Net cash flow excludes transfers."
             >
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 <TrendSummaryCard
@@ -954,7 +1077,7 @@ export default function Reports({
 
             <ChartCard
               title="Monthly Cash Flow Trend"
-              helper="Shows monthly income, expenses, and net cash flow from oldest to newest."
+              helper="Shows monthly income, expenses, and net cash flow from oldest to newest. Transfers are tracked separately."
             >
               {monthlyTrendRows.length === 0 ? (
                 <EmptyChartState message="No monthly planner data is available for trends." />
@@ -1019,7 +1142,7 @@ export default function Reports({
             <section className="grid gap-5 xl:grid-cols-2">
               <ChartCard
                 title="Pay Period Cash Flow Trend"
-                helper="Shows the first 12 projected pay periods with income, expenses, net cash flow, and remaining balance."
+                helper="Shows the first 12 projected pay periods with income, expenses, net cash flow, and remaining balance. Transfers are tracked separately."
               >
                 {payPeriodTrendRows.length === 0 ? (
                   <EmptyChartState message="No dated pay-period planner rows are available for trends." />
@@ -1129,21 +1252,21 @@ export default function Reports({
                         <Line
                           type="monotone"
                           dataKey="transfersIn"
-                          name="Transfers In"
+                          name="Movement In"
                           stroke={TREND_COLORS.transfersIn}
                           strokeWidth={2}
                         />
                         <Line
                           type="monotone"
                           dataKey="transfersOut"
-                          name="Transfers Out"
+                          name="Movement Out"
                           stroke={TREND_COLORS.transfersOut}
                           strokeWidth={2}
                         />
                         <Line
                           type="monotone"
                           dataKey="netTransfers"
-                          name="Net Transfers"
+                          name="Net Movement"
                           stroke={TREND_COLORS.netTransfers}
                           strokeWidth={2}
                         />
@@ -1215,10 +1338,10 @@ export default function Reports({
                           Balance
                         </th>
                         <th className="py-3 pr-4 text-right font-semibold text-slate-600">
-                          Transfers In
+                          Movement In
                         </th>
                         <th className="py-3 pr-4 text-right font-semibold text-slate-600">
-                          Transfers Out
+                          Movement Out
                         </th>
                         <th className="py-3 text-right font-semibold text-slate-600">
                           Net

@@ -24,6 +24,13 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.
 - [ ] Budgets still calculate used, remaining, near-budget, and over-budget states.
 - [ ] Reports still open and charts render.
+- [ ] Add income and confirm Reports income changes.
+- [ ] Add expense and confirm Reports expense and category totals change.
+- [ ] Add transfer and confirm Reports transfer totals change without inflating income or expenses.
+- [ ] Add savings transfer or bucket-linked transfer and confirm savings movement updates.
+- [ ] Add budget target and confirm Reports budget status matches Budgets.
+- [ ] Switch report period or month and confirm totals update.
+- [ ] Check Reports empty state after Factory Reset to Empty App if practical.
 - [ ] Backup export still downloads JSON.
 - [ ] Backup JSON includes `appName`, `exportVersion`, `schemaVersion`, `exportedAt`, `source`, `basePath`, and `data`.
 - [ ] Backup JSON includes `transfers`, `savingsBucketAdjustments`, `plannerEntries`, `settings`, and `budgets`.
