@@ -184,6 +184,9 @@ function validateScheduledItem(formState) {
   if (!Number.isFinite(amount)) return 'Amount must be a valid number.';
   if (amount < 0) return 'Amount must be greater than or equal to 0.';
   if (!scheduledItemTypes.includes(formState.type)) return 'Choose a valid type.';
+  if (formState.type === 'transfer' && !formState.savingsBucketId) {
+    return 'Choose a savings bucket for this transfer item.';
+  }
   if (!scheduledItemFrequencies.includes(formState.frequency)) {
     return 'Choose a valid frequency.';
   }
@@ -217,7 +220,7 @@ function validateScheduledItem(formState) {
   return '';
 }
 
-function ScheduledItemForm({ item, categories, settings, onCancel, onSave }) {
+function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, onCancel, onSave }) {
   const normalizedItem = normalizeScheduledItem(item);
   const [formState, setFormState] = useState({
     ...normalizedItem,
@@ -227,6 +230,8 @@ function ScheduledItemForm({ item, categories, settings, onCancel, onSave }) {
     endDate: normalizedItem.endDate ?? '',
     notes: normalizedItem.notes ?? '',
     categoryId: normalizedItem.categoryId ?? '',
+    savingsBucketId:
+      normalizedItem.savingsBucketId || normalizedItem.bucketId || '',
     active: normalizedItem.active ?? true,
     allowLineItems: normalizedItem.allowLineItems ?? false,
   });
@@ -260,6 +265,9 @@ function ScheduledItemForm({ item, categories, settings, onCancel, onSave }) {
       return;
     }
 
+    const selectedSavingsBucketId =
+      formState.type === 'transfer' ? formState.savingsBucketId || null : null;
+
     const cleanedItem = normalizeScheduledItem({
       ...formState,
       name: String(formState.name || '').trim(),
@@ -269,6 +277,8 @@ function ScheduledItemForm({ item, categories, settings, onCancel, onSave }) {
       endDate: formState.endDate || null,
       notes: String(formState.notes || '').trim(),
       categoryId: formState.categoryId || null,
+      savingsBucketId: selectedSavingsBucketId,
+      bucketId: selectedSavingsBucketId,
       active: Boolean(formState.active),
       allowLineItems: Boolean(formState.allowLineItems),
       updatedAt: new Date().toISOString(),
@@ -322,6 +332,36 @@ function ScheduledItemForm({ item, categories, settings, onCancel, onSave }) {
             required
           />
         </label>
+
+        {formState.type === 'transfer' ? (
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              Savings Bucket
+            </span>
+            <select
+              value={formState.savingsBucketId || ''}
+              onChange={(event) =>
+                updateField('savingsBucketId', event.target.value)
+              }
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-900"
+              required
+            >
+              <option value="">Choose a savings bucket</option>
+
+              {savingsBuckets
+                .filter((bucket) => bucket.active !== false)
+                .sort((left, right) => left.name.localeCompare(right.name))
+                .map((bucket) => (
+                  <option key={bucket.id} value={bucket.id}>
+                    {bucket.name}
+                  </option>
+                ))}
+            </select>
+            <span className="mt-1 block text-xs text-slate-500">
+              This links the transfer row to a savings bucket projection.
+            </span>
+          </label>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
@@ -502,6 +542,7 @@ function SummaryCard({ label, value, helper }) {
 export default function ScheduledItems({
   scheduledItems,
   categories = [],
+  savingsBuckets = [],
   settings,
   alerts = [],
   onAlertAction,
@@ -1039,6 +1080,7 @@ export default function ScheduledItems({
         <ScheduledItemForm
           item={selectedItem}
           categories={categories}
+          savingsBuckets={savingsBuckets}
           settings={settings}
           onCancel={() => setSelectedItem(null)}
           onSave={handleSave}

@@ -1068,6 +1068,7 @@ async function handleSaveAccount(updatedAccount) {
             <ScheduledItems
               scheduledItems={scheduledItems}
               categories={categories}
+              savingsBuckets={savingsBuckets}
               settings={settings}
               alerts={scheduledItemAlerts}
               onAlertAction={handleAlertAction}
