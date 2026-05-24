@@ -189,6 +189,10 @@ export default function Help() {
             version. Export a backup after major updates so your local data has
             a recent recovery file.
           </p>
+          <p>
+            If the installed PWA or browser tab looks stale after an update,
+            refresh the app and review the What&apos;s New notes.
+          </p>
         </HelpCard>
 
         <HelpCard title="Splash Screen">

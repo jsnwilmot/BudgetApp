@@ -23,7 +23,7 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 
 - [ ] Existing IndexedDB data loads without migration errors or data reset.
 - [ ] Splash screen does not block app access.
-- [ ] What's New popup appears for `2.0.0-phase-2u` when unseen.
+- [ ] What's New popup appears for the current app version when unseen.
 - [ ] Payday workflow works: add income, regular bills, misc expenses, misc payments, and savings transfers, then compare Dashboard, Planner, and Reports totals.
 - [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
@@ -84,6 +84,22 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] FinPath manifest name and theme color are present.
 - [ ] GitHub Pages workflow still uploads `budget-planner/dist`.
 - [ ] GitHub Pages base path remains `/BudgetApp/`.
+
+## Final PWA Release Smoke
+
+- [ ] Desktop browser loads `http://127.0.0.1:4173/BudgetApp/` from production preview.
+- [ ] Refreshing `/BudgetApp/` reloads the app shell.
+- [ ] Mobile width preview loads Dashboard, Planner, Reports, Settings, and Help.
+- [ ] Installed PWA/window test is completed if practical.
+- [ ] Splash screen appears briefly and fades out.
+- [ ] What's New popup appears for `2.0.0-phase-2v` when unseen.
+- [ ] PWA update prompt still offers Refresh App when a service worker update is available.
+- [ ] Export Backup downloads JSON before deploy testing.
+- [ ] Import Backup shows preview and does not overwrite until confirmed.
+- [ ] Data Health recheck works without changing records.
+- [ ] Dashboard, Planner, and Reports open after refresh.
+- [ ] No unexpected full-page horizontal scrolling appears.
+- [ ] Built script, stylesheet, manifest, and icon paths use `/BudgetApp/`.
 
 ## Final Commands
 

@@ -16,6 +16,27 @@ The production build should split larger pages and chart code into separate
 assets. If a large chunk warning returns, review page lazy loading and chart
 imports before release.
 
+## Final PWA Release Gate
+
+- [ ] Export a backup before deploying or testing a major update.
+- [ ] Production preview `/BudgetApp/` returns HTTP 200.
+- [ ] `budget-planner/dist/index.html` exists.
+- [ ] `budget-planner/dist/manifest.webmanifest` exists.
+- [ ] `budget-planner/dist/sw.js` exists.
+- [ ] `budget-planner/dist/icons/icon-192.png` exists.
+- [ ] `budget-planner/dist/icons/icon-512.png` exists.
+- [ ] `budget-planner/dist/icons/maskable-icon-512.png` exists.
+- [ ] Built script and CSS paths start with `/BudgetApp/`.
+- [ ] App loads after refresh at `/BudgetApp/`.
+- [ ] Splash screen appears and does not block access.
+- [ ] What's New popup appears for the new app version.
+- [ ] Data Health opens and recheck does not modify records.
+- [ ] Export Backup works.
+- [ ] Import preview works and still requires confirmation before overwrite.
+- [ ] Dashboard, Planner, Reports, Settings, and Help open in production preview.
+- [ ] Mobile phone width and tablet width are checked.
+- [ ] Known limitations and data safety notes are reviewed.
+
 ## Browser Smoke Test
 
 - [ ] App loads in the browser.
@@ -214,11 +235,14 @@ imports before release.
 
 - [ ] `npm.cmd run preview`
 - [ ] Production preview loads.
+- [ ] Production preview `/BudgetApp/` returns HTTP 200.
+- [ ] Built app assets use `/BudgetApp/` paths.
 - [ ] All nav pages open in production preview.
 - [ ] Lazy-loaded pages show a loading state instead of a blank screen.
 - [ ] Reports opens and chart assets load in production preview.
 - [ ] Dashboard opens and chart assets load in production preview.
 - [ ] Service worker still registers after bundle splitting.
+- [ ] Manifest and service worker are not blocked by stale cache after refresh.
 - [ ] No console errors appear in production preview.
 
 ## GitHub Pages Deployment

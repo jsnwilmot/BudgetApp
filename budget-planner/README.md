@@ -5,7 +5,7 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2u`
+Current release: `2.0.0-phase-2v`
 Data version: `2`
 
 ## Current Status
@@ -14,9 +14,9 @@ This is a clean local MVP release with FinPath branding applied. It runs in the
 browser, can be installed as a PWA in supported browsers, stores user data
 locally, and does not require login, cloud sync, bank connections, or a server.
 
-Current phase status: Phase 2U completed a practical real-data QA and bug-fix
-pass across planner, reports, transfers, budgets, data health, backups, mobile
-layouts, and PWA output while keeping `/BudgetApp/` unchanged.
+Current phase status: Phase 2V hardens the final web/PWA release path by
+verifying PWA output, GitHub Pages compatibility, update behavior, backup
+guidance, and release checklist coverage while keeping `/BudgetApp/` unchanged.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -191,6 +191,11 @@ cd ..
 git diff --check
 ```
 
+Before deploying or testing a major update, export a fresh backup from
+`Settings > Data Management`. FinPath data is stored locally in the current
+browser/device, and backups are the portable recovery path for future desktop
+import.
+
 ## GitHub Pages Deployment
 
 Live URL: https://jsnwilmot.github.io/BudgetApp/
@@ -203,12 +208,20 @@ Live URL: https://jsnwilmot.github.io/BudgetApp/
 The Vite base path is configured as `/BudgetApp/` so production assets, the PWA
 manifest, service worker, and icons load correctly from GitHub Pages.
 
+FinPath uses in-app navigation instead of URL routes for individual pages.
+Refreshing `https://jsnwilmot.github.io/BudgetApp/` should reload the app shell;
+share the `/BudgetApp/` URL and use the app navigation for Dashboard, Planner,
+Reports, Manage, Settings, and Help. If a browser or installed PWA appears stale
+after deployment, refresh the app to pick up the latest service worker update.
+
 Local deployment check:
 
 ```powershell
 npm.cmd run build
 npm.cmd run preview
 ```
+
+Then open `http://127.0.0.1:4173/BudgetApp/` and confirm it returns HTTP 200.
 
 ## Browser Support
 
@@ -678,6 +691,26 @@ Known limitation:
 
 - This pass was manual/code-review based; a broader automated regression suite
   is still recommended before a wider release.
+
+### Phase 2V: Final PWA Release Hardening
+
+Completed:
+
+- Hardened final PWA release readiness checks.
+- Verified GitHub Pages `/BudgetApp/` deployment assumptions and production
+  preview guidance.
+- Confirmed manifest, service worker, icon, and branded asset expectations.
+- Improved release checklist and manual PWA smoke test coverage.
+- Improved final backup and update guidance for local-first data safety.
+- Preserved planner, reports, transfers, budgets, backup/import, and data
+  health behavior.
+
+Known limitation:
+
+- Browser install prompts and offline behavior still depend on each browser and
+  device.
+- GitHub Pages should be deployed from the generated `budget-planner/dist`
+  artifact through GitHub Actions.
 
 ## Known Limitations
 
