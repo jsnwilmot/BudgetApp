@@ -358,7 +358,7 @@ function calculateProjectionRows({
     },
     {
       id: 'total-expenses',
-      name: 'Total Expenses and Transfers',
+      name: 'Total Expenses',
       type: 'total',
       amountsByPeriod: totalExpenses,
     },
