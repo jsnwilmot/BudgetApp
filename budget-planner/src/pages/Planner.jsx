@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import AlertList from '../components/AlertList';
 import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
@@ -17,6 +18,26 @@ function getAmountClass(value) {
   return 'text-slate-300';
 }
 
+function getTodayDateKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentPayPeriodIndex(payPeriods) {
+  const today = getTodayDateKey();
+
+  const currentIndex = payPeriods.findIndex((period, index) => {
+    const nextPeriod = payPeriods[index + 1];
+
+    return period.date <= today && (!nextPeriod || today < nextPeriod.date);
+  });
+
+  if (currentIndex >= 0) {
+    return currentIndex;
+  }
+
+  return payPeriods.findIndex((period) => period.date >= today);
+}
+
 function PlannerRow({
   row,
   payPeriods,
@@ -28,7 +49,7 @@ function PlannerRow({
 
   return (
     <tr className={getRowClass(row.type)}>
-      <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
+      <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
         {row.name}
       </th>
 
@@ -106,10 +127,31 @@ export default function Planner({
   alerts = [],
   onCellClick,
 }) {
+  const gridScrollRef = useRef(null);
   const currency = settings?.currency || 'CAD';
   const incomeRows = plannerData.rows.filter((row) => row.type === 'income');
   const expenseRows = plannerData.rows.filter((row) => row.type === 'expense');
   const transferRows = plannerData.rows.filter((row) => row.type === 'transfer');
+  useEffect(() => {
+  const grid = gridScrollRef.current;
+
+  if (!grid) {
+    return;
+  }
+
+  const currentPayPeriodIndex = getCurrentPayPeriodIndex(
+    plannerData.payPeriods
+  );
+
+  if (currentPayPeriodIndex <= 0) {
+    grid.scrollLeft = 0;
+    return;
+  }
+
+  const payPeriodColumnWidth = 144;
+
+  grid.scrollLeft = currentPayPeriodIndex * payPeriodColumnWidth;
+}, [plannerData.payPeriods]);
 
   return (
     <div className="space-y-6">
@@ -133,11 +175,11 @@ export default function Planner({
       />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="max-h-[72vh] overflow-auto">
+        <div ref={gridScrollRef} className="max-h-[72vh] overflow-auto">
           <table className="w-full border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className="sticky left-0 top-0 z-40 min-w-64 border border-slate-200 bg-slate-900 px-3 py-3 text-left text-sm font-bold text-white">
+                <th className="sticky left-0 top-0 z-40 min-w-56 border border-slate-200 bg-slate-900 px-3 py-3 text-left text-sm font-bold text-white">
                   Item
                 </th>
 
@@ -154,7 +196,7 @@ export default function Planner({
 
             <tbody>
               <tr className="bg-emerald-100">
-                <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-emerald-100 px-3 py-2 text-left text-sm font-bold text-emerald-950">
+                <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-emerald-100 px-3 py-2 text-left text-sm font-bold text-emerald-950">
                   Income
                 </th>
                 <td
@@ -162,6 +204,8 @@ export default function Planner({
                   className="border border-slate-200 bg-emerald-100 px-3 py-2"
                 />
               </tr>
+
+              
 
               {incomeRows.map((row) => (
                 <PlannerRow
@@ -175,7 +219,7 @@ export default function Planner({
               ))}
 
               <tr className="bg-blue-100">
-              <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-blue-100 px-3 py-2 text-left text-sm font-bold text-blue-950">
+              <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-blue-100 px-3 py-2 text-left text-sm font-bold text-blue-950">
                 Expenses
               </th>
               <td
@@ -196,7 +240,7 @@ export default function Planner({
               ))}
 
                 <tr className="bg-slate-200">
-                  <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-slate-200 px-3 py-2 text-left text-sm font-bold text-slate-950">
+                  <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-slate-200 px-3 py-2 text-left text-sm font-bold text-slate-950">
                     Transfers to Savings
                   </th>
                   <td
@@ -217,7 +261,7 @@ export default function Planner({
               ))}
 
             <tr className="bg-white">
-              <th className="sticky left-0 z-30 min-w-64 border border-slate-200 bg-white px-3 py-2 text-left text-sm font-bold text-slate-950">
+              <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-white px-3 py-2 text-left text-sm font-bold text-slate-950">
                 Totals and Account Projection
               </th>
               <td
