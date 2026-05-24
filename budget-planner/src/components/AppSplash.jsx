@@ -36,7 +36,7 @@ export default function AppSplash({ onFinished }) {
           <div className="app-splash__metric-card">
             <div className="app-splash__icon">$</div>
             <p>Balance</p>
-            <strong>$45,678</strong>
+            <strong>$5,678</strong>
           </div>
 
           <div className="app-splash__metric-card">
@@ -69,7 +69,7 @@ export default function AppSplash({ onFinished }) {
           <div className="app-splash__loading-bar">
             <span />
           </div>
-          <p>Loading your financial path...</p>
+          <p>Loading FinPath...</p>
         </div>
 
         <footer className="app-splash__footer">
