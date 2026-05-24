@@ -247,6 +247,21 @@ export default function Help() {
             still browser-managed, so backups remain important.
           </p>
         </HelpCard>
+
+        <HelpCard title="Mobile and Tablet Use">
+          <p>
+            FinPath is designed to work on desktop, tablet, phone-sized screens,
+            and installed PWA windows.
+          </p>
+          <p>
+            On smaller screens, some lists appear as stacked cards and wide
+            planner/report areas may scroll within their own section for easier
+            reading.
+          </p>
+          <p>
+            Your data still stays saved locally on this browser/device.
+          </p>
+        </HelpCard>
       </div>
 
       <HelpCard title="Using the App">

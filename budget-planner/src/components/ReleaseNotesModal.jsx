@@ -13,7 +13,7 @@ export default function ReleaseNotesModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 sm:p-4"
       role="presentation"
     >
       <section
@@ -21,7 +21,7 @@ export default function ReleaseNotesModal({
         aria-modal="true"
         aria-labelledby="release-notes-title"
         aria-describedby="release-notes-description"
-        className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+        className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5"
       >
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -55,14 +55,14 @@ export default function ReleaseNotesModal({
             type="button"
             onClick={onClose}
             autoFocus
-            className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            className="min-h-11 w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
           >
             Got it
           </button>
           <button
             type="button"
             onClick={onViewHelp}
-            className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:w-auto"
           >
             View Help
           </button>
@@ -70,7 +70,7 @@ export default function ReleaseNotesModal({
             <button
               type="button"
               onClick={onExportBackup}
-              className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:w-auto"
             >
               Export Backup
             </button>

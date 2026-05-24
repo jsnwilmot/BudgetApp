@@ -462,7 +462,74 @@ export default function Transactions({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="grid gap-3 p-3 md:hidden">
+            {filteredTransactions.map((transaction) => {
+              const signedAmount = getTransactionAmountLabel(transaction);
+              const location =
+                transaction.savingsBucketId
+                  ? transaction.savingsBucketName
+                  : transaction.accountName;
+
+              return (
+                <article
+                  key={transaction.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-anywhere text-sm font-semibold text-slate-950">
+                        {transaction.description}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {formatDate(transaction.date)}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-right text-sm font-bold text-slate-950">
+                      {signedAmount < 0 ? '-' : '+'}
+                      {formatCurrency(Math.abs(signedAmount), currency)}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-bold ${getTypeClass(
+                        transaction.type
+                      )}`}
+                    >
+                      {typeLabels[transaction.type] || transaction.type}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
+                      {sourceLabels[transaction.source] || transaction.source}
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 grid gap-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-slate-500">Category</dt>
+                      <dd className="break-anywhere text-right font-medium text-slate-800">
+                        {transaction.categoryName}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-slate-500">Account/Bucket</dt>
+                      <dd className="break-anywhere text-right font-medium text-slate-800">
+                        {location}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {transaction.notes ? (
+                    <p className="mt-3 whitespace-pre-wrap break-anywhere rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                      {transaction.notes}
+                    </p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[1050px]">
               <thead>
                 <tr className="bg-slate-900 text-white">
@@ -543,6 +610,7 @@ export default function Transactions({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
     </div>

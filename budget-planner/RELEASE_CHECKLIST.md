@@ -188,6 +188,21 @@ imports before release.
 - [ ] Backup/export still works in installed PWA.
 - [ ] Import backup still works in installed PWA.
 
+## Responsive Layout
+
+- [ ] Dashboard works on phone width.
+- [ ] Transactions work on phone width.
+- [ ] Add/edit transaction controls work on phone width.
+- [ ] Pay Period Planner works on phone width with only intentional internal scrolling.
+- [ ] Budgets work on phone width.
+- [ ] Savings Buckets and transfer forms work on phone width.
+- [ ] Reports work on phone width and charts do not overflow.
+- [ ] Settings/Data Management works on phone width.
+- [ ] Import preview fits mobile.
+- [ ] Data Health issue lists wrap correctly.
+- [ ] Release Notes modal fits mobile.
+- [ ] No unexpected full-page horizontal scrolling appears.
+
 ## Production Preview
 
 - [ ] `npm.cmd run preview`

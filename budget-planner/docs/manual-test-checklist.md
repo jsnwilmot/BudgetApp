@@ -47,6 +47,27 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Backup import requires confirmation before replacing local data.
 - [ ] Settings still shows app version, data version, last backup, and backup status.
 
+## Responsive Layout
+
+- [ ] App is usable at 375px wide mobile layout.
+- [ ] App is usable at 414px wide mobile layout.
+- [ ] App is usable at tablet width.
+- [ ] App is usable at desktop width.
+- [ ] Installed PWA window layout is usable if practical to test.
+- [ ] Dashboard cards stack cleanly on mobile.
+- [ ] Transactions display readable stacked cards on mobile.
+- [ ] Budgets display readable stacked cards on mobile.
+- [ ] Add/edit transaction-related source records work on mobile.
+- [ ] Pay Period Planner fits mobile with only intentional internal scrolling.
+- [ ] Reports open on mobile without chart overflow.
+- [ ] Settings/Data Management fits mobile.
+- [ ] Import preview and overwrite confirmation fit mobile.
+- [ ] Data Health issue lists wrap correctly on mobile.
+- [ ] Run Health Check works on mobile.
+- [ ] Export Backup works on mobile.
+- [ ] Release Notes modal fits mobile.
+- [ ] No unexpected full-page horizontal scrolling appears.
+
 ## PWA And Deployment
 
 - [ ] PWA build outputs `manifest.webmanifest`.

@@ -540,7 +540,124 @@ export default function Budgets({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="grid gap-3 p-3 md:hidden">
+            {budgetUsage.rows.map((row) => {
+              const progressWidth =
+                row.amount > 0 ? Math.min(row.usedPercentage, 100) : 0;
+
+              return (
+                <article
+                  key={row.id}
+                  className={`rounded-xl border border-slate-200 p-4 ${
+                    row.active ? 'bg-white' : 'bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-anywhere text-sm font-semibold text-slate-950">
+                        {row.name}
+                      </p>
+                      <p className="mt-1 break-anywhere text-xs text-slate-500">
+                        {row.categoryName}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${getStatusClass(
+                        row.status
+                      )}`}
+                    >
+                      {row.status === 'over'
+                        ? `Over ${formatCurrency(Math.abs(row.remaining), currency)}`
+                        : getStatusLabel(row.status, row.remaining)}
+                    </span>
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+                    <div className="rounded-xl bg-slate-50 p-2">
+                      <dt className="text-xs text-slate-500">Target</dt>
+                      <dd className="mt-1 font-bold text-slate-950">
+                        {formatCurrency(row.amount, currency)}
+                      </dd>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-2">
+                      <dt className="text-xs text-slate-500">Used</dt>
+                      <dd className="mt-1 font-bold text-slate-950">
+                        {formatCurrency(row.used, currency)}
+                      </dd>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-2">
+                      <dt className="text-xs text-slate-500">Remaining</dt>
+                      <dd className="mt-1 font-bold text-slate-950">
+                        {row.remaining < 0
+                          ? `-${formatCurrency(Math.abs(row.remaining), currency)}`
+                          : formatCurrency(row.remaining, currency)}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-4">
+                    <div
+                      className="h-3 overflow-hidden rounded-full bg-slate-100"
+                      aria-label={`${row.name} used ${row.usedPercentage}%`}
+                    >
+                      <div
+                        className={`h-full rounded-full ${
+                          row.status === 'over'
+                            ? 'bg-red-500'
+                            : row.status === 'near'
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${progressWidth}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {row.amount > 0
+                        ? `${row.usedPercentage}% used`
+                        : 'No target amount'}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTarget(row);
+                        setMessage('');
+                        setErrorMessage('');
+                      }}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      <Pencil size={14} />
+                      Edit
+                    </button>
+
+                    {row.active ? (
+                      <button
+                        type="button"
+                        onClick={() => handleArchive(row)}
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                      >
+                        <Archive size={14} />
+                        Archive
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleReactivate(row)}
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                      >
+                        Reactivate
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[1050px]">
               <thead>
                 <tr className="bg-slate-900 text-white">
@@ -677,6 +794,7 @@ export default function Budgets({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
     </div>

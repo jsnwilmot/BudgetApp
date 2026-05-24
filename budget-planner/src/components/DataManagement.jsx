@@ -760,7 +760,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={onShowHelp}
-              className="mt-3 min-h-11 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+              className="mt-3 min-h-11 w-full rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 sm:w-auto"
             >
               Open Help Guide
             </button>
@@ -886,7 +886,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleRunHealthCheck}
-              className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:w-auto"
             >
               Run Health Check
             </button>
@@ -900,7 +900,10 @@ export default function DataManagement({
                 </p>
                 <div className="mt-2 space-y-2">
                   {dataHealth.healthDetails.errors.map((issue) => (
-                    <div key={issue.id} className="text-sm text-red-900">
+                    <div
+                      key={issue.id}
+                      className="break-anywhere text-sm text-red-900"
+                    >
                       <p className="font-semibold">{issue.title}</p>
                       <p>{issue.message}</p>
                       <p className="mt-1 text-red-800">{issue.guidance}</p>
@@ -917,7 +920,10 @@ export default function DataManagement({
                 </p>
                 <div className="mt-2 space-y-2">
                   {dataHealth.healthDetails.warnings.map((issue) => (
-                    <div key={issue.id} className="text-sm text-amber-900">
+                    <div
+                      key={issue.id}
+                      className="break-anywhere text-sm text-amber-900"
+                    >
                       <p className="font-semibold">{issue.title}</p>
                       <p>{issue.message}</p>
                       <p className="mt-1 text-amber-800">{issue.guidance}</p>
@@ -957,7 +963,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleExportBackup}
-              className="min-h-11 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              className="min-h-11 w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
             >
               Export Backup
             </button>
@@ -965,7 +971,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleExportPlannerCsv}
-              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:w-auto"
             >
               Export Planner CSV
             </button>
@@ -973,7 +979,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleExportSavingsBucketsCsv}
-              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 w-full rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:w-auto"
             >
               Export Savings Buckets CSV
             </button>
@@ -981,7 +987,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleRepairLocalData}
-              className="min-h-11 rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50"
+              className="min-h-11 w-full rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50 sm:w-auto"
             >
               Repair Local Data
             </button>
@@ -1011,7 +1017,7 @@ export default function DataManagement({
             <button
               type="button"
               onClick={handleChooseImportFile}
-              className="min-h-11 rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-amber-100"
+              className="min-h-11 w-full rounded-xl border border-amber-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-amber-100 sm:w-auto"
             >
               Import Backup
             </button>
@@ -1041,10 +1047,10 @@ export default function DataManagement({
                     ].map(([label, value]) => (
                       <div
                         key={label}
-                        className="flex items-center justify-between gap-3"
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                       >
                         <dt className="text-slate-600">{label}</dt>
-                        <dd className="text-right font-semibold text-slate-950">
+                        <dd className="break-anywhere font-semibold text-slate-950 sm:text-right">
                           {value || "Unknown"}
                         </dd>
                       </div>
@@ -1095,7 +1101,7 @@ export default function DataManagement({
                 <button
                   type="button"
                   onClick={confirmImportBackup}
-                  className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                  className="min-h-11 w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 sm:w-auto"
                 >
                   Import Backup
                 </button>
@@ -1103,7 +1109,7 @@ export default function DataManagement({
                 <button
                   type="button"
                   onClick={cancelImportBackup}
-                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1126,14 +1132,14 @@ export default function DataManagement({
                 value={demoConfirmation}
                 onChange={(event) => setDemoConfirmation(event.target.value)}
                 placeholder="Type DEMO"
-                className="min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                className="min-h-11 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-48"
               />
 
               <button
                 type="button"
                 onClick={handleResetDemoData}
                 disabled={demoConfirmation !== "DEMO"}
-                className="min-h-11 rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Reset to Demo Data
               </button>
@@ -1158,14 +1164,14 @@ export default function DataManagement({
                   setDeleteConfirmation(event.target.value)
                 }
                 placeholder="Type DELETE"
-                className="min-h-11 rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                className="min-h-11 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-48"
               />
 
               <button
                 type="button"
                 onClick={handleResetLocalData}
                 disabled={deleteConfirmation !== "DELETE"}
-                className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 Factory Reset to Empty App
               </button>

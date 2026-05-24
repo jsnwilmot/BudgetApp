@@ -97,15 +97,15 @@ export default function AppShell({ currentPage, onPageChange, children }) {
 
   return (
     <div className="min-h-screen bg-[var(--color-finpath-white)] text-slate-900">
-      <header className="no-print sticky top-0 z-40 border-b border-[#102C42] bg-[var(--color-finpath-navy)] px-4 py-3 shadow-sm print:hidden lg:hidden">
+      <header className="no-print sticky top-0 z-40 border-b border-[#102C42] bg-[var(--color-finpath-navy)] px-3 py-3 shadow-sm print:hidden sm:px-4 lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <img
               src={brandLogo}
               alt="FinPath"
-              className="h-10 w-auto max-w-[132px] rounded-sm bg-white px-2 py-1"
+              className="h-9 w-auto max-w-[108px] shrink-0 rounded-sm bg-white px-2 py-1 sm:h-10 sm:max-w-[132px]"
             />
-            <h1 className="truncate text-lg font-bold text-white">
+            <h1 className="min-w-0 truncate text-base font-bold text-white sm:text-lg">
               {currentItem.label}
             </h1>
           </div>
@@ -115,7 +115,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
             onClick={() => setMobileMenuOpen((open) => !open)}
             aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileMenuOpen}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#13BFA5] px-3 py-2 text-sm font-semibold text-white hover:bg-[#102C42]"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[#13BFA5] px-3 py-2 text-sm font-semibold text-white hover:bg-[#102C42]"
           >
             {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             Menu
@@ -187,7 +187,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
         </nav>
       </aside>
 
-      <main className="app-main min-h-screen p-4 print:ml-0 print:p-0 sm:p-5 lg:ml-72 lg:p-6">
+      <main className="app-main min-h-screen p-3 print:ml-0 print:p-0 sm:p-5 lg:ml-72 lg:p-6">
         {children}
       </main>
     </div>

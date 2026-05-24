@@ -21,6 +21,12 @@ body {
   overflow-x: hidden;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 button,
 input,
 select,
@@ -33,6 +39,22 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="
 select,
 textarea {
   min-height: 2.5rem;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+.break-anywhere {
+  overflow-wrap: anywhere;
 }
 
 table {

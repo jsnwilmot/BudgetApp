@@ -5,7 +5,7 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2s`
+Current release: `2.0.0-phase-2t`
 Data version: `2`
 
 ## Current Status
@@ -14,8 +14,8 @@ This is a clean local MVP release with FinPath branding applied. It runs in the
 browser, can be installed as a PWA in supported browsers, stores user data
 locally, and does not require login, cloud sync, bank connections, or a server.
 
-Current cleanup status: Phase 2P documentation, Help, release notes, and manual
-testing notes are being kept current before Phase 2Q begins.
+Current phase status: Phase 2T improves mobile, tablet, desktop, and installed
+PWA usability while keeping FinPath's local-first data model unchanged.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -40,7 +40,8 @@ release that should show the one-time What's New popup.
   budgets, transactions, reports, alerts, and multi-line notes.
 - First-run onboarding and an in-app Help Guide.
 - One-time What's New popup for user-facing updates.
-- Mobile-friendly navigation and responsive page layouts.
+- Mobile-friendly navigation, stacked mobile cards, responsive forms, and
+  readable Data Management surfaces.
 - PWA install support with app icons, manifest, service worker caching, and a
   simple update prompt.
 - FinPath branding with approved logo assets, app icon, colors, and PWA metadata.
@@ -61,7 +62,7 @@ Use `Settings > Data Management`.
 
 - `Export Backup` downloads a local JSON backup file with app metadata, app
   version, data version, settings, planner entries, accounts, scheduled items,
-  categories, budgets, savings buckets, and adjustments.
+  categories, transfers, budgets, savings buckets, and adjustments.
 - The app records the last successful backup export and recommends a new backup
   if no backup exists or the last one is older than 30 days.
 - `Import Backup` previews the backup counts, then replaces current local data
@@ -637,6 +638,26 @@ Known limitation:
   duplicate IDs, missing references, or planner entry keys.
 - A future desktop migration may add deeper validation before importing into a
   local database.
+
+### Phase 2T: Mobile Responsive Polish And Usability Pass
+
+Completed:
+
+- Improved mobile and tablet spacing across core app surfaces.
+- Added stacked mobile cards for Transactions and Budgets while preserving
+  desktop tables.
+- Improved Data Management, import preview, reset confirmations, and Data
+  Health wrapping on small screens.
+- Improved drawer/modal sizing and touch targets for planner and transfer
+  editing.
+- Added Help guidance for phone, tablet, and installed PWA use.
+- Preserved PWA, backup, import, reports, and GitHub Pages behavior.
+
+Known limitation:
+
+- The Pay Period Planner remains a dense forecasting tool, so some planner
+  areas still use intentional internal scrolling on small screens.
+- Further device-specific polish may be useful after more installed PWA testing.
 
 ## Known Limitations
 
