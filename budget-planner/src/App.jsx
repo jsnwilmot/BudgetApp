@@ -2,6 +2,15 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import AppShell from './components/AppShell';
 import CellEditor from './components/CellEditor';
+import ReleaseNotesModal, {
+  RELEASE_NOTES_STORAGE_KEY,
+} from './components/ReleaseNotesModal';
+import {
+  createBackupSnapshot,
+  getBackupFileName,
+} from './services/backupService';
+import { downloadTextFile } from './utils/downloadFile';
+import { APP_VERSION, RELEASE_NOTES } from './data/releaseNotes';
 import {
   accounts as seedAccounts,
   appSettings,
@@ -89,6 +98,10 @@ function PageLoadingFallback() {
       Loading page...
     </div>
   );
+}
+
+function markReleaseNotesSeen() {
+  localStorage.setItem(RELEASE_NOTES_STORAGE_KEY, APP_VERSION);
 }
 
 function buildExportPlannerRows(plannerData) {
@@ -202,6 +215,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
   const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
+  const [releaseNotesSeen, setReleaseNotesSeen] = useState(
+    () => localStorage.getItem(RELEASE_NOTES_STORAGE_KEY) === APP_VERSION
+  );
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -348,6 +364,8 @@ export default function App() {
       appMetadata,
     ]
   );
+
+  const showReleaseNotes = !loading && !releaseNotesSeen;
 
   const alertTransactions = useMemo(
     () =>
@@ -922,6 +940,42 @@ async function handleSaveAccount(updatedAccount) {
     return savedMetadata;
   }
 
+  async function exportCurrentBackup() {
+    const backup = createBackupSnapshot(appData);
+
+    downloadTextFile({
+      content: JSON.stringify(backup, null, 2),
+      filename: getBackupFileName(),
+      mimeType: 'application/json;charset=utf-8',
+    });
+
+    await handleBackupExported(backup.metadata.createdAt);
+    setStatusMessage('Backup exported successfully. Keep this file somewhere safe.');
+    return backup;
+  }
+
+  function handleCloseReleaseNotes() {
+    markReleaseNotesSeen();
+    setReleaseNotesSeen(true);
+  }
+
+  function handleViewReleaseNotesHelp() {
+    markReleaseNotesSeen();
+    setReleaseNotesSeen(true);
+    setCurrentPage('help');
+  }
+
+  async function handleReleaseNotesBackupExport() {
+    try {
+      await exportCurrentBackup();
+      markReleaseNotesSeen();
+      setReleaseNotesSeen(true);
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Backup export failed.');
+    }
+  }
+
   async function handleImportData(importedData) {
     const safeImportedData = getSafeAppData(importedData);
     const importedHasRecords =
@@ -1224,6 +1278,15 @@ async function handleSaveAccount(updatedAccount) {
             </button>
           </div>
         </div>
+      ) : null}
+
+      {showReleaseNotes ? (
+        <ReleaseNotesModal
+          releaseNotes={RELEASE_NOTES}
+          onClose={handleCloseReleaseNotes}
+          onViewHelp={handleViewReleaseNotesHelp}
+          onExportBackup={handleReleaseNotesBackupExport}
+        />
       ) : null}
     </>
   );

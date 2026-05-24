@@ -119,6 +119,18 @@ export default function Help() {
           </p>
         </HelpCard>
 
+        <HelpCard title="App Updates">
+          <p>
+            After a user-facing update, Budget Planner may show a one-time
+            What&apos;s New popup with the main changes in plain language.
+          </p>
+          <p>
+            The popup is local to this browser/device and appears once per app
+            version. Export a backup after major updates so your local data has
+            a recent recovery file.
+          </p>
+        </HelpCard>
+
         <HelpCard title="Demo Data">
           <p>
             Demo records are fictional and show accounts, income, bills, savings

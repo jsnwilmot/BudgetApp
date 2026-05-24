@@ -16,6 +16,10 @@ New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
 factory reset to an empty app.
 
+User-facing release notes are controlled from
+`src/data/releaseNotes.js`. Update `APP_VERSION` and the highlights for each
+release that should show the one-time What's New popup.
+
 ## Features
 
 - Dashboard with cash-flow summary, projection chart, and alerts.
@@ -29,6 +33,7 @@ factory reset to an empty app.
 - Fictional demo dataset with scheduled items, accounts, savings buckets,
   budgets, transactions, reports, alerts, and multi-line notes.
 - First-run onboarding and an in-app Help Guide.
+- One-time What's New popup for user-facing updates.
 - Mobile-friendly navigation and responsive page layouts.
 - PWA install support with app icons, manifest, service worker caching, and a
   simple update prompt.
@@ -415,6 +420,21 @@ Known limitation:
   inside Manage in a future UX pass.
 - Data remains local-first browser storage until the future desktop SQLite
   migration.
+
+### Phase 2N: Release Notes And Update Popup
+
+Completed:
+
+- Added central app release notes data.
+- Added a one-time What's New popup keyed by app version.
+- Added release note actions for Got it, View Help, and Export Backup.
+- Added Help guidance for app updates.
+- Updated release documentation and checklist.
+
+Known limitation:
+
+- Release note visibility is tracked per browser/device with localStorage.
+- Users should still export backups manually after major updates.
 
 ## Known Limitations
 

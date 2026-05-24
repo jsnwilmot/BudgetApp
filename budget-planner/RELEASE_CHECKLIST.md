@@ -8,6 +8,8 @@ Run this before tagging or sharing a local MVP build.
 - [ ] `npm.cmd run build`
 - [ ] `git diff --check`
 - [ ] `npm.cmd run preview`
+- [ ] Update `APP_VERSION` in `src/data/releaseNotes.js`.
+- [ ] Update `RELEASE_NOTES` highlights in `src/data/releaseNotes.js`.
 
 The production build should split larger pages and chart code into separate
 assets. If a large chunk warning returns, review page lazy loading and chart
@@ -98,6 +100,17 @@ imports before release.
 - [ ] Import Backup navigates to Settings and uses the existing safe import flow.
 - [ ] Empty app setup prompt appears after Factory Reset to Empty App.
 - [ ] Data Management includes a Help link.
+
+## Release Notes
+
+- [ ] What's New popup appears once for a fresh/new app version.
+- [ ] Popup shows version, date, and highlights.
+- [ ] Got it dismisses the popup.
+- [ ] Popup does not reappear after dismissal for the same version.
+- [ ] Changing `APP_VERSION` locally causes the popup to appear again.
+- [ ] View Help opens Help from the popup.
+- [ ] Export Backup works from the popup.
+- [ ] Existing PWA update prompt still works.
 
 ## Core Workflows
 
