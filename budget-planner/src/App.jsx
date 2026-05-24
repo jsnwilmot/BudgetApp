@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import AppShell from './components/AppShell';
 import CellEditor from './components/CellEditor';
+import AppSplash from "./components/AppSplash";
 import ReleaseNotesModal, {
   RELEASE_NOTES_STORAGE_KEY,
 } from './components/ReleaseNotesModal';
@@ -208,6 +209,8 @@ function hasNoUserRecords({
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashFinished, setSplashFinished] = useState(false);
   const [settings, setSettings] = useState(appSettings);
   const [budgetTargets, setBudgetTargets] = useState(seedBudgetTargets);
   const [categories, setCategories] = useState(seedCategories);
@@ -229,7 +232,7 @@ export default function App() {
   );
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [, setStatusMessage] = useState('');
   const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
   const [releaseNotesSeen, setReleaseNotesSeen] = useState(
     () => localStorage.getItem(RELEASE_NOTES_STORAGE_KEY) === APP_VERSION
@@ -390,7 +393,7 @@ export default function App() {
     ]
   );
 
-  const showReleaseNotes = !loading && !releaseNotesSeen;
+  const showReleaseNotes = !loading && splashFinished && !releaseNotesSeen;
 
   const alertTransactions = useMemo(
     () =>
@@ -1165,12 +1168,16 @@ async function handleSaveAccount(updatedAccount) {
 
   return (
     <>
+      {showSplash ? (
+        <AppSplash
+          onFinished={() => {
+            setShowSplash(false);
+            setSplashFinished(true);
+          }}
+        />
+      ) : null}
+
       <AppShell currentPage={currentPage} onPageChange={setCurrentPage}>
-        {statusMessage ? (
-          <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm">
-            {statusMessage}
-          </div>
-        ) : null}
 
         <Suspense fallback={<PageLoadingFallback />}>
           {currentPage === 'dashboard' ? (
