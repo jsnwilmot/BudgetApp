@@ -465,7 +465,7 @@ export default function Reports({
     <div className="space-y-6 print:bg-white print:p-6 print:text-black">
       <div className="hidden print:block">
         <h1 className="text-3xl font-bold text-slate-950">
-          Budget Planner Report
+          FinPath Report
         </h1>
         <p className="mt-2 text-base text-slate-700">
           {reportTypeLabel}, {reportRangeLabel}

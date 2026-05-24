@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
 :root {
+  --color-finpath-navy: #071B2D;
+  --color-finpath-card: #102C42;
+  --color-finpath-teal: #13BFA5;
+  --color-finpath-mint: #8BE0C4;
+  --color-finpath-gold: #E2B642;
+  --color-finpath-white: #F7FAFC;
+  --color-finpath-muted: #A7B7C8;
+  --color-finpath-red: #E86464;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #172033;
-  background: #f5f7fb;
+  background: var(--color-finpath-white);
 }
 
 body {

@@ -1,6 +1,6 @@
 # Quick Start
 
-Use this guide to set up Budget Planner for the first time.
+Use this guide to set up FinPath for the first time.
 
 The app starts with fictional demo data so you can explore features right away.
 To start fresh, go to `Settings > Data Management > Factory Reset to Empty App`.
@@ -37,14 +37,14 @@ Desktop browser:
 1. Open the app URL.
 2. Look for the install icon in the address bar.
 3. Choose install.
-4. Open Budget Planner from the desktop, dock, start menu, or app launcher.
+4. Open FinPath from the desktop, dock, start menu, or app launcher.
 
 Mobile browser:
 
 1. Open the app URL.
 2. Open the browser menu.
 3. Choose `Add to Home Screen` or `Install App`.
-4. Open Budget Planner from the home screen.
+4. Open FinPath from the home screen.
 
 Exact wording depends on browser and device. Export a backup before installing
 or uninstalling the PWA, clearing site data, switching browsers, or switching

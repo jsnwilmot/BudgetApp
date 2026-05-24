@@ -7,7 +7,7 @@ import {
 } from './seedData';
 
 export const APP_DATA_VERSION = 2;
-export const APP_VERSION = '1.0.0-local-mvp';
+export const APP_VERSION = '2.0.0-phase-2p';
 export const BACKUP_APP_NAME = 'BudgetApp';
 export const BACKUP_REMINDER_DAYS = 30;
 export const APP_METADATA_ID = 'app-metadata';

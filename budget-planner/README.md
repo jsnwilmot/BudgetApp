@@ -1,10 +1,12 @@
-# Budget Planner
+# FinPath
 
-Budget Planner is a local-first personal finance app for planning pay periods,
+FinPath is a local-first personal finance app for planning pay periods,
 bills, savings transfers, category budgets, transactions, alerts, and reports.
 
-Current release: `1.0.0-local-mvp`
-Data version: `1`
+Tagline: Track smarter. Save better.
+
+Current release: `2.0.0-phase-2p`
+Data version: `2`
 
 ## Current Status
 
@@ -26,6 +28,7 @@ release that should show the one-time What's New popup.
 - Planner with editable projected and actual amounts plus a current pay period summary.
 - Transactions view derived from scheduled items, adjustments, and savings activity.
 - Manage area for Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
+- Unified transfer workflow for account-to-account and savings bucket movement.
 - Reports with filters, charts, trends, print view, and report CSV export.
 - Settings with editable planner settings and data management tools.
 - Backup, restore, repair, reset, and CSV export workflows.
@@ -37,6 +40,7 @@ release that should show the one-time What's New popup.
 - Mobile-friendly navigation and responsive page layouts.
 - PWA install support with app icons, manifest, service worker caching, and a
   simple update prompt.
+- FinPath branding with approved logo assets, app icon, colors, and PWA metadata.
 
 ## Local-First Data
 
@@ -85,7 +89,7 @@ Desktop browser:
 
 1. Open the app URL.
 2. Look for the install icon in the address bar.
-3. Install Budget Planner.
+3. Install FinPath.
 4. Open it from the desktop, dock, start menu, or app launcher.
 
 Mobile browser:
@@ -93,7 +97,7 @@ Mobile browser:
 1. Open the app URL.
 2. Open the browser menu.
 3. Choose `Add to Home Screen` or `Install App`.
-4. Open Budget Planner from the home screen.
+4. Open FinPath from the home screen.
 
 Exact wording depends on browser and device. PWA data is still browser-managed,
 so export backups before uninstalling the PWA, clearing site data, switching
@@ -143,6 +147,21 @@ from data saved in another browser, device, or private browsing session.
 - [Quick Start](./QUICK_START.md)
 - [Data Safety](./DATA_SAFETY.md)
 - [Release Checklist](./RELEASE_CHECKLIST.md)
+
+## Brand Assets
+
+The public app uses the FinPath brand while the repository remains BudgetApp.
+Approved brand assets live in `budget-planner/public/brand`:
+
+- `finpath-logo-horizontal.png`
+- `finpath-logo-stacked.png`
+- `finpath-splash.png`
+- `finpath-icon.png`
+
+PWA install icons live in `budget-planner/public/icons`. Release notes and the
+current user-facing app version are maintained in
+`budget-planner/src/data/releaseNotes.js`; backup metadata uses the app version
+from `budget-planner/src/data/migrations.js`.
 
 ## Release Notes
 
@@ -458,6 +477,24 @@ Known limitation:
 - No bank sync or automatic matching is included.
 - Future desktop import/export should preserve stable transfer ids and the
   versioned `transfers` collection.
+
+### Phase 2P: FinPath Branding And Visual Identity Integration
+
+Completed:
+
+- Added approved FinPath logo, splash, and wallet icon assets.
+- Updated visible app branding from Budget Planner to FinPath.
+- Updated browser title, favicon, PWA app name, manifest colors, and app icons.
+- Added FinPath brand color tokens.
+- Added branded sidebar/header identity and loading states.
+- Updated release notes, Help, README, Quick Start, Data Safety, and release
+  checklist references.
+
+Known limitation:
+
+- This phase applies brand identity without redesigning the full app UI.
+- Full dark-mode theming and deeper chart recoloring are left for a future
+  visual polish phase.
 
 ## Known Limitations
 

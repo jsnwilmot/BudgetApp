@@ -12,14 +12,14 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'icons.svg'],
+      includeAssets: ['brand/finpath-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'Budget Planner',
-        short_name: 'Budget Planner',
+        name: 'FinPath',
+        short_name: 'FinPath',
         description:
-          'A local-first personal finance planner for tracking pay periods, bills, savings, budgets, and reports.',
-        theme_color: '#0f172a',
-        background_color: '#ffffff',
+          'A local-first personal finance planner for pay periods, bills, savings, and budgets.',
+        theme_color: '#071B2D',
+        background_color: '#071B2D',
         display: 'standalone',
         start_url: githubPagesBase,
         scope: githubPagesBase,

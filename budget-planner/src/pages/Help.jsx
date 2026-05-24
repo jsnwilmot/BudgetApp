@@ -41,7 +41,7 @@ const faqs = [
   {
     question: 'What happens if I clear browser data?',
     answer:
-      'Clearing browser or site data can remove Budget Planner data. Export a backup first if you want to keep it.',
+      'Clearing browser or site data can remove FinPath data. Export a backup first if you want to keep it.',
   },
   {
     question: 'How do I start with a blank app?',
@@ -98,9 +98,23 @@ export default function Help() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        <HelpCard title="About FinPath">
+          <p>
+            FinPath helps you track pay periods, bills, savings buckets,
+            transfers, and budgets.
+          </p>
+          <p className="font-semibold text-slate-950">
+            Track smarter. Save better.
+          </p>
+          <p>
+            FinPath is local-first, so your data stays in this browser/device.
+            Export backups regularly so you have a recovery file.
+          </p>
+        </HelpCard>
+
         <HelpCard title="Getting Started">
           <p>
-            Budget Planner opens with fictional demo data so you can explore the
+            FinPath opens with fictional demo data so you can explore the
             app before setting up your own records.
           </p>
           <p>
@@ -136,7 +150,7 @@ export default function Help() {
 
         <HelpCard title="App Updates">
           <p>
-            After a user-facing update, Budget Planner may show a one-time
+            After a user-facing update, FinPath may show a one-time
             What&apos;s New popup with the main changes in plain language.
           </p>
           <p>

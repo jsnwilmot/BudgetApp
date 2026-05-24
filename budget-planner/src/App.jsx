@@ -96,11 +96,19 @@ const SavingsBuckets = lazy(() => import('./pages/SavingsBuckets'));
 const ScheduledItems = lazy(() => import('./pages/ScheduledItems'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Transactions = lazy(() => import('./pages/Transactions'));
+const finPathLogo = `${import.meta.env.BASE_URL}brand/finpath-logo-horizontal.png`;
 
 function PageLoadingFallback() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-600 shadow-sm">
-      Loading page...
+    <div className="rounded-2xl border border-[#13BFA5] bg-[var(--color-finpath-navy)] p-5 text-sm font-medium text-white shadow-sm">
+      <img
+        src={finPathLogo}
+        alt="FinPath"
+        className="h-12 w-auto rounded-lg bg-white px-3 py-2"
+      />
+      <p className="mt-3 text-[var(--color-finpath-muted)]">
+        Loading your planner...
+      </p>
     </div>
   );
 }
@@ -1137,13 +1145,18 @@ async function handleSaveAccount(updatedAccount) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-700">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Budget Planner
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-finpath-navy)] p-4 text-white">
+        <div className="rounded-2xl border border-[#13BFA5] bg-[#102C42] p-6 shadow-sm">
+          <img
+            src={finPathLogo}
+            alt="FinPath"
+            className="h-16 w-auto rounded-xl bg-white px-4 py-3"
+          />
+          <p className="mt-4 text-xl font-bold text-white">
+            Loading your planner...
           </p>
-          <p className="mt-2 text-xl font-bold text-slate-950">
-            Loading saved planner data...
+          <p className="mt-1 text-sm text-[var(--color-finpath-muted)]">
+            Track smarter. Save better.
           </p>
         </div>
       </div>
@@ -1336,7 +1349,7 @@ async function handleSaveAccount(updatedAccount) {
             A new version is available.
           </p>
           <p className="mt-1 text-sm text-slate-600">
-            Refresh to update Budget Planner. Your local data stays in this
+            Refresh to update FinPath. Your local data stays in this
             browser profile.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

@@ -9,6 +9,7 @@ Run this before tagging or sharing a local MVP build.
 - [ ] `git diff --check`
 - [ ] `npm.cmd run preview`
 - [ ] Update `APP_VERSION` in `src/data/releaseNotes.js`.
+- [ ] Update `APP_VERSION` in `src/data/migrations.js` for backup metadata.
 - [ ] Update `RELEASE_NOTES` highlights in `src/data/releaseNotes.js`.
 
 The production build should split larger pages and chart code into separate
@@ -33,13 +34,25 @@ imports before release.
 
 ## PWA Checks
 
+- [ ] Browser title shows FinPath.
 - [ ] Browser shows install option where supported.
 - [ ] Installed app opens in standalone mode.
-- [ ] App name appears as Budget Planner.
+- [ ] App name appears as FinPath.
+- [ ] FinPath logo renders without stretching.
+- [ ] PWA manifest name is FinPath.
+- [ ] Favicon/app icon uses the FinPath wallet mark.
 - [ ] App icon appears correctly.
 - [ ] Refresh/update prompt appears after a new service worker is available.
 - [ ] Local data remains after app close and reopen.
 - [ ] App shell loads after first visit when offline, where supported.
+
+## Brand Checks
+
+- [ ] Sidebar/header shows FinPath branding.
+- [ ] Tagline appears only where useful and does not crowd navigation.
+- [ ] Brand colors maintain readable contrast.
+- [ ] `public/brand` contains the approved logo and splash assets.
+- [ ] GitHub Pages base path remains `/BudgetApp/`.
 
 ## Mobile Check
 

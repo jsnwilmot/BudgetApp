@@ -1,12 +1,12 @@
 # Data Safety
 
-Budget Planner is local-first. Your data is stored in your browser through IndexedDB and local storage.
+FinPath is local-first. Your data is stored in your browser through IndexedDB and local storage.
 
 The current PWA uses browser-managed storage on the device. Clearing browser or
 site data can delete app data, even when the app is installed. Export backups
 regularly.
 
-Budget Planner now tracks the last successful backup export in local app
+FinPath tracks the last successful backup export in local app
 metadata. If no backup exists, or the last backup is older than 30 days, the app
 shows an in-app reminder.
 
