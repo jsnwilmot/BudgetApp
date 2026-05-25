@@ -85,14 +85,25 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] GitHub Pages workflow still uploads `budget-planner/dist`.
 - [ ] GitHub Pages base path remains `/BudgetApp/`.
 
-## Final PWA Release Smoke
+## Final Web/PWA Release Test
 
+- [ ] Existing data loads.
+- [ ] Export a fresh backup before release testing.
+- [ ] Run Health Check and review warnings/errors.
+- [ ] Dashboard totals look correct.
+- [ ] Planner totals look correct.
+- [ ] Reports totals look correct.
+- [ ] Transfers appear separately from income and spending.
+- [ ] Savings Movement looks correct.
+- [ ] Budgets match Reports for the same month.
+- [ ] Data Management opens.
+- [ ] Import preview opens and waits for confirmation.
 - [ ] Desktop browser loads `http://127.0.0.1:4173/BudgetApp/` from production preview.
 - [ ] Refreshing `/BudgetApp/` reloads the app shell.
 - [ ] Mobile width preview loads Dashboard, Planner, Reports, Settings, and Help.
 - [ ] Installed PWA/window test is completed if practical.
 - [ ] Splash screen appears briefly and fades out.
-- [ ] What's New popup appears for `2.0.0-phase-2v` when unseen.
+- [ ] What's New popup appears for `2.0.0-web-final` when unseen.
 - [ ] PWA update prompt still offers Refresh App when a service worker update is available.
 - [ ] Export Backup downloads JSON before deploy testing.
 - [ ] Import Backup shows preview and does not overwrite until confirmed.
@@ -100,6 +111,7 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Dashboard, Planner, and Reports open after refresh.
 - [ ] No unexpected full-page horizontal scrolling appears.
 - [ ] Built script, stylesheet, manifest, and icon paths use `/BudgetApp/`.
+- [ ] GitHub Pages live site works after deployment.
 
 ## Final Commands
 

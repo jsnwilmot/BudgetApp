@@ -1,4 +1,4 @@
-name: Deploy Budget Planner to GitHub Pages
+name: Deploy FinPath to GitHub Pages
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
 
       - name: Add Pages debug file
         run: |
-          echo "Budget Planner GitHub Pages deploy check" > budget-planner/dist/pages-debug.txt
+          echo "FinPath GitHub Pages deploy check" > budget-planner/dist/pages-debug.txt
           echo "Built from budget-planner/dist" >> budget-planner/dist/pages-debug.txt
           echo "Base path: /BudgetApp/" >> budget-planner/dist/pages-debug.txt
           echo "Commit: $GITHUB_SHA" >> budget-planner/dist/pages-debug.txt

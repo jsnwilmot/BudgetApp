@@ -5,18 +5,18 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-phase-2v`
+Current release: `2.0.0-web-final`
 Data version: `2`
 
 ## Current Status
 
-This is a clean local MVP release with FinPath branding applied. It runs in the
-browser, can be installed as a PWA in supported browsers, stores user data
-locally, and does not require login, cloud sync, bank connections, or a server.
+This is the stable FinPath web/PWA release. It runs in the browser, can be
+installed as a PWA in supported browsers, stores user data locally, and does not
+require login, cloud sync, bank connections, or a server.
 
-Current phase status: Phase 2V hardens the final web/PWA release path by
-verifying PWA output, GitHub Pages compatibility, update behavior, backup
-guidance, and release checklist coverage while keeping `/BudgetApp/` unchanged.
+Current phase status: FinPath is stable for web/PWA daily use. Phase 2W
+finalizes release labeling, documentation, backup safety reminders, deployment
+notes, and post-deploy testing while keeping `/BudgetApp/` unchanged.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -77,7 +77,7 @@ Use `Settings > Data Management`.
   the app usable.
 
 Keep backup files somewhere you control, especially before browser cleanup or
-device changes.
+device changes. Export a backup before deploying or installing a major update.
 
 ## Data Portability
 
@@ -222,6 +222,19 @@ npm.cmd run preview
 ```
 
 Then open `http://127.0.0.1:4173/BudgetApp/` and confirm it returns HTTP 200.
+
+Final deploy steps:
+
+1. Export a fresh backup from `Settings > Data Management`.
+2. Run `npm.cmd run lint`.
+3. Run `npm.cmd run build`.
+4. Run `git diff --check`.
+5. Run production preview and open `/BudgetApp/`.
+6. Commit and push to `main`.
+7. Confirm the GitHub Pages workflow completes.
+8. Open https://jsnwilmot.github.io/BudgetApp/.
+9. Hard refresh or open an incognito/private window if stale cached content
+   appears. Clear site data only after exporting a backup.
 
 ## Browser Support
 
@@ -712,17 +725,29 @@ Known limitation:
 - GitHub Pages should be deployed from the generated `budget-planner/dist`
   artifact through GitHub Actions.
 
+### Phase 2W: Final Web/PWA Release Documentation And Deploy Pass
+
+Completed:
+
+- Set the final web release version to `2.0.0-web-final`.
+- Finalized web/PWA release documentation and deployment notes.
+- Confirmed local-first backup, import preview, and Data Health guidance.
+- Documented final production preview, GitHub Pages, and stale-cache checks.
+- Prepared FinPath for stable daily web/PWA use before future desktop planning.
+
+Known limitation:
+
+- Data remains local to the browser/device until a future desktop local database
+  version is built.
+- Users must continue exporting backups manually.
+
 ## Known Limitations
 
-- Data is local-only and does not sync across devices.
-- No account login, cloud backup, or bank connections are included.
-- User data must be backed up manually.
-- Backup reminders are local to the browser/device.
-- PWA install support depends on browser and device support.
-- Native desktop/mobile packaging is not included yet.
-- Advanced forecasting, AI categorization, receipt scanning, and PDF generation
-  are not included.
-- Automated test coverage is still limited.
+- Data is local to the current browser/device.
+- No bank sync, cloud login, or automatic cloud backup is included.
+- Users must export backups manually.
+- Desktop local database storage is planned later.
+- Browser install/offline behavior depends on browser and device support.
 
 ## Data Safety Warning
 

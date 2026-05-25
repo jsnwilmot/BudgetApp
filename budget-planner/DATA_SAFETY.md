@@ -89,8 +89,16 @@ export action on this browser/device.
 
 If browser data is cleared and no backup exists, the app cannot recover the removed local data.
 
+## Updates And Stale PWA Cache
+
+After a deployment, refresh FinPath if the browser tab or installed PWA still
+shows old content. If stale content persists, close and reopen the installed
+PWA or try an incognito/private window. Clear site data only after exporting a
+fresh backup.
+
 ## Future Desktop Storage Direction
 
 A future desktop version is planned to use app-managed SQLite storage for
-stronger long-term local data safety. Phase 2E does not migrate data to SQLite.
-For now, backups remain the safest way to protect long-term finance data.
+stronger long-term local data safety. The web/PWA release does not migrate data
+to SQLite. For now, backups remain the safest way to protect long-term finance
+data.

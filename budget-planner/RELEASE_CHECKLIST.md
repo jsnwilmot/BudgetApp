@@ -16,9 +16,10 @@ The production build should split larger pages and chart code into separate
 assets. If a large chunk warning returns, review page lazy loading and chart
 imports before release.
 
-## Final PWA Release Gate
+## Final Web/PWA Release Gate
 
 - [ ] Export a backup before deploying or testing a major update.
+- [ ] Run Data Health and review warnings/errors before deploy.
 - [ ] Production preview `/BudgetApp/` returns HTTP 200.
 - [ ] `budget-planner/dist/index.html` exists.
 - [ ] `budget-planner/dist/manifest.webmanifest` exists.
@@ -35,6 +36,10 @@ imports before release.
 - [ ] Import preview works and still requires confirmation before overwrite.
 - [ ] Dashboard, Planner, Reports, Settings, and Help open in production preview.
 - [ ] Mobile phone width and tablet width are checked.
+- [ ] Installed PWA or standalone browser window is checked if practical.
+- [ ] Hard refresh is checked after production preview deploy.
+- [ ] Incognito/private window load is checked.
+- [ ] GitHub Pages live URL is checked after deploy.
 - [ ] Known limitations and data safety notes are reviewed.
 
 ## Browser Smoke Test

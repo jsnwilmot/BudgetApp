@@ -195,6 +195,21 @@ export default function Help() {
           </p>
         </HelpCard>
 
+        <HelpCard title="Stable Web/PWA Release">
+          <p>
+            FinPath is ready for stable web/PWA daily use while remaining
+            local-first. Your data is saved on this browser/device.
+          </p>
+          <p>
+            Export backups regularly, especially before clearing browser data,
+            switching devices, importing a backup, or installing a major update.
+          </p>
+          <p>
+            If totals look wrong, run Data Health from Settings. Future desktop
+            migration will use exported backups.
+          </p>
+        </HelpCard>
+
         <HelpCard title="Splash Screen">
           <p>
             FinPath shows a brief branded splash screen while the app starts.
