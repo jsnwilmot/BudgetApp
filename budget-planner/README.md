@@ -250,6 +250,7 @@ from data saved in another browser, device, or private browsing session.
 - [Data Safety](./DATA_SAFETY.md)
 - [Release Checklist](./RELEASE_CHECKLIST.md)
 - [Manual Test Checklist](./docs/manual-test-checklist.md)
+- [Desktop Migration Plan](./docs/desktop-migration-plan.md)
 
 ## Brand Assets
 
