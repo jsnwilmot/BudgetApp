@@ -3,6 +3,12 @@
 Stage 3A is a planning phase only. It does not add desktop dependencies, change
 web/PWA behavior, alter finance logic, or change the backup format.
 
+Stage 3B adds a Tauri desktop shell proof of concept around the existing
+React/Vite app. The desktop proof of concept does not add SQLite, does not
+change the backup/import format, and does not replace the current frontend
+storage layer. The finalized web/PWA remains stable and deployable at
+`/BudgetApp/`.
+
 ## Current Web/PWA Data Model
 
 The finalized web/PWA app stores data locally in IndexedDB database
@@ -326,6 +332,20 @@ Recommended backup UX:
 - Confirm FinPath branding.
 - Confirm `/BudgetApp/` web deployment remains untouched.
 - No database migration yet.
+
+Status:
+
+- Tauri shell added in `src-tauri`.
+- Desktop development command added as `npm.cmd run tauri:dev`.
+- Desktop build command added as `npm.cmd run tauri:build`.
+- Desktop Vite build uses `vite.config.tauri.js` with relative asset paths.
+- Web/PWA build continues using `vite.config.js` with `/BudgetApp/`.
+- Desktop commands require the local Tauri toolchain, including Rust/Cargo and
+  the platform webview requirements.
+- SQLite is not added yet.
+- JSON-to-SQLite migration is not added yet.
+- Stage 3B desktop storage remains the current browser-like frontend storage
+  available inside the Tauri webview.
 
 ### Stage 3C: SQLite Foundation
 

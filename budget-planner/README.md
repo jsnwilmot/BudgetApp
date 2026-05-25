@@ -223,6 +223,35 @@ npm.cmd run preview
 
 Then open `http://127.0.0.1:4173/BudgetApp/` and confirm it returns HTTP 200.
 
+## Desktop Proof Of Concept
+
+Desktop migration work starts on the `desktop/stage-3b-tauri-poc` branch. The
+stable web/PWA release remains deployable at `/BudgetApp/`; the desktop proof of
+concept is a Tauri shell only.
+
+Desktop commands:
+
+```powershell
+npm.cmd run tauri:dev
+npm.cmd run tauri:build
+```
+
+These commands require the local Tauri desktop toolchain, including Rust/Cargo
+and the platform webview requirements. Stage 3B is a shell proof of concept, not
+an installer release.
+
+Desktop asset builds use `vite.config.tauri.js` so the Tauri shell can load
+relative production assets. The normal web/PWA command still uses
+`vite.config.js` and keeps the GitHub Pages `/BudgetApp/` base path:
+
+```powershell
+npm.cmd run build
+```
+
+Stage 3B still uses the current frontend storage available inside the desktop
+webview. SQLite, desktop data migration, and JSON import into a local database
+begin in later Stage 3 work, starting with Stage 3C.
+
 Final deploy steps:
 
 1. Export a fresh backup from `Settings > Data Management`.
