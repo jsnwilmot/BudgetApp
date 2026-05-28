@@ -7,12 +7,8 @@ import {
   validateBudgetTarget,
 } from '../logic/budgetLogic';
 import { formatCurrency } from '../logic/projectionLogic';
+import { getCurrentMonthKey } from '../logic/dateLogic';
 import { buildTransactionsFromAppData } from '../logic/transactionLogic';
-
-function getCurrentMonthKey() {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-}
 
 function getMonthKey(dateValue) {
   const match = String(dateValue || '').match(/^(\d{4})-(\d{2})-\d{2}$/);

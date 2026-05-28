@@ -26,10 +26,6 @@ export function formatMonthKey(dateValue) {
   )}`;
 }
 
-export function getCurrentMonthKey() {
-  return formatMonthKey(new Date());
-}
-
 export function getMonthLabel(monthKey) {
   if (!monthKey) return "Current month";
 

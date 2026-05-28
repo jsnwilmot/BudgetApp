@@ -40,88 +40,102 @@ const STORES = {
   transfers: 'transfers',
 };
 
+let databasePromise = null;
+
 function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+  if (!databasePromise) {
+    databasePromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () => {
-      reject(new Error('Failed to open IndexedDB database.'));
-    };
+      request.onerror = () => {
+        databasePromise = null;
+        reject(new Error('Failed to open IndexedDB database.'));
+      };
 
-    request.onsuccess = () => {
-      resolve(request.result);
-    };
+      request.onsuccess = () => {
+        const db = request.result;
 
-    request.onupgradeneeded = () => {
-      const db = request.result;
+        db.onversionchange = () => {
+          db.close();
+          databasePromise = null;
+        };
 
-      if (!db.objectStoreNames.contains(STORES.plannerEntries)) {
-        db.createObjectStore(STORES.plannerEntries, {
-          keyPath: 'entryKey',
-        });
-      }
+        resolve(db);
+      };
 
-      if (!db.objectStoreNames.contains(STORES.appMetadata)) {
-        db.createObjectStore(STORES.appMetadata, {
-          keyPath: 'id',
-        });
-      }
+      request.onupgradeneeded = () => {
+        const db = request.result;
 
-      if (!db.objectStoreNames.contains(STORES.appSettings)) {
-        db.createObjectStore(STORES.appSettings, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.plannerEntries)) {
+          db.createObjectStore(STORES.plannerEntries, {
+            keyPath: 'entryKey',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.categories)) {
-        db.createObjectStore(STORES.categories, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.appMetadata)) {
+          db.createObjectStore(STORES.appMetadata, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.budgetTargets)) {
-        db.createObjectStore(STORES.budgetTargets, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.appSettings)) {
+          db.createObjectStore(STORES.appSettings, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.scheduledItems)) {
-        db.createObjectStore(STORES.scheduledItems, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.categories)) {
+          db.createObjectStore(STORES.categories, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.accounts)) {
-        db.createObjectStore(STORES.accounts, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.budgetTargets)) {
+          db.createObjectStore(STORES.budgetTargets, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.manualAdjustments)) {
-        db.createObjectStore(STORES.manualAdjustments, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.scheduledItems)) {
+          db.createObjectStore(STORES.scheduledItems, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.savingsBuckets)) {
-        db.createObjectStore(STORES.savingsBuckets, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.accounts)) {
+          db.createObjectStore(STORES.accounts, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.savingsBucketAdjustments)) {
-        db.createObjectStore(STORES.savingsBucketAdjustments, {
-          keyPath: 'id',
-        });
-      }
+        if (!db.objectStoreNames.contains(STORES.manualAdjustments)) {
+          db.createObjectStore(STORES.manualAdjustments, {
+            keyPath: 'id',
+          });
+        }
 
-      if (!db.objectStoreNames.contains(STORES.transfers)) {
-        db.createObjectStore(STORES.transfers, {
-          keyPath: 'id',
-        });
-      }
-    };
-  });
+        if (!db.objectStoreNames.contains(STORES.savingsBuckets)) {
+          db.createObjectStore(STORES.savingsBuckets, {
+            keyPath: 'id',
+          });
+        }
+
+        if (!db.objectStoreNames.contains(STORES.savingsBucketAdjustments)) {
+          db.createObjectStore(STORES.savingsBucketAdjustments, {
+            keyPath: 'id',
+          });
+        }
+
+        if (!db.objectStoreNames.contains(STORES.transfers)) {
+          db.createObjectStore(STORES.transfers, {
+            keyPath: 'id',
+          });
+        }
+      };
+    });
+  }
+
+  return databasePromise;
 }
 
 function isValidDateString(value) {
@@ -203,7 +217,6 @@ async function replaceStoreRecords(storeName, records = []) {
     };
 
     transaction.oncomplete = () => {
-      db.close();
       resolve(records);
     };
   });
@@ -223,10 +236,6 @@ export async function getAppSettings() {
 
     request.onsuccess = () => {
       resolve(normalizeAppSettings(request.result || defaultAppSettings));
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -251,10 +260,6 @@ export async function saveAppSettings(settings) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -276,10 +281,6 @@ export async function getAppMetadata() {
 
     request.onsuccess = () => {
       resolve(normalizeAppMetadata(request.result || {}));
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -303,10 +304,6 @@ export async function saveAppMetadata(metadata = {}) {
 
     request.onsuccess = () => {
       resolve(record);
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -500,10 +497,6 @@ export async function getAllCategories() {
         )
       );
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   }).then(async (records) => {
     if (records) {
       return records;
@@ -531,10 +524,6 @@ export async function saveCategory(category) {
 
     request.onsuccess = () => {
       resolve(record);
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -574,10 +563,6 @@ export async function archiveCategory(categoryId) {
         resolve(record);
       };
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -602,10 +587,6 @@ export async function getAllBudgetTargets() {
         (request.result || []).map((target) => normalizeBudgetTarget(target))
       );
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -627,10 +608,6 @@ export async function saveBudgetTarget(target) {
 
     request.onsuccess = () => {
       resolve(record);
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -670,10 +647,6 @@ export async function archiveBudgetTarget(budgetTargetId) {
         resolve(record);
       };
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -702,10 +675,6 @@ export async function getAllPlannerEntries() {
 
       resolve(normalizePlannerEntriesRecord(entries));
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -731,10 +700,6 @@ export async function savePlannerEntry(entryKey, entry) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -752,10 +717,6 @@ export async function deletePlannerEntry(entryKey) {
 
     request.onsuccess = () => {
       resolve();
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -776,10 +737,6 @@ export async function getAllScheduledItems() {
       resolve(
         (request.result || []).map((item) => normalizeScheduledItem(item))
       );
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -805,10 +762,6 @@ export async function saveScheduledItem(item) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -826,10 +779,6 @@ export async function getAllAccounts() {
 
     request.onsuccess = () => {
       resolve((request.result || []).map((account) => normalizeAccountRecord(account)));
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -855,10 +804,6 @@ export async function saveAccount(account) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -880,10 +825,6 @@ export async function getAllManualAdjustments() {
           normalizeManualAdjustmentRecord(adjustment)
         )
       );
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -909,10 +850,6 @@ export async function saveManualAdjustment(adjustment) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -931,10 +868,6 @@ export async function deleteManualAdjustment(id) {
     request.onsuccess = () => {
       resolve();
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -952,10 +885,6 @@ export async function getAllSavingsBuckets() {
 
     request.onsuccess = () => {
       resolve((request.result || []).map((bucket) => normalizeSavingsBucketRecord(bucket)));
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -981,10 +910,6 @@ export async function saveSavingsBucket(bucket) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -1006,10 +931,6 @@ export async function getAllSavingsBucketAdjustments() {
           normalizeSavingsBucketAdjustmentRecord(adjustment)
         )
       );
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -1035,10 +956,6 @@ export async function saveSavingsBucketAdjustment(adjustment) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -1057,10 +974,6 @@ export async function deleteSavingsBucketAdjustment(id) {
     request.onsuccess = () => {
       resolve();
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -1078,10 +991,6 @@ export async function getAllTransfers() {
 
     request.onsuccess = () => {
       resolve((request.result || []).map((transfer) => normalizeTransfer(transfer)));
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }
@@ -1105,10 +1014,6 @@ export async function saveTransfer(transfer) {
     request.onsuccess = () => {
       resolve(record);
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -1127,10 +1032,6 @@ export async function deleteTransfer(id) {
     request.onsuccess = () => {
       resolve();
     };
-
-    transaction.oncomplete = () => {
-      db.close();
-    };
   });
 }
 
@@ -1148,10 +1049,6 @@ export async function deleteScheduledItem(id) {
 
     request.onsuccess = () => {
       resolve();
-    };
-
-    transaction.oncomplete = () => {
-      db.close();
     };
   });
 }

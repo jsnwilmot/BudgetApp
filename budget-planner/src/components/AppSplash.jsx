@@ -25,7 +25,7 @@ export default function AppSplash({ onFinished }) {
         <div className="app-splash__brand">
           <img
             className="app-splash__logo"
-            src="/BudgetApp/brand/finpath-logo-stacked.png"
+            src={`${import.meta.env.BASE_URL}brand/finpath-logo-stacked.png`}
             alt="FinPath"
           />
 
