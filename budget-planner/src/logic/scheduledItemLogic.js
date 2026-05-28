@@ -71,6 +71,11 @@ export function normalizeScheduledItem(item = {}) {
     normalizeOptionalNumber(item.dueMonth, 1, 12) ?? fallbackDueMonth ?? null;
   const savingsBucketId =
     item.savingsBucketId || item.bucketId || item.toBucketId || null;
+  const normalizedName = String(item.name || '').trim().toLowerCase();
+  const shouldUseLineItems =
+    Boolean(item.allowLineItems) ||
+    (normalizeType(item.type) === 'income' &&
+      ['misc income', 'miscellaneous income'].includes(normalizedName));
 
   return {
     ...item,
@@ -88,7 +93,7 @@ export function normalizeScheduledItem(item = {}) {
     savingsBucketId,
     bucketId: item.bucketId || savingsBucketId || null,
     active: item.active !== false,
-    allowLineItems: Boolean(item.allowLineItems),
+    allowLineItems: shouldUseLineItems,
     notes: String(item.notes || ''),
     createdAt: item.createdAt || timestamp,
     updatedAt: item.updatedAt || timestamp,
