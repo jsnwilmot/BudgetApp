@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import AlertList from '../components/AlertList';
+import { getCurrentPayPeriodIndex } from '../logic/dateLogic';
 import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
 
 function getRowClass(type) {
@@ -41,26 +42,6 @@ function PeriodSummaryCard({ label, value, helper, currency }) {
       ) : null}
     </div>
   );
-}
-
-function getTodayDateKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function getCurrentPayPeriodIndex(payPeriods) {
-  const today = getTodayDateKey();
-
-  const currentIndex = payPeriods.findIndex((period, index) => {
-    const nextPeriod = payPeriods[index + 1];
-
-    return period.date <= today && (!nextPeriod || today < nextPeriod.date);
-  });
-
-  if (currentIndex >= 0) {
-    return currentIndex;
-  }
-
-  return payPeriods.findIndex((period) => period.date >= today);
 }
 
 function getRowAmount(row, periodDate) {

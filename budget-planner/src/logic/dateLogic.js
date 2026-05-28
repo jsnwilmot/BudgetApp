@@ -64,13 +64,51 @@ export function daysBetween(startDate, endDate) {
   return Math.round((endDate - startDate) / MS_PER_DAY);
 }
 
-export function generatePayPeriods(anchorDateString, frequencyDays, monthsToProject) {
+export function getTodayDateKey() {
+  return formatDateKey(new Date());
+}
+
+function getLaterDate(leftDate, rightDate) {
+  return leftDate > rightDate ? leftDate : rightDate;
+}
+
+function getCycleDateOnOrBefore(anchorDate, targetDate, frequencyDays) {
+  const offsetDays =
+    Math.floor(daysBetween(anchorDate, targetDate) / frequencyDays) * frequencyDays;
+
+  return addDays(anchorDate, offsetDays);
+}
+
+function getCycleDateOnOrAfter(anchorDate, targetDate, frequencyDays) {
+  const cycleDate = getCycleDateOnOrBefore(
+    anchorDate,
+    targetDate,
+    frequencyDays
+  );
+
+  if (cycleDate >= targetDate) {
+    return cycleDate;
+  }
+
+  return addDays(cycleDate, frequencyDays);
+}
+
+export function generatePayPeriods(
+  anchorDateString,
+  frequencyDays,
+  monthsToProject,
+  options = {}
+) {
   const anchorDate = parseLocalDate(anchorDateString);
   const safeFrequencyDays = Number(frequencyDays);
   const safeMonthsToProject = Number(monthsToProject);
+  const referenceDate = parseLocalDate(
+    options.referenceDateString || getTodayDateKey()
+  );
 
   if (
     Number.isNaN(anchorDate.getTime()) ||
+    Number.isNaN(referenceDate.getTime()) ||
     !Number.isFinite(safeFrequencyDays) ||
     safeFrequencyDays <= 0 ||
     !Number.isFinite(safeMonthsToProject) ||
@@ -79,21 +117,73 @@ export function generatePayPeriods(anchorDateString, frequencyDays, monthsToProj
     return [];
   }
 
-  const endDate = addMonths(anchorDate, monthsToProject);
+  const configuredEndDate = addMonths(anchorDate, safeMonthsToProject);
+  const rollingEndDate = addMonths(referenceDate, safeMonthsToProject);
+  const requiredEndDate = getCycleDateOnOrAfter(
+    anchorDate,
+    getLaterDate(configuredEndDate, rollingEndDate),
+    safeFrequencyDays
+  );
+  const startDate =
+    referenceDate < anchorDate
+      ? getCycleDateOnOrBefore(anchorDate, referenceDate, safeFrequencyDays)
+      : anchorDate;
   const payPeriods = [];
 
-  let currentDate = anchorDate;
+  let currentDate = startDate;
 
-  while (currentDate <= endDate) {
+  while (currentDate <= requiredEndDate) {
+    const dateKey = formatDateKey(currentDate);
+
     payPeriods.push({
-      date: formatDateKey(currentDate),
-      label: formatShortDate(formatDateKey(currentDate)),
+      date: dateKey,
+      label: formatShortDate(dateKey),
     });
 
     currentDate = addDays(currentDate, safeFrequencyDays);
   }
 
   return payPeriods;
+}
+
+export function getCurrentPayPeriodIndex(
+  payPeriods,
+  referenceDateString = getTodayDateKey()
+) {
+  if (!Array.isArray(payPeriods) || payPeriods.length === 0) {
+    return -1;
+  }
+
+  const referenceDate = parseLocalDate(referenceDateString);
+  const referenceKey = Number.isNaN(referenceDate.getTime())
+    ? getTodayDateKey()
+    : formatDateKey(referenceDate);
+
+  const currentIndex = payPeriods.findIndex((period, index) => {
+    const nextPeriod = payPeriods[index + 1];
+
+    return (
+      period.date <= referenceKey && (!nextPeriod || referenceKey < nextPeriod.date)
+    );
+  });
+
+  if (currentIndex >= 0) {
+    return currentIndex;
+  }
+
+  return payPeriods.findIndex((period) => period.date >= referenceKey);
+}
+
+export function getCurrentPayPeriod(
+  payPeriods,
+  referenceDateString = getTodayDateKey()
+) {
+  const currentIndex = getCurrentPayPeriodIndex(
+    payPeriods,
+    referenceDateString
+  );
+
+  return currentIndex >= 0 ? payPeriods[currentIndex] : null;
 }
 
 export function getMonthDate(year, monthIndex, day) {

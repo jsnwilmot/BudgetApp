@@ -5,6 +5,7 @@ import {
   findPreviousPayPeriod,
   formatDateKey,
   generatePayPeriods,
+  getCurrentPayPeriod,
   parseLocalDate,
 } from './dateLogic';
 import {
@@ -538,7 +539,7 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
 
 export function getDashboardSummary(plannerData) {
   const { payPeriods, rows, projectionRows } = plannerData;
-  const nextPeriod = payPeriods[0];
+  const nextPeriod = getCurrentPayPeriod(payPeriods) || payPeriods[0];
 
   if (!nextPeriod) {
     return {
