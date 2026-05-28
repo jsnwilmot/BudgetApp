@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import AppShell from './components/AppShell';
 import CellEditor from './components/CellEditor';
@@ -81,7 +81,8 @@ import {
 } from './data/migrations';
 import { generateAlerts, getAlertCounts } from './logic/alertLogic';
 import { calculateBudgetUsage } from './logic/budgetLogic';
-import { buildPlannerRows, calculatePeriodTotals } from './logic/projectionLogic';
+import { buildExportPlannerRows, buildPlannerRows } from './logic/projectionLogic';
+import { getCurrentMonthKey } from './logic/dateLogic';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
 import { buildTransactionsFromAppData } from './logic/transactionLogic';
 
@@ -118,34 +119,10 @@ function markReleaseNotesSeen() {
   localStorage.setItem(RELEASE_NOTES_STORAGE_KEY, APP_VERSION);
 }
 
-function buildExportPlannerRows(plannerData) {
-  const projectedChequingRow = plannerData.projectionRows.find(
-    (row) => row.id === 'projected-chequing'
-  );
-
-  return plannerData.payPeriods.map((period) => {
-    const totals = calculatePeriodTotals(plannerData.rows, period.date);
-
-    return {
-      payPeriodLabel: period.label,
-      date: period.date,
-      income: totals.income,
-      fixedExpenses: totals.expenses,
-      savingsTransfersIn: totals.transfers,
-      remainingBalance:
-        projectedChequingRow?.amountsByPeriod?.[period.date] ?? 0,
-    };
-  });
-}
 
 const normalizedSeedScheduledItems = seedScheduledItems.map((item) =>
   normalizeScheduledItem(item)
 );
-
-function getCurrentMonthKey() {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-}
 
 function getComparableSettings(settings) {
   return {
@@ -158,9 +135,11 @@ function getComparableSettings(settings) {
 }
 
 function hasCustomSavedSettings(savedSettings) {
-  return (
-    JSON.stringify(getComparableSettings(savedSettings)) !==
-    JSON.stringify(getComparableSettings(appSettings))
+  const savedComparableSettings = getComparableSettings(savedSettings);
+  const defaultComparableSettings = getComparableSettings(appSettings);
+
+  return Object.keys(defaultComparableSettings).some(
+    (key) => savedComparableSettings[key] !== defaultComparableSettings[key]
   );
 }
 
@@ -232,7 +211,7 @@ export default function App() {
   );
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [, setStatusMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
   const [releaseNotesSeen, setReleaseNotesSeen] = useState(
     () => localStorage.getItem(RELEASE_NOTES_STORAGE_KEY) === APP_VERSION
@@ -332,6 +311,19 @@ export default function App() {
     loadSavedData();
   }, []);
 
+
+  useEffect(() => {
+    if (!statusMessage) {
+      return undefined;
+    }
+
+    const statusTimer = window.setTimeout(() => {
+      setStatusMessage('');
+    }, 4500);
+
+    return () => window.clearTimeout(statusTimer);
+  }, [statusMessage]);
+
   const plannerData = useMemo(() => {
     return buildPlannerRows({
       settings,
@@ -351,50 +343,6 @@ export default function App() {
     savingsBucketAdjustments,
     transfers,
   ]);
-
-  const appData = useMemo(
-    () => ({
-      appVersion: getCurrentAppVersion(),
-      appDataVersion: getCurrentAppDataVersion(),
-      settings,
-      budgetTargets,
-      categories,
-      transactions: [],
-      plannerEntries,
-      scheduledItems,
-      accounts,
-      manualAdjustments,
-      savingsBuckets,
-      savingsBucketAdjustments,
-      transfers,
-      appMetadata,
-      planner: {
-        entries: plannerEntries,
-        payPeriods: plannerData.payPeriods,
-        rows: buildExportPlannerRows(plannerData),
-      },
-      savings: {
-        buckets: savingsBuckets,
-        transfers: [...savingsBucketAdjustments, ...transfers],
-      },
-    }),
-    [
-      accounts,
-      manualAdjustments,
-      plannerData,
-      plannerEntries,
-      savingsBucketAdjustments,
-      savingsBuckets,
-      transfers,
-      scheduledItems,
-      settings,
-      budgetTargets,
-      categories,
-      appMetadata,
-    ]
-  );
-
-  const showReleaseNotes = !loading && splashFinished && !releaseNotesSeen;
 
   const alertTransactions = useMemo(
     () =>
@@ -417,6 +365,52 @@ export default function App() {
       scheduledItems,
     ]
   );
+
+
+  const appData = useMemo(
+    () => ({
+      appVersion: getCurrentAppVersion(),
+      appDataVersion: getCurrentAppDataVersion(),
+      settings,
+      budgetTargets,
+      categories,
+      transactions: alertTransactions,
+      plannerEntries,
+      scheduledItems,
+      accounts,
+      manualAdjustments,
+      savingsBuckets,
+      savingsBucketAdjustments,
+      transfers,
+      appMetadata,
+      planner: {
+        entries: plannerEntries,
+        payPeriods: plannerData.payPeriods,
+        rows: buildExportPlannerRows(plannerData),
+      },
+      savings: {
+        buckets: savingsBuckets,
+        transfers: [...savingsBucketAdjustments, ...transfers],
+      },
+    }),
+    [
+      accounts,
+      alertTransactions,
+      manualAdjustments,
+      plannerData,
+      plannerEntries,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      transfers,
+      scheduledItems,
+      settings,
+      budgetTargets,
+      categories,
+      appMetadata,
+    ]
+  );
+
+  const showReleaseNotes = !loading && splashFinished && !releaseNotesSeen;
 
   const currentBudgetUsage = useMemo(
     () =>
@@ -590,7 +584,7 @@ export default function App() {
     }
   }
 
-  async function handleSaveScheduledItem(updatedItem) {
+  const handleSaveScheduledItem = useCallback(async (updatedItem) => {
     try {
       const savedItem = await saveScheduledItem(updatedItem);
 
@@ -613,7 +607,8 @@ export default function App() {
       setStatusMessage('Could not save scheduled item.');
       throw error;
     }
-  }
+
+  }, []);
 
   async function handleDuplicateScheduledItem(item) {
     const timestamp = new Date().toISOString();
@@ -629,7 +624,7 @@ export default function App() {
     return handleSaveScheduledItem(duplicateItem);
   }
 
-  async function handleDeleteScheduledItem(id) {
+  const handleDeleteScheduledItem = useCallback(async (id) => {
     try {
       await deleteScheduledItem(id);
 
@@ -643,36 +638,38 @@ export default function App() {
       setStatusMessage('Could not delete scheduled item.');
       throw error;
     }
-  }
 
-async function handleSaveAccount(updatedAccount) {
-  try {
-    const savedAccount = await saveAccount(updatedAccount);
+  }, []);
 
-    setAccounts((currentAccounts) => {
-      const accountExists = currentAccounts.some(
-        (account) => account.id === savedAccount.id
-      );
+  const handleSaveAccount = useCallback(async (updatedAccount) => {
+    try {
+      const savedAccount = await saveAccount(updatedAccount);
 
-      if (accountExists) {
-        return currentAccounts.map((account) =>
-          account.id === savedAccount.id ? savedAccount : account
+      setAccounts((currentAccounts) => {
+        const accountExists = currentAccounts.some(
+          (account) => account.id === savedAccount.id
         );
-      }
 
-      return [...currentAccounts, savedAccount];
-    });
+        if (accountExists) {
+          return currentAccounts.map((account) =>
+            account.id === savedAccount.id ? savedAccount : account
+          );
+        }
 
-    setStatusMessage('Account saved.');
-    return savedAccount;
-  } catch (error) {
-    console.error(error);
-    setStatusMessage('Could not save account.');
-    throw error;
-  }
-}
+        return [...currentAccounts, savedAccount];
+      });
 
-  async function handleSaveManualAdjustment(adjustment) {
+      setStatusMessage('Account saved.');
+      return savedAccount;
+    } catch (error) {
+      console.error(error);
+      setStatusMessage('Could not save account.');
+      throw error;
+    }
+
+  }, []);
+
+  const handleSaveManualAdjustment = useCallback(async (adjustment) => {
     try {
       const savedAdjustment = await saveManualAdjustment(adjustment);
 
@@ -695,9 +692,10 @@ async function handleSaveAccount(updatedAccount) {
       console.error(error);
       setStatusMessage('Could not save manual adjustment.');
     }
-  }
 
-  async function handleDeleteManualAdjustment(id) {
+  }, []);
+
+  const handleDeleteManualAdjustment = useCallback(async (id) => {
     try {
       await deleteManualAdjustment(id);
 
@@ -710,9 +708,10 @@ async function handleSaveAccount(updatedAccount) {
       console.error(error);
       setStatusMessage('Could not delete manual adjustment.');
     }
-  }
 
-  async function handleSaveSavingsBucket(updatedBucket) {
+  }, []);
+
+  const handleSaveSavingsBucket = useCallback(async (updatedBucket) => {
     try {
       const savedBucket = await saveSavingsBucket(updatedBucket);
 
@@ -735,13 +734,14 @@ async function handleSaveAccount(updatedAccount) {
       console.error(error);
       setStatusMessage('Could not save savings bucket.');
     }
-  }
 
-  async function handleDeleteSavingsBucket({
+  }, []);
+
+  const handleDeleteSavingsBucket = useCallback(async ({
     bucketId,
     moveToBucketId,
     amountToMove,
-  }) {
+  }) => {
     try {
       const bucketToDelete = savingsBuckets.find(
         (bucket) => bucket.id === bucketId
@@ -786,9 +786,10 @@ async function handleSaveAccount(updatedAccount) {
       console.error(error);
       setStatusMessage('Could not delete savings bucket.');
     }
-  }
 
-  async function handleSaveSavingsBucketAdjustment(adjustment) {
+  }, [savingsBuckets]);
+
+  const handleSaveSavingsBucketAdjustment = useCallback(async (adjustment) => {
     try {
       const savedAdjustment = await saveSavingsBucketAdjustment(adjustment);
 
@@ -811,9 +812,10 @@ async function handleSaveAccount(updatedAccount) {
       console.error(error);
       setStatusMessage('Could not save savings bucket adjustment.');
     }
-  }
 
-  async function handleDeleteSavingsBucketAdjustment(id) {
+  }, []);
+
+  const handleDeleteSavingsBucketAdjustment = useCallback(async (id) => {
     try {
       await deleteSavingsBucketAdjustment(id);
 
@@ -826,9 +828,10 @@ async function handleSaveAccount(updatedAccount) {
       console.error(error);
       setStatusMessage('Could not delete savings bucket adjustment.');
     }
-  }
 
-  async function handleSaveTransfer(transfer) {
+  }, []);
+
+  const handleSaveTransfer = useCallback(async (transfer) => {
     try {
       const savedTransfer = await saveTransfer(transfer);
 
@@ -851,9 +854,10 @@ async function handleSaveAccount(updatedAccount) {
       setStatusMessage('Could not save transfer.');
       throw error;
     }
-  }
 
-  async function handleDeleteTransfer(id) {
+  }, []);
+
+  const handleDeleteTransfer = useCallback(async (id) => {
     try {
       await deleteTransfer(id);
 
@@ -867,9 +871,10 @@ async function handleSaveAccount(updatedAccount) {
       setStatusMessage('Could not delete transfer.');
       throw error;
     }
-  }
 
-  async function handleSaveCategory(updatedCategory) {
+  }, []);
+
+  const handleSaveCategory = useCallback(async (updatedCategory) => {
     try {
       const savedCategory = await saveCategory(updatedCategory);
 
@@ -899,9 +904,10 @@ async function handleSaveAccount(updatedAccount) {
       setStatusMessage('Could not save category.');
       throw error;
     }
-  }
 
-  async function handleSaveBudgetTarget(updatedTarget) {
+  }, []);
+
+  const handleSaveBudgetTarget = useCallback(async (updatedTarget) => {
     try {
       const savedTarget = await saveBudgetTarget(updatedTarget);
 
@@ -924,9 +930,10 @@ async function handleSaveAccount(updatedAccount) {
       setStatusMessage('Could not save budget target.');
       throw error;
     }
-  }
 
-  async function handleArchiveBudgetTarget(budgetTargetId) {
+  }, []);
+
+  const handleArchiveBudgetTarget = useCallback(async (budgetTargetId) => {
     try {
       const archivedTarget = await archiveBudgetTarget(budgetTargetId);
 
@@ -943,7 +950,8 @@ async function handleSaveAccount(updatedAccount) {
       setStatusMessage('Could not archive budget target.');
       throw error;
     }
-  }
+
+  }, []);
 
   async function handleResetBudgetTargets() {
     try {
@@ -958,7 +966,7 @@ async function handleSaveAccount(updatedAccount) {
     }
   }
 
-  async function handleArchiveCategory(categoryId) {
+  const handleArchiveCategory = useCallback(async (categoryId) => {
     try {
       const archivedCategory = await archiveCategory(categoryId);
 
@@ -975,7 +983,8 @@ async function handleSaveAccount(updatedAccount) {
       setStatusMessage('Could not archive category.');
       throw error;
     }
-  }
+
+  }, []);
 
   async function handleResetCategories() {
     try {
@@ -990,7 +999,7 @@ async function handleSaveAccount(updatedAccount) {
     }
   }
 
-  async function handleSaveSettings(updatedSettings) {
+  const handleSaveSettings = useCallback(async (updatedSettings) => {
     const validation = validateAppSettings(updatedSettings);
 
     if (!validation.valid) {
@@ -1001,7 +1010,8 @@ async function handleSaveAccount(updatedAccount) {
     setSettings(savedSettings);
     setStatusMessage('Settings saved. Planner projections updated.');
     return savedSettings;
-  }
+
+  }, []);
 
   async function handleResetSettings() {
     const defaultSettings = await resetAppSettings();
@@ -1083,37 +1093,48 @@ async function handleSaveAccount(updatedAccount) {
 
     const [
       savedImportedAppMetadata,
-      ,
+      savedImportedSettings,
       savedImportedBudgetTargets,
       savedImportedCategories,
-      ,
+      savedImportedPlannerEntries,
       savedImportedScheduledItems,
-    ] =
-      await Promise.all([
-        saveAppMetadata(importedAppMetadata),
-        saveAppSettings(importedSettings),
-        replaceBudgetTargets(importedBudgetTargets),
-        replaceCategories(importedCategories),
-        replacePlannerEntries(importedPlannerEntries),
-        replaceScheduledItems(importedScheduledItems),
-        replaceAccounts(importedAccounts),
-        replaceManualAdjustments(importedManualAdjustments),
-        replaceSavingsBuckets(importedSavingsBuckets),
-        replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
-        replaceTransfers(importedTransfers),
-      ]);
+      savedImportedAccounts,
+      savedImportedManualAdjustments,
+      savedImportedSavingsBuckets,
+      savedImportedSavingsBucketAdjustments,
+      savedImportedTransfers,
+    ] = await Promise.all([
+      saveAppMetadata(importedAppMetadata),
+      saveAppSettings(importedSettings),
+      replaceBudgetTargets(importedBudgetTargets),
+      replaceCategories(importedCategories),
+      replacePlannerEntries(importedPlannerEntries),
+      replaceScheduledItems(importedScheduledItems),
+      replaceAccounts(importedAccounts),
+      replaceManualAdjustments(importedManualAdjustments),
+      replaceSavingsBuckets(importedSavingsBuckets),
+      replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
+      replaceTransfers(importedTransfers),
+    ]);
 
-    setSettings(importedSettings);
+    setSettings(savedImportedSettings);
     setBudgetTargets(savedImportedBudgetTargets);
     setCategories(savedImportedCategories);
     setAppMetadata(savedImportedAppMetadata);
-    setPlannerEntries(importedPlannerEntries);
+    setPlannerEntries(
+      Object.fromEntries(
+        savedImportedPlannerEntries.map((entry) => [entry.entryKey, entry])
+      )
+    );
     setScheduledItems(savedImportedScheduledItems);
-    setAccounts(importedAccounts);
-    setManualAdjustments(importedManualAdjustments);
-    setSavingsBuckets(importedSavingsBuckets.filter((bucket) => !bucket.deletedAt));
-    setSavingsBucketAdjustments(importedSavingsBucketAdjustments);
-    setTransfers(importedTransfers);
+    setAccounts(savedImportedAccounts);
+    setManualAdjustments(savedImportedManualAdjustments);
+    setSavingsBuckets(
+      savedImportedSavingsBuckets.filter((bucket) => !bucket.deletedAt)
+    );
+    setSavingsBucketAdjustments(savedImportedSavingsBucketAdjustments);
+    setTransfers(savedImportedTransfers);
+    setDismissedAlertIds([]);
     setStatusMessage('Backup imported successfully.');
   }
 
@@ -1143,6 +1164,8 @@ async function handleSaveAccount(updatedAccount) {
     return repairedData;
   }
 
+  // Kept as a compatibility alias for Settings/DataManagement reset controls.
+  // The action intentionally routes to the empty-state reset path.
   async function handleResetLocalData() {
     return handleResetToEmptyState();
   }
@@ -1376,6 +1399,27 @@ async function handleSaveAccount(updatedAccount) {
               className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Later
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+
+      {statusMessage ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 left-4 right-4 z-50 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-800 shadow-xl sm:left-auto sm:max-w-sm"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p>{statusMessage}</p>
+            <button
+              type="button"
+              onClick={() => setStatusMessage('')}
+              className="rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              aria-label="Dismiss status message"
+            >
+              Close
             </button>
           </div>
         </div>

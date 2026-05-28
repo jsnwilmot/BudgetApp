@@ -48,6 +48,11 @@ export function formatShortDate(dateString) {
   });
 }
 
+
+export function getCurrentMonthKey() {
+  return formatDateKey(new Date()).slice(0, 7);
+}
+
 export function addDays(date, days) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);

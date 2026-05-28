@@ -298,6 +298,27 @@ export function calculatePeriodTotals(rows, periodDate) {
   };
 }
 
+
+export function buildExportPlannerRows(plannerData) {
+  const projectedChequingRow = plannerData.projectionRows.find(
+    (row) => row.id === 'projected-chequing'
+  );
+
+  return plannerData.payPeriods.map((period) => {
+    const totals = calculatePeriodTotals(plannerData.rows, period.date);
+
+    return {
+      payPeriodLabel: period.label,
+      date: period.date,
+      income: totals.income,
+      fixedExpenses: totals.expenses,
+      savingsTransfersIn: totals.transfers,
+      remainingBalance:
+        projectedChequingRow?.amountsByPeriod?.[period.date] ?? 0,
+    };
+  });
+}
+
 function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
   const getValidatedAmount = (row) => {
     const entryKey = getEntryKey(row.id, periodDate);

@@ -15,6 +15,7 @@ import {
 import {
   calculateBudgetUsage
 } from "../logic/budgetLogic";
+import { getCurrentMonthKey } from "../logic/dateLogic";
 import {
   buildBucketBalanceChartData,
   buildIncomeOutflowChartData,
@@ -33,7 +34,6 @@ import {
   dedupeSavingsMovements,
   getAvailableMonths,
   getAvailablePayPeriods,
-  getCurrentMonthKey,
   getItemsForMonth,
   getItemsForPayPeriod,
   getMonthLabel,
