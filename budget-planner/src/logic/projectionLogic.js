@@ -32,6 +32,22 @@ export function sumLineItems(lineItems = []) {
   }, 0);
 }
 
+export function getLineItemTotal(entry = {}, fallbackAmount = 0) {
+  if (entry.lineItems?.length > 0) {
+    return sumLineItems(entry.lineItems);
+  }
+
+  if (entry.useActual) {
+    const actualAmount = Number(entry.actualAmount);
+
+    if (!Number.isNaN(actualAmount)) {
+      return actualAmount;
+    }
+  }
+
+  return Number(fallbackAmount) || 0;
+}
+
 function getMonthlyBillAssignmentRule(settings) {
   if (
     settings.monthlyBillAssignmentRule === 'same-pay-period' ||
@@ -172,7 +188,7 @@ function getEffectiveAmount(item, periodDate, plannedAmount, plannerEntries) {
   }
 
   if (item.allowLineItems) {
-    return sumLineItems(entry.lineItems || []);
+    return getLineItemTotal(entry, plannedAmount);
   }
 
   if (!entry.useActual) {

@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { formatCurrency, sumLineItems } from '../logic/projectionLogic';
+import { formatCurrency, getLineItemTotal, sumLineItems } from '../logic/projectionLogic';
 
 function createLineItem() {
   return {
@@ -24,13 +24,27 @@ export default function CellEditor({
   const entry = plannerEntries[selectedCell.entryKey] || {};
   const currency = settings?.currency || 'CAD';
   const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
-  const lineItems =
-    entry.lineItems && entry.lineItems.length > 0
-      ? entry.lineItems
-      : [createLineItem()];
-
+  const hasSavedLineItems = Boolean(entry.lineItems?.length);
+  const hasSavedActualAmount =
+    entry.actualAmount !== undefined &&
+    entry.actualAmount !== null &&
+    entry.actualAmount !== '';
   const actualAmount =
     entry.actualAmount ?? selectedCell.effectiveAmount ?? selectedCell.plannedAmount;
+  const shouldPrefillLineItem =
+    isLineItemCell &&
+    !hasSavedLineItems &&
+    hasSavedActualAmount &&
+    Number(actualAmount) > 0;
+  const lineItems = hasSavedLineItems
+    ? entry.lineItems
+    : [
+        {
+          ...createLineItem(),
+          description: shouldPrefillLineItem ? 'Imported amount' : '',
+          amount: shouldPrefillLineItem ? actualAmount : '',
+        },
+      ];
 
   function handleStandardSubmit(event) {
     event.preventDefault();
@@ -158,7 +172,7 @@ export default function CellEditor({
         <p className="mt-1 text-2xl font-bold text-slate-950">
           {formatCurrency(
             isLineItemCell
-              ? sumLineItems(entry.lineItems || [])
+              ? getLineItemTotal(entry, selectedCell.effectiveAmount)
               : selectedCell.plannedAmount,
             currency
           )}
