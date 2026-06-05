@@ -109,7 +109,6 @@ export default function Settings({
   onBackupExported,
   onImportData,
   onRepairLocalData,
-  onResetLocalData,
   onResetToDemoData,
   onResetToEmptyState,
   onShowHelp
@@ -363,7 +362,6 @@ export default function Settings({
         onBackupExported={onBackupExported}
         onImportData={onImportData}
         onRepairLocalData={onRepairLocalData}
-        onResetLocalData={onResetLocalData}
         onResetToDemoData={onResetToDemoData}
         onResetToEmptyState={onResetToEmptyState}
         onShowHelp={onShowHelp}

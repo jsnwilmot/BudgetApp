@@ -16,6 +16,7 @@ import {
   calculateBudgetUsage
 } from "../logic/budgetLogic";
 import { getCurrentMonthKey } from "../logic/dateLogic";
+import { formatCurrency } from "../logic/projectionLogic";
 import {
   buildBucketBalanceChartData,
   buildIncomeOutflowChartData,
@@ -60,13 +61,6 @@ const TREND_COLORS = {
   transfersOut: "#dc2626",
   netTransfers: "#2563eb"
 };
-
-function createCurrencyFormatter(currency) {
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: currency || "CAD"
-  });
-}
 
 function truncateLabel(value, maxLength = 18) {
   const label = String(value || "");
@@ -253,7 +247,6 @@ export default function Reports({
   budgetTargets = [],
   categories = [],
   plannerData,
-  plannerRows = [],
   scheduledItems = [],
   manualAdjustments = [],
   accounts = [],
@@ -263,19 +256,22 @@ export default function Reports({
   savingsTransfers = [],
   transfers = []
 }) {
+  const currency = settings?.currency || "CAD";
   const currencyFormatter = useMemo(
-    () => createCurrencyFormatter(settings?.currency),
-    [settings?.currency]
+    () => ({
+      format: (value) => formatCurrency(value, currency)
+    }),
+    [currency]
   );
 
-  function formatCurrency(value) {
-    return currencyFormatter.format(Number(value || 0));
-  }
+  const formatReportCurrency = (value) => formatCurrency(value, currency);
 
   const reportRows = useMemo(() => {
     const rowsFromPlannerData = buildReportRowsFromPlannerData(plannerData);
-    return rowsFromPlannerData.length > 0 ? rowsFromPlannerData : plannerRows;
-  }, [plannerData, plannerRows]);
+    return rowsFromPlannerData.length > 0
+      ? rowsFromPlannerData
+      : plannerData?.payPeriods || [];
+  }, [plannerData]);
 
   const availableMonths = useMemo(
     () => getAvailableMonths(reportRows),
@@ -725,13 +721,13 @@ export default function Reports({
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Income"
-              value={formatCurrency(monthlySummary.income)}
+              value={formatReportCurrency(monthlySummary.income)}
               helper={reportRangeLabel}
             />
 
             <StatCard
               label="Expenses"
-              value={formatCurrency(
+              value={formatReportCurrency(
                 monthlySummary.expenses + monthlySummary.miscExpenses
               )}
               helper="Scheduled expenses plus misc expenses"
@@ -739,7 +735,7 @@ export default function Reports({
 
             <StatCard
               label="Remaining Balance"
-              value={formatCurrency(monthlySummary.remainingBalance)}
+              value={formatReportCurrency(monthlySummary.remainingBalance)}
               helper="Based on selected planner rows"
             />
 
@@ -763,27 +759,27 @@ export default function Reports({
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
               <StatCard
                 label="Total Transfers"
-                value={formatCurrency(transferSummary.total)}
+                value={formatReportCurrency(transferSummary.total)}
                 helper="Shown outside income and spending"
               />
               <StatCard
                 label="Planned To Savings"
-                value={formatCurrency(transferSummary.plannedToSavings)}
+                value={formatReportCurrency(transferSummary.plannedToSavings)}
                 helper="Scheduled planner transfers"
               />
               <StatCard
                 label="Transfers To Savings"
-                value={formatCurrency(transferSummary.toSavings)}
+                value={formatReportCurrency(transferSummary.toSavings)}
                 helper="Transfer records into savings"
               />
               <StatCard
                 label="Transfers From Savings"
-                value={formatCurrency(transferSummary.fromSavings)}
+                value={formatReportCurrency(transferSummary.fromSavings)}
                 helper="Transfer records back to chequing"
               />
               <StatCard
                 label="Account Transfers"
-                value={formatCurrency(transferSummary.accountTransfers)}
+                value={formatReportCurrency(transferSummary.accountTransfers)}
                 helper="Transfers without bucket movement"
               />
             </div>
@@ -803,19 +799,19 @@ export default function Reports({
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                   label="Total Monthly Budget"
-                  value={formatCurrency(
+                  value={formatReportCurrency(
                     budgetTargetUsage.summary.totalBudget
                   )}
                   helper="Active category targets"
                 />
                 <StatCard
                   label="Total Used"
-                  value={formatCurrency(budgetTargetUsage.summary.totalUsed)}
+                  value={formatReportCurrency(budgetTargetUsage.summary.totalUsed)}
                   helper="Tracked spending"
                 />
                 <StatCard
                   label="Remaining"
-                  value={formatCurrency(
+                  value={formatReportCurrency(
                     budgetTargetUsage.summary.remainingBudget
                   )}
                   helper="Budget minus tracked spending"
@@ -855,7 +851,7 @@ export default function Reports({
                     />
                     <YAxis
                       tick={{ fill: "#475569", fontSize: 12 }}
-                      tickFormatter={(value) => formatCurrency(value)}
+                      tickFormatter={(value) => formatReportCurrency(value)}
                       width={72}
                     />
                     <Tooltip
@@ -908,7 +904,7 @@ export default function Reports({
                         <XAxis
                           type="number"
                           tick={{ fill: "#475569", fontSize: 12 }}
-                          tickFormatter={(value) => formatCurrency(value)}
+                          tickFormatter={(value) => formatReportCurrency(value)}
                         />
                         <YAxis
                           type="category"
@@ -943,7 +939,7 @@ export default function Reports({
                           {item.category}
                         </span>
                         <span className="shrink-0 font-bold text-slate-950">
-                          {formatCurrency(item.total)}
+                          {formatReportCurrency(item.total)}
                         </span>
                       </div>
                     ))}
@@ -978,7 +974,7 @@ export default function Reports({
                       />
                       <YAxis
                         tick={{ fill: "#475569", fontSize: 12 }}
-                        tickFormatter={(value) => formatCurrency(value)}
+                        tickFormatter={(value) => formatReportCurrency(value)}
                         width={72}
                       />
                       <Tooltip
@@ -1008,7 +1004,7 @@ export default function Reports({
                     Movement In
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
-                    {formatCurrency(savingsSummary.totals.transfersIn)}
+                    {formatReportCurrency(savingsSummary.totals.transfersIn)}
                   </p>
                 </div>
 
@@ -1017,7 +1013,7 @@ export default function Reports({
                     Movement Out
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
-                    {formatCurrency(savingsSummary.totals.transfersOut)}
+                    {formatReportCurrency(savingsSummary.totals.transfersOut)}
                   </p>
                 </div>
 
@@ -1026,7 +1022,7 @@ export default function Reports({
                     Net Movement
                   </p>
                   <p className="mt-2 text-xl font-bold text-slate-950">
-                    {formatCurrency(savingsSummary.totals.netTransfers)}
+                    {formatReportCurrency(savingsSummary.totals.netTransfers)}
                   </p>
                 </div>
               </div>
@@ -1053,7 +1049,7 @@ export default function Reports({
                   label="Best Cash Flow Month"
                   value={
                     trendSummary.bestCashFlowMonth
-                      ? formatCurrency(trendSummary.bestCashFlowMonth.netCashFlow)
+                      ? formatReportCurrency(trendSummary.bestCashFlowMonth.netCashFlow)
                       : "Not enough data"
                   }
                   helper={trendSummary.bestCashFlowMonth?.label}
@@ -1063,7 +1059,7 @@ export default function Reports({
                   label="Highest Expense Month"
                   value={
                     trendSummary.highestExpenseMonth
-                      ? formatCurrency(
+                      ? formatReportCurrency(
                           trendSummary.highestExpenseMonth.totalExpenses
                         )
                       : "Not enough data"
@@ -1075,7 +1071,7 @@ export default function Reports({
                   label="Highest Savings Transfer Month"
                   value={
                     trendSummary.highestSavingsTransferMonth
-                      ? formatCurrency(
+                      ? formatReportCurrency(
                           trendSummary.highestSavingsTransferMonth.transfersIn
                         )
                       : "Not enough data"
@@ -1087,7 +1083,7 @@ export default function Reports({
                   label="Lowest Remaining Balance"
                   value={
                     trendSummary.lowestRemainingBalance
-                      ? formatCurrency(
+                      ? formatReportCurrency(
                           trendSummary.lowestRemainingBalance.remainingBalance
                         )
                       : "Not enough data"
@@ -1099,7 +1095,7 @@ export default function Reports({
                   label="Average Monthly Net Cash Flow"
                   value={
                     trendSummary.averageMonthlyNetCashFlow !== null
-                      ? formatCurrency(trendSummary.averageMonthlyNetCashFlow)
+                      ? formatReportCurrency(trendSummary.averageMonthlyNetCashFlow)
                       : "Not enough data"
                   }
                   helper={
@@ -1136,7 +1132,7 @@ export default function Reports({
                       />
                       <YAxis
                         tick={{ fill: "#475569", fontSize: 12 }}
-                        tickFormatter={(value) => formatCurrency(value)}
+                        tickFormatter={(value) => formatReportCurrency(value)}
                         width={72}
                       />
                       <Tooltip
@@ -1202,7 +1198,7 @@ export default function Reports({
                         />
                         <YAxis
                           tick={{ fill: "#475569", fontSize: 12 }}
-                          tickFormatter={(value) => formatCurrency(value)}
+                          tickFormatter={(value) => formatReportCurrency(value)}
                           width={72}
                         />
                         <Tooltip
@@ -1273,7 +1269,7 @@ export default function Reports({
                         />
                         <YAxis
                           tick={{ fill: "#475569", fontSize: 12 }}
-                          tickFormatter={(value) => formatCurrency(value)}
+                          tickFormatter={(value) => formatReportCurrency(value)}
                           width={72}
                         />
                         <Tooltip
@@ -1337,7 +1333,7 @@ export default function Reports({
                       <XAxis
                         type="number"
                         tick={{ fill: "#475569", fontSize: 12 }}
-                        tickFormatter={(value) => formatCurrency(value)}
+                        tickFormatter={(value) => formatReportCurrency(value)}
                       />
                       <YAxis
                         type="category"
@@ -1392,16 +1388,16 @@ export default function Reports({
                             {bucket.name}
                           </td>
                           <td className="py-3 pr-4 text-right text-slate-700">
-                            {formatCurrency(bucket.balance)}
+                            {formatReportCurrency(bucket.balance)}
                           </td>
                           <td className="py-3 pr-4 text-right text-slate-700">
-                            {formatCurrency(bucket.transfersIn)}
+                            {formatReportCurrency(bucket.transfersIn)}
                           </td>
                           <td className="py-3 pr-4 text-right text-slate-700">
-                            {formatCurrency(bucket.transfersOut)}
+                            {formatReportCurrency(bucket.transfersOut)}
                           </td>
                           <td className="py-3 text-right font-semibold text-slate-950">
-                            {formatCurrency(bucket.netTransfers)}
+                            {formatReportCurrency(bucket.netTransfers)}
                           </td>
                         </tr>
                       ))}

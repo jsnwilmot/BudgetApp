@@ -97,7 +97,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
 
   return (
     <div className="min-h-screen bg-[var(--color-finpath-white)] text-slate-900">
-      <header className="no-print sticky top-0 z-40 border-b border-[#102C42] bg-[var(--color-finpath-navy)] px-3 py-3 shadow-sm print:hidden sm:px-4 lg:hidden">
+      <header className="no-print sticky top-0 z-40 border-b border-[var(--color-finpath-surface)] bg-[var(--color-finpath-navy)] px-3 py-3 shadow-sm print:hidden sm:px-4 lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <img
@@ -115,7 +115,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
             onClick={() => setMobileMenuOpen((open) => !open)}
             aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileMenuOpen}
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[#13BFA5] px-3 py-2 text-sm font-semibold text-white hover:bg-[#102C42]"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[var(--color-finpath-teal)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--color-finpath-surface)]"
           >
             {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             Menu
@@ -135,8 +135,8 @@ export default function AppShell({ currentPage, onPageChange, children }) {
                   onClick={() => handlePageChange(item.id)}
                   className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
                     active
-                      ? 'bg-[#13BFA5] text-[#071B2D]'
-                      : 'text-white hover:bg-[#102C42]'
+                      ? 'bg-[var(--color-finpath-teal)] text-[var(--color-finpath-ink)]'
+                      : 'text-white hover:bg-[var(--color-finpath-surface)]'
                   }`}
                 >
                   <Icon size={18} />
@@ -148,7 +148,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
         ) : null}
       </header>
 
-      <aside className="no-print fixed left-0 top-0 hidden h-screen w-72 border-r border-[#102C42] bg-[var(--color-finpath-navy)] p-5 print:hidden lg:block">
+      <aside className="no-print fixed left-0 top-0 hidden h-screen w-72 border-r border-[var(--color-finpath-surface)] bg-[var(--color-finpath-navy)] p-5 print:hidden lg:block">
         <div className="mb-8">
           <img
             src={brandLogo}
@@ -175,8 +175,8 @@ export default function AppShell({ currentPage, onPageChange, children }) {
                 onClick={() => handlePageChange(item.id)}
                 className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
                   active
-                    ? 'bg-[#13BFA5] text-[#071B2D]'
-                    : 'text-[var(--color-finpath-muted)] hover:bg-[#102C42] hover:text-white'
+                    ? 'bg-[var(--color-finpath-teal)] text-[var(--color-finpath-ink)]'
+                    : 'text-[var(--color-finpath-muted)] hover:bg-[var(--color-finpath-surface)] hover:text-white'
                 }`}
               >
                 <Icon size={18} />

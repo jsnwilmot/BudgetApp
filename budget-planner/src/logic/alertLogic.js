@@ -47,27 +47,11 @@ function getDuePhrase(dateString, currentDate = new Date()) {
   return `in ${daysUntil} days`;
 }
 
-function buildCategoryMap(categories = []) {
+function buildIdMap(items = []) {
   return new Map(
-    categories
-      .filter((category) => category?.id)
-      .map((category) => [category.id, category])
-  );
-}
-
-function buildBucketMap(savingsBuckets = []) {
-  return new Map(
-    savingsBuckets
-      .filter((bucket) => bucket?.id)
-      .map((bucket) => [bucket.id, bucket])
-  );
-}
-
-function buildAccountMap(accounts = []) {
-  return new Map(
-    accounts
-      .filter((account) => account?.id)
-      .map((account) => [account.id, account])
+    items
+      .filter((item) => item?.id)
+      .map((item) => [item.id, item])
   );
 }
 
@@ -308,9 +292,9 @@ export function getDataWarningAlerts({
   transfers = [],
 } = {}) {
   const alerts = [];
-  const categoryMap = buildCategoryMap(categories);
-  const accountMap = buildAccountMap(accounts);
-  const bucketMap = buildBucketMap(savingsBuckets);
+  const categoryMap = buildIdMap(categories);
+  const accountMap = buildIdMap(accounts);
+  const bucketMap = buildIdMap(savingsBuckets);
 
   scheduledItems.forEach((item) => {
     const normalizedItem = normalizeScheduledItem(item);

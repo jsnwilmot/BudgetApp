@@ -102,7 +102,7 @@ const finPathLogo = `${import.meta.env.BASE_URL}brand/finpath-logo-horizontal.pn
 
 function PageLoadingFallback() {
   return (
-    <div className="rounded-2xl border border-[#13BFA5] bg-[var(--color-finpath-navy)] p-5 text-sm font-medium text-white shadow-sm">
+    <div className="rounded-2xl border border-[var(--color-finpath-teal)] bg-[var(--color-finpath-navy)] p-5 text-sm font-medium text-white shadow-sm">
       <img
         src={finPathLogo}
         alt="FinPath"
@@ -189,7 +189,6 @@ function hasNoUserRecords({
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [showSplash, setShowSplash] = useState(true);
-  const [splashFinished, setSplashFinished] = useState(false);
   const [settings, setSettings] = useState(appSettings);
   const [budgetTargets, setBudgetTargets] = useState(seedBudgetTargets);
   const [categories, setCategories] = useState(seedCategories);
@@ -221,7 +220,7 @@ export default function App() {
     updateServiceWorker,
   } = useRegisterSW();
 
-  function applyLoadedData(loadedData) {
+  const applyLoadedData = useCallback((loadedData) => {
     setSettings(loadedData.settings);
     setBudgetTargets(loadedData.budgetTargets);
     setCategories(loadedData.categories);
@@ -235,7 +234,7 @@ export default function App() {
     setSavingsBucketAdjustments(loadedData.savingsBucketAdjustments);
     setTransfers(loadedData.transfers || []);
     setAppMetadata(loadedData.appMetadata);
-  }
+  }, []);
 
   useEffect(() => {
     async function loadSavedData() {
@@ -266,15 +265,16 @@ export default function App() {
           getAppMetadata(),
         ]);
 
-        const hasSavedRecords =
-          savedBudgetTargets.length > 0 ||
-          Object.keys(savedPlannerEntries).length > 0 ||
-          savedScheduledItems.length > 0 ||
-          savedAccounts.length > 0 ||
-          savedManualAdjustments.length > 0 ||
-          savedSavingsBuckets.length > 0 ||
-          savedSavingsBucketAdjustments.length > 0 ||
-          savedTransfers.length > 0;
+        const hasSavedRecords = !hasNoUserRecords({
+          accounts: savedAccounts,
+          scheduledItems: savedScheduledItems,
+          manualAdjustments: savedManualAdjustments,
+          savingsBuckets: savedSavingsBuckets,
+          savingsBucketAdjustments: savedSavingsBucketAdjustments,
+          transfers: savedTransfers,
+          budgetTargets: savedBudgetTargets,
+          plannerEntries: savedPlannerEntries,
+        });
         const hasExistingUserData =
           hasSavedRecords ||
           hasCustomSavedSettings(savedSettings) ||
@@ -309,7 +309,7 @@ export default function App() {
     }
 
     loadSavedData();
-  }, []);
+  }, [applyLoadedData]);
 
 
   useEffect(() => {
@@ -366,6 +366,18 @@ export default function App() {
     ]
   );
 
+  const miscExpenses = useMemo(
+    () =>
+      manualAdjustments.filter(
+        (adjustment) => adjustment.type === 'misc-expense'
+      ),
+    [manualAdjustments]
+  );
+
+  const savingsTransfers = useMemo(
+    () => [...savingsBucketAdjustments, ...transfers],
+    [savingsBucketAdjustments, transfers]
+  );
 
   const appData = useMemo(
     () => ({
@@ -390,7 +402,7 @@ export default function App() {
       },
       savings: {
         buckets: savingsBuckets,
-        transfers: [...savingsBucketAdjustments, ...transfers],
+        transfers: savingsTransfers,
       },
     }),
     [
@@ -401,6 +413,7 @@ export default function App() {
       plannerEntries,
       savingsBucketAdjustments,
       savingsBuckets,
+      savingsTransfers,
       transfers,
       scheduledItems,
       settings,
@@ -410,7 +423,7 @@ export default function App() {
     ]
   );
 
-  const showReleaseNotes = !loading && splashFinished && !releaseNotesSeen;
+  const showReleaseNotes = !loading && !showSplash && !releaseNotesSeen;
 
   const currentBudgetUsage = useMemo(
     () =>
@@ -508,11 +521,11 @@ export default function App() {
     [visibleAlerts]
   );
 
-  function handleAlertAction(pageId) {
+  const handleAlertAction = useCallback((pageId) => {
     setCurrentPage(pageId);
-  }
+  }, []);
 
-  function handleDismissAlert(alert) {
+  const handleDismissAlert = useCallback((alert) => {
     if (!alert || alert.severity === 'danger') {
       return;
     }
@@ -520,9 +533,9 @@ export default function App() {
     setDismissedAlertIds((currentIds) =>
       currentIds.includes(alert.id) ? currentIds : [...currentIds, alert.id]
     );
-  }
+  }, []);
 
-  async function handleCompleteOnboarding() {
+  const handleCompleteOnboarding = useCallback(async () => {
     const savedMetadata = await saveAppMetadata({
       ...appMetadata,
       onboardingCompletedAt: new Date().toISOString(),
@@ -531,25 +544,25 @@ export default function App() {
     setAppMetadata(savedMetadata);
     setStatusMessage('Onboarding dismissed. You can open Help anytime.');
     return savedMetadata;
-  }
+  }, [appMetadata]);
 
-  async function handleStartEmptyFromOnboarding() {
+  const handleStartEmptyFromOnboarding = useCallback(async () => {
     await handleCompleteOnboarding();
     setCurrentPage('settings');
     setStatusMessage(
       'To start empty, use Factory Reset to Empty App in Settings > Data Management. It requires typing DELETE.'
     );
-  }
+  }, [handleCompleteOnboarding]);
 
-  async function handleImportBackupFromOnboarding() {
+  const handleImportBackupFromOnboarding = useCallback(async () => {
     await handleCompleteOnboarding();
     setCurrentPage('settings');
     setStatusMessage(
       'Use Import Backup in Settings > Data Management. Importing replaces current local data, so export first if needed.'
     );
-  }
+  }, [handleCompleteOnboarding]);
 
-  async function handleSaveCell(entryKey, entry) {
+  const handleSaveCell = useCallback(async (entryKey, entry) => {
     try {
       const savedEntry = await savePlannerEntry(entryKey, entry);
 
@@ -564,9 +577,9 @@ export default function App() {
       console.error(error);
       setStatusMessage('Could not save planner entry.');
     }
-  }
+  }, []);
 
-  async function handleClearCell(entryKey) {
+  const handleClearCell = useCallback(async (entryKey) => {
     try {
       await deletePlannerEntry(entryKey);
 
@@ -582,7 +595,7 @@ export default function App() {
       console.error(error);
       setStatusMessage('Could not clear planner entry.');
     }
-  }
+  }, []);
 
   const handleSaveScheduledItem = useCallback(async (updatedItem) => {
     try {
@@ -610,7 +623,7 @@ export default function App() {
 
   }, []);
 
-  async function handleDuplicateScheduledItem(item) {
+  const handleDuplicateScheduledItem = useCallback(async (item) => {
     const timestamp = new Date().toISOString();
     const duplicateItem = normalizeScheduledItem({
       ...item,
@@ -622,7 +635,7 @@ export default function App() {
     });
 
     return handleSaveScheduledItem(duplicateItem);
-  }
+  }, [handleSaveScheduledItem]);
 
   const handleDeleteScheduledItem = useCallback(async (id) => {
     try {
@@ -953,7 +966,7 @@ export default function App() {
 
   }, []);
 
-  async function handleResetBudgetTargets() {
+  const handleResetBudgetTargets = useCallback(async () => {
     try {
       const resetTargets = await resetBudgetTargets();
       setBudgetTargets(resetTargets);
@@ -964,7 +977,7 @@ export default function App() {
       setStatusMessage('Could not reset budget targets.');
       throw error;
     }
-  }
+  }, []);
 
   const handleArchiveCategory = useCallback(async (categoryId) => {
     try {
@@ -986,7 +999,7 @@ export default function App() {
 
   }, []);
 
-  async function handleResetCategories() {
+  const handleResetCategories = useCallback(async () => {
     try {
       const defaultCategories = await resetCategoriesToDefaults();
       setCategories(defaultCategories);
@@ -997,7 +1010,7 @@ export default function App() {
       setStatusMessage('Could not reset categories.');
       throw error;
     }
-  }
+  }, []);
 
   const handleSaveSettings = useCallback(async (updatedSettings) => {
     const validation = validateAppSettings(updatedSettings);
@@ -1013,20 +1026,20 @@ export default function App() {
 
   }, []);
 
-  async function handleResetSettings() {
+  const handleResetSettings = useCallback(async () => {
     const defaultSettings = await resetAppSettings();
     setSettings(defaultSettings);
     setStatusMessage('Settings reset to defaults.');
     return defaultSettings;
-  }
+  }, []);
 
-  async function handleBackupExported(timestamp) {
+  const handleBackupExported = useCallback(async (timestamp) => {
     const savedMetadata = await saveLastBackupAt(timestamp);
     setAppMetadata(savedMetadata);
     return savedMetadata;
-  }
+  }, []);
 
-  async function exportCurrentBackup() {
+  const exportCurrentBackup = useCallback(async () => {
     const backup = createBackupSnapshot(appData);
 
     downloadTextFile({
@@ -1038,20 +1051,20 @@ export default function App() {
     await handleBackupExported(backup.metadata.createdAt);
     setStatusMessage('Backup exported successfully. Keep this file somewhere safe.');
     return backup;
-  }
+  }, [appData, handleBackupExported]);
 
-  function handleCloseReleaseNotes() {
+  const handleCloseReleaseNotes = useCallback(() => {
     markReleaseNotesSeen();
     setReleaseNotesSeen(true);
-  }
+  }, []);
 
-  function handleViewReleaseNotesHelp() {
+  const handleViewReleaseNotesHelp = useCallback(() => {
     markReleaseNotesSeen();
     setReleaseNotesSeen(true);
     setCurrentPage('help');
-  }
+  }, []);
 
-  async function handleReleaseNotesBackupExport() {
+  const handleReleaseNotesBackupExport = useCallback(async () => {
     try {
       await exportCurrentBackup();
       markReleaseNotesSeen();
@@ -1060,9 +1073,21 @@ export default function App() {
       console.error(error);
       setStatusMessage('Backup export failed.');
     }
-  }
+  }, [exportCurrentBackup]);
 
-  async function handleImportData(importedData) {
+  const handleSplashFinished = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  const handleOpenHelp = useCallback(() => {
+    setCurrentPage('help');
+  }, []);
+
+  const handleCloseCell = useCallback(() => {
+    setSelectedCell(null);
+  }, []);
+
+  const handleImportData = useCallback(async (importedData) => {
     const safeImportedData = getSafeAppData(importedData);
     const importedHasRecords =
       safeImportedData.budgetTargets.length > 0 ||
@@ -1079,17 +1104,6 @@ export default function App() {
         safeImportedData.appMetadata.dataMode ||
         (importedHasRecords ? 'custom' : 'empty'),
     };
-    const importedSettings = normalizeAppSettings(safeImportedData.settings);
-    const importedPlannerEntries = safeImportedData.plannerEntries;
-    const importedCategories = safeImportedData.categories;
-    const importedBudgetTargets = safeImportedData.budgetTargets;
-    const importedScheduledItems = safeImportedData.scheduledItems;
-    const importedAccounts = safeImportedData.accounts;
-    const importedManualAdjustments = safeImportedData.manualAdjustments;
-    const importedSavingsBuckets = safeImportedData.savingsBuckets;
-    const importedSavingsBucketAdjustments =
-      safeImportedData.savingsBucketAdjustments;
-    const importedTransfers = safeImportedData.transfers;
 
     const [
       savedImportedAppMetadata,
@@ -1105,16 +1119,16 @@ export default function App() {
       savedImportedTransfers,
     ] = await Promise.all([
       saveAppMetadata(importedAppMetadata),
-      saveAppSettings(importedSettings),
-      replaceBudgetTargets(importedBudgetTargets),
-      replaceCategories(importedCategories),
-      replacePlannerEntries(importedPlannerEntries),
-      replaceScheduledItems(importedScheduledItems),
-      replaceAccounts(importedAccounts),
-      replaceManualAdjustments(importedManualAdjustments),
-      replaceSavingsBuckets(importedSavingsBuckets),
-      replaceSavingsBucketAdjustments(importedSavingsBucketAdjustments),
-      replaceTransfers(importedTransfers),
+      saveAppSettings(normalizeAppSettings(safeImportedData.settings)),
+      replaceBudgetTargets(safeImportedData.budgetTargets),
+      replaceCategories(safeImportedData.categories),
+      replacePlannerEntries(safeImportedData.plannerEntries),
+      replaceScheduledItems(safeImportedData.scheduledItems),
+      replaceAccounts(safeImportedData.accounts),
+      replaceManualAdjustments(safeImportedData.manualAdjustments),
+      replaceSavingsBuckets(safeImportedData.savingsBuckets),
+      replaceSavingsBucketAdjustments(safeImportedData.savingsBucketAdjustments),
+      replaceTransfers(safeImportedData.transfers),
     ]);
 
     setSettings(savedImportedSettings);
@@ -1136,44 +1150,38 @@ export default function App() {
     setTransfers(savedImportedTransfers);
     setDismissedAlertIds([]);
     setStatusMessage('Backup imported successfully.');
-  }
+  }, []);
 
-  async function handleResetToDemoData() {
+  const handleResetToDemoData = useCallback(async () => {
     const demoData = await resetAppToDemoData();
 
     applyLoadedData(demoData);
     setDismissedAlertIds([]);
     setStatusMessage('Demo data restored.');
     return demoData;
-  }
+  }, [applyLoadedData]);
 
-  async function handleResetToEmptyState() {
+  const handleResetToEmptyState = useCallback(async () => {
     const emptyData = await resetAppToEmptyState();
     applyLoadedData(emptyData);
     setDismissedAlertIds([]);
     setStatusMessage('Factory reset to empty app completed.');
     return emptyData;
-  }
+  }, [applyLoadedData]);
 
-  async function handleRepairLocalData() {
+  const handleRepairLocalData = useCallback(async () => {
     const repairedData = await repairLocalData();
 
     applyLoadedData(repairedData);
     setStatusMessage('Local data repaired successfully.');
 
     return repairedData;
-  }
-
-  // Kept as a compatibility alias for Settings/DataManagement reset controls.
-  // The action intentionally routes to the empty-state reset path.
-  async function handleResetLocalData() {
-    return handleResetToEmptyState();
-  }
+  }, [applyLoadedData]);
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-finpath-navy)] p-4 text-white">
-        <div className="rounded-2xl border border-[#13BFA5] bg-[#102C42] p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--color-finpath-teal)] bg-[var(--color-finpath-surface)] p-6 shadow-sm">
           <img
             src={finPathLogo}
             alt="FinPath"
@@ -1193,12 +1201,7 @@ export default function App() {
   return (
     <>
       {showSplash ? (
-        <AppSplash
-          onFinished={() => {
-            setShowSplash(false);
-            setSplashFinished(true);
-          }}
-        />
+        <AppSplash onFinished={handleSplashFinished} />
       ) : null}
 
       <AppShell currentPage={currentPage} onPageChange={setCurrentPage}>
@@ -1217,7 +1220,7 @@ export default function App() {
               onCompleteOnboarding={handleCompleteOnboarding}
               onStartEmpty={handleStartEmptyFromOnboarding}
               onImportBackup={handleImportBackupFromOnboarding}
-              onOpenHelp={() => setCurrentPage('help')}
+              onOpenHelp={handleOpenHelp}
             />
           ) : null}
 
@@ -1334,16 +1337,13 @@ export default function App() {
               budgetTargets={budgetTargets}
               categories={categories}
               plannerData={plannerData}
-              plannerRows={plannerData.payPeriods}
               scheduledItems={scheduledItems}
               manualAdjustments={manualAdjustments}
               accounts={accounts}
-              miscExpenses={manualAdjustments.filter(
-                (adjustment) => adjustment.type === 'misc-expense'
-              )}
+              miscExpenses={miscExpenses}
               savingsBuckets={savingsBuckets}
               savingsBucketAdjustments={savingsBucketAdjustments}
-              savingsTransfers={[...savingsBucketAdjustments, ...transfers]}
+              savingsTransfers={savingsTransfers}
               transfers={transfers}
             />
           ) : null}
@@ -1359,8 +1359,7 @@ export default function App() {
               onRepairLocalData={handleRepairLocalData}
               onResetToDemoData={handleResetToDemoData}
               onResetToEmptyState={handleResetToEmptyState}
-              onResetLocalData={handleResetLocalData}
-              onShowHelp={() => setCurrentPage('help')}
+              onShowHelp={handleOpenHelp}
             />
           ) : null}
 
@@ -1372,7 +1371,7 @@ export default function App() {
         selectedCell={selectedCell}
         plannerEntries={plannerEntries}
         settings={settings}
-        onClose={() => setSelectedCell(null)}
+        onClose={handleCloseCell}
         onSave={handleSaveCell}
         onClear={handleClearCell}
       />

@@ -34,24 +34,26 @@ export default function AppSplash({ onFinished }) {
 
         <div className="app-splash__preview">
           <div className="app-splash__metric-card">
-            <div className="app-splash__icon">$</div>
+            <div className="app-splash__icon" aria-hidden="true" />
             <p>Balance</p>
-            <strong>$5,678</strong>
+            <div className="app-splash__skeleton app-splash__skeleton--wide" />
           </div>
 
           <div className="app-splash__metric-card">
             <p>Savings Goal</p>
-            <div className="app-splash__ring">72%</div>
-            <span>$30,000</span>
+            <div className="app-splash__ring" aria-hidden="true">
+              <span />
+            </div>
+            <div className="app-splash__skeleton app-splash__skeleton--short" />
           </div>
 
           <div className="app-splash__metric-card">
             <p>Budget</p>
-            <strong className="app-splash__teal">$293 left</strong>
+            <div className="app-splash__skeleton app-splash__skeleton--medium" />
             <div className="app-splash__bar">
               <span />
             </div>
-            <small>Housing · Bills</small>
+            <div className="app-splash__skeleton app-splash__skeleton--short" />
           </div>
 
           <div className="app-splash__metric-card">

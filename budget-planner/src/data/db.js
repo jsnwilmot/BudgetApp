@@ -169,13 +169,9 @@ export function validateAppSettings(settings = {}) {
   }
 
   if (
-    ![
-      'previous-pay-period',
-      'previous_pay_period_before_due_date',
-      'same-pay-period',
-      'same_pay_period',
-      'same_pay_period_as_due_date',
-    ].includes(safeSettings.monthlyBillAssignmentRule)
+    !['previous-pay-period', 'same-pay-period'].includes(
+      safeSettings.monthlyBillAssignmentRule
+    )
   ) {
     errors.push('Monthly bill assignment rule is not supported.');
   }
@@ -194,6 +190,26 @@ export function normalizeAppMetadata(metadata = {}) {
   return normalizeAppMetadataRecord(metadata);
 }
 
+function rejectTransaction(reject, message) {
+  return () => {
+    reject(new Error(message));
+  };
+}
+
+function resolveOnTransactionComplete({
+  transaction,
+  resolve,
+  reject,
+  value,
+  errorMessage,
+}) {
+  transaction.onerror = rejectTransaction(reject, errorMessage);
+  transaction.onabort = rejectTransaction(reject, errorMessage);
+  transaction.oncomplete = () => {
+    resolve(typeof value === 'function' ? value() : value);
+  };
+}
+
 async function replaceStoreRecords(storeName, records = []) {
   const db = await openDatabase();
 
@@ -208,7 +224,11 @@ async function replaceStoreRecords(storeName, records = []) {
 
     clearRequest.onsuccess = () => {
       records.forEach((record) => {
-        store.put(record);
+        const req = store.put(record);
+
+        req.onerror = () => {
+          reject(new Error(`Failed to write record to ${storeName}.`));
+        };
       });
     };
 
@@ -257,9 +277,13 @@ export async function saveAppSettings(settings) {
       reject(new Error('Failed to save app settings.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save app settings.',
+    });
   });
 }
 
@@ -302,9 +326,13 @@ export async function saveAppMetadata(metadata = {}) {
       reject(new Error('Failed to save app metadata.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save app metadata.',
+    });
   });
 }
 
@@ -467,10 +495,6 @@ export async function resetAppToEmptyState() {
   );
 }
 
-export async function clearAllSavedData() {
-  return resetAppToEmptyState();
-}
-
 export async function getAllCategories() {
   const db = await openDatabase();
 
@@ -522,9 +546,13 @@ export async function saveCategory(category) {
       reject(new Error('Failed to save category.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save category.',
+    });
   });
 }
 
@@ -535,6 +563,7 @@ export async function archiveCategory(categoryId) {
     const transaction = db.transaction(STORES.categories, 'readwrite');
     const store = transaction.objectStore(STORES.categories);
     const request = store.get(categoryId);
+    let archivedRecord = null;
 
     request.onerror = () => {
       reject(new Error('Failed to load category.'));
@@ -545,24 +574,29 @@ export async function archiveCategory(categoryId) {
 
       if (!category) {
         reject(new Error('Category was not found.'));
+        transaction.abort();
         return;
       }
 
-      const record = normalizeCategoryRecord({
+      archivedRecord = normalizeCategoryRecord({
         ...category,
         active: false,
         updatedAt: new Date().toISOString(),
       });
-      const saveRequest = store.put(record);
+      const saveRequest = store.put(archivedRecord);
 
       saveRequest.onerror = () => {
         reject(new Error('Failed to archive category.'));
       };
-
-      saveRequest.onsuccess = () => {
-        resolve(record);
-      };
     };
+
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: () => archivedRecord,
+      errorMessage: 'Failed to archive category.',
+    });
   });
 }
 
@@ -606,9 +640,13 @@ export async function saveBudgetTarget(target) {
       reject(new Error('Failed to save budget target.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save budget target.',
+    });
   });
 }
 
@@ -619,6 +657,7 @@ export async function archiveBudgetTarget(budgetTargetId) {
     const transaction = db.transaction(STORES.budgetTargets, 'readwrite');
     const store = transaction.objectStore(STORES.budgetTargets);
     const request = store.get(budgetTargetId);
+    let archivedRecord = null;
 
     request.onerror = () => {
       reject(new Error('Failed to load budget target.'));
@@ -629,24 +668,29 @@ export async function archiveBudgetTarget(budgetTargetId) {
 
       if (!target) {
         reject(new Error('Budget target was not found.'));
+        transaction.abort();
         return;
       }
 
-      const record = normalizeBudgetTarget({
+      archivedRecord = normalizeBudgetTarget({
         ...target,
         active: false,
         updatedAt: new Date().toISOString(),
       });
-      const saveRequest = store.put(record);
+      const saveRequest = store.put(archivedRecord);
 
       saveRequest.onerror = () => {
         reject(new Error('Failed to archive budget target.'));
       };
-
-      saveRequest.onsuccess = () => {
-        resolve(record);
-      };
     };
+
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: () => archivedRecord,
+      errorMessage: 'Failed to archive budget target.',
+    });
   });
 }
 
@@ -697,9 +741,13 @@ export async function savePlannerEntry(entryKey, entry) {
       reject(new Error('Failed to save planner entry.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save planner entry.',
+    });
   });
 }
 
@@ -715,9 +763,12 @@ export async function deletePlannerEntry(entryKey) {
       reject(new Error('Failed to delete planner entry.'));
     };
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      errorMessage: 'Failed to delete planner entry.',
+    });
   });
 }
 
@@ -759,9 +810,13 @@ export async function saveScheduledItem(item) {
       reject(new Error('Failed to save scheduled item.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save scheduled item.',
+    });
   });
 }
 
@@ -801,9 +856,13 @@ export async function saveAccount(account) {
       reject(new Error('Failed to save account.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save account.',
+    });
   });
 }
 
@@ -847,9 +906,13 @@ export async function saveManualAdjustment(adjustment) {
       reject(new Error('Failed to save manual adjustment.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save manual adjustment.',
+    });
   });
 }
 
@@ -865,9 +928,12 @@ export async function deleteManualAdjustment(id) {
       reject(new Error('Failed to delete manual adjustment.'));
     };
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      errorMessage: 'Failed to delete manual adjustment.',
+    });
   });
 }
 
@@ -907,9 +973,13 @@ export async function saveSavingsBucket(bucket) {
       reject(new Error('Failed to save savings bucket.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save savings bucket.',
+    });
   });
 }
 
@@ -953,9 +1023,13 @@ export async function saveSavingsBucketAdjustment(adjustment) {
       reject(new Error('Failed to save savings bucket adjustment.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save savings bucket adjustment.',
+    });
   });
 }
 
@@ -971,9 +1045,12 @@ export async function deleteSavingsBucketAdjustment(id) {
       reject(new Error('Failed to delete savings bucket adjustment.'));
     };
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      errorMessage: 'Failed to delete savings bucket adjustment.',
+    });
   });
 }
 
@@ -1011,9 +1088,13 @@ export async function saveTransfer(transfer) {
       reject(new Error('Failed to save transfer.'));
     };
 
-    request.onsuccess = () => {
-      resolve(record);
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: record,
+      errorMessage: 'Failed to save transfer.',
+    });
   });
 }
 
@@ -1029,9 +1110,12 @@ export async function deleteTransfer(id) {
       reject(new Error('Failed to delete transfer.'));
     };
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      errorMessage: 'Failed to delete transfer.',
+    });
   });
 }
 
@@ -1047,9 +1131,12 @@ export async function deleteScheduledItem(id) {
       reject(new Error('Failed to delete scheduled item.'));
     };
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      errorMessage: 'Failed to delete scheduled item.',
+    });
   });
 }
 

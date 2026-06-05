@@ -10,7 +10,7 @@ import {
 import AlertList from '../components/AlertList';
 import StatCard from '../components/StatCard';
 import { formatShortDate } from '../logic/dateLogic';
-import { getDashboardSummary } from '../logic/projectionLogic';
+import { formatCurrency, getDashboardSummary } from '../logic/projectionLogic';
 
 function MeasuredChartFrame({ children, className }) {
   const containerRef = useRef(null);
@@ -53,13 +53,6 @@ function MeasuredChartFrame({ children, className }) {
   );
 }
 
-function createCurrencyFormatter(currency) {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency: currency || 'CAD',
-  });
-}
-
 export default function Dashboard({
   plannerData,
   settings,
@@ -75,11 +68,8 @@ export default function Dashboard({
   onOpenHelp,
 }) {
   const summary = getDashboardSummary(plannerData);
-  const currencyFormatter = createCurrencyFormatter(settings?.currency);
-
-  function formatCurrency(value) {
-    return currencyFormatter.format(Number(value || 0));
-  }
+  const currency = settings?.currency || 'CAD';
+  const formatDashboardCurrency = (value) => formatCurrency(value, currency);
 
   const chequingRow = plannerData.projectionRows.find(
     (row) => row.id === 'projected-chequing'
@@ -230,18 +220,18 @@ export default function Dashboard({
         />
         <StatCard
           label="Next Income"
-          value={formatCurrency(summary.nextIncome)}
+          value={formatDashboardCurrency(summary.nextIncome)}
           helper="Expected income next pay period"
           tone="good"
         />
         <StatCard
           label="Next Expenses"
-          value={formatCurrency(summary.nextExpenses)}
+          value={formatDashboardCurrency(summary.nextExpenses)}
           helper="Expected expenses next pay period"
         />
         <StatCard
           label="Next Transfers"
-          value={formatCurrency(summary.nextTransfers)}
+          value={formatDashboardCurrency(summary.nextTransfers)}
           helper="Chequing to savings"
         />
       </div>
@@ -249,25 +239,25 @@ export default function Dashboard({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Chequing After Next Period"
-          value={formatCurrency(summary.projectedChequingAfterNext)}
+          value={formatDashboardCurrency(summary.projectedChequingAfterNext)}
           helper="Based on planned items"
           tone={summary.projectedChequingAfterNext < 0 ? 'danger' : 'default'}
         />
         <StatCard
           label="Savings After Next Period"
-          value={formatCurrency(summary.projectedSavingsAfterNext)}
+          value={formatDashboardCurrency(summary.projectedSavingsAfterNext)}
           helper="Includes planned transfers"
           tone="good"
         />
         <StatCard
           label="Lowest Chequing, 12 Months"
-          value={formatCurrency(summary.lowestChequing)}
+          value={formatDashboardCurrency(summary.lowestChequing)}
           helper="Used to spot cash-flow risk"
           tone={lowestTone}
         />
         <StatCard
           label="Projected Savings, 12 Months"
-          value={formatCurrency(summary.projectedSavingsEnd)}
+          value={formatDashboardCurrency(summary.projectedSavingsEnd)}
           helper="Projected end balance"
           tone="good"
         />
@@ -289,7 +279,7 @@ export default function Dashboard({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" interval="preserveStartEnd" minTickGap={16} />
               <YAxis />
-              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Tooltip formatter={(value) => formatDashboardCurrency(value)} />
               <Line
                 type="monotone"
                 dataKey="chequing"

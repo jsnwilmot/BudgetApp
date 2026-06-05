@@ -368,7 +368,6 @@ export default function DataManagement({
   onBackupExported,
   onImportData,
   onRepairLocalData,
-  onResetLocalData,
   onResetToDemoData,
   onResetToEmptyState,
   onShowHelp
@@ -632,7 +631,7 @@ export default function DataManagement({
     setSuccessMessage("Data Health rechecked. No records were changed.");
   }
 
-  async function handleResetLocalData() {
+  async function handleResetToEmptyState() {
     clearMessages();
 
     if (deleteConfirmation !== "DELETE") {
@@ -643,8 +642,6 @@ export default function DataManagement({
     try {
       if (typeof onResetToEmptyState === "function") {
         await onResetToEmptyState();
-      } else if (typeof onResetLocalData === "function") {
-        await onResetLocalData();
       } else {
         saveStoredAppData({
           ...defaultAppState,
@@ -1169,7 +1166,7 @@ export default function DataManagement({
 
               <button
                 type="button"
-                onClick={handleResetLocalData}
+                onClick={handleResetToEmptyState}
                 disabled={deleteConfirmation !== "DELETE"}
                 className="min-h-11 w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
