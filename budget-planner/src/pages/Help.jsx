@@ -17,6 +17,25 @@ const plannerTotals = [
   ['Projected Savings', 'Forecast savings after transfers and savings adjustments.'],
 ];
 
+const bucketBalanceLabels = [
+  [
+    'Starting Bucket Balance',
+    'The amount already assigned to the bucket before projected movement.',
+  ],
+  [
+    'Current Projected Bucket Balance',
+    "Starting balance plus planner transfers, transfer records, and adjustments through today's current pay period.",
+  ],
+  [
+    'Current Validated Bucket Balance',
+    'The current balance using only validated planner transfers, validated transfer records, and all bucket adjustments.',
+  ],
+  [
+    'Final Projected Bucket Balance',
+    'The end-of-projection bucket forecast, including future planned transfers.',
+  ],
+];
+
 const transferTypes = [
   [
     'To Savings Bucket',
@@ -307,6 +326,32 @@ export default function Help() {
             </div>
           ))}
         </div>
+      </HelpCard>
+
+      <HelpCard title="Savings Bucket Balances">
+        <p>
+          Savings Buckets separates what is current from what is still a future
+          forecast.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {bucketBalanceLabels.map(([title, description]) => (
+            <div key={title} className="rounded-xl border border-slate-200 p-3">
+              <p className="font-semibold text-slate-950">{title}</p>
+              <p className="mt-1 text-sm text-slate-600">{description}</p>
+            </div>
+          ))}
+        </div>
+        <p>
+          Validated planner transfers appear as read-only Bucket Activity
+          because they are derived from planner cells. They are not silently
+          converted into transfer records or added to backups as transfers.
+        </p>
+        <p>
+          Manual transfer records are saved account movements that can be
+          edited or deleted. If the same savings movement exists as both a
+          validated planner transfer and a manual transfer record, both are
+          counted and the page shows a warning.
+        </p>
       </HelpCard>
 
       <HelpCard title="Reports">

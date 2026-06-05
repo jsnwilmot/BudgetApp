@@ -605,21 +605,105 @@ export function getDashboardSummary(plannerData) {
   };
 }
 
-export function buildSavingsBucketProjection({
-  payPeriods,
-  rows,
-  savingsBuckets,
-  savingsBucketAdjustments,
-  transfers = [],
+export function getCurrentPayPeriod(payPeriods = [], today = formatDateKey(new Date())) {
+  if (!Array.isArray(payPeriods) || payPeriods.length === 0) {
+    return null;
+  }
+
+  return (
+    [...payPeriods].reverse().find((period) => period.date <= today) ||
+    payPeriods[0] ||
+    null
+  );
+}
+
+function isPeriodThroughCurrent(periodDate, currentPayPeriodDate) {
+  return Boolean(currentPayPeriodDate && periodDate <= currentPayPeriodDate);
+}
+
+function getValidatedPlannerAmount(row, periodDate, plannerEntries = {}) {
+  const entryKey = getEntryKey(row.id, periodDate);
+  const entry = plannerEntries[entryKey];
+
+  if (!entry?.validated) {
+    return 0;
+  }
+
+  return Number(row.amountsByPeriod?.[periodDate]) || 0;
+}
+
+export function buildValidatedPlannerBucketActivities({
+  payPeriods = [],
+  rows = [],
+  plannerEntries = {},
 }) {
+  return rows
+    .filter((row) => row.type === 'transfer' && row.item?.bucketId)
+    .flatMap((row) => {
+      return payPeriods
+        .map((period) => {
+          const entryKey = getEntryKey(row.id, period.date);
+          const entry = plannerEntries[entryKey];
+          const amount = Number(row.amountsByPeriod?.[period.date]) || 0;
+
+          if (!entry?.validated || amount === 0) {
+            return null;
+          }
+
+          return {
+            id: `planner-transfer-${row.id}-${period.date}`,
+            source: 'planner',
+            readOnly: true,
+            date: period.date,
+            payPeriodDate: period.date,
+            fromAccountId: null,
+            toAccountId: null,
+            bucketId: row.item.bucketId,
+            transferType: 'validated_planner_transfer',
+            direction: 'to_savings_bucket',
+            amount,
+            validated: true,
+            notes: String(entry.notes || '').trim(),
+          };
+        })
+        .filter(Boolean);
+    });
+}
+
+export function buildSavingsBucketProjection({
+  payPeriods = [],
+  rows = [],
+  savingsBuckets = [],
+  savingsBucketAdjustments = [],
+  transfers = [],
+  plannerEntries = {},
+}) {
+  const currentPayPeriod = getCurrentPayPeriod(payPeriods);
+  const currentPayPeriodDate = currentPayPeriod?.date || '';
+  const finalPeriodDate = payPeriods[payPeriods.length - 1]?.date || '';
+
   return savingsBuckets.map((bucket) => {
     let balance = Number(bucket.startingAmount) || 0;
+    let validatedBalance = balance;
+    let plannedTransfersToDate = 0;
+    let validatedPlannerTransfersToDate = 0;
+    let transferRecordsInToDate = 0;
+    let transferRecordsOutToDate = 0;
+    let validatedTransferRecordsInToDate = 0;
+    let validatedTransferRecordsOutToDate = 0;
+    let adjustmentsToDate = 0;
+    let currentProjectedBalance = balance;
+    let currentValidatedBalance = balance;
 
     const transfersInByPeriod = {};
+    const validatedTransfersInByPeriod = {};
     const transferRecordsInByPeriod = {};
     const transferRecordsOutByPeriod = {};
+    const validatedTransferRecordsInByPeriod = {};
+    const validatedTransferRecordsOutByPeriod = {};
     const adjustmentsByPeriod = {};
     const balanceByPeriod = {};
+    const validatedBalanceByPeriod = {};
 
     payPeriods.forEach((period) => {
       const transferIn = rows
@@ -627,6 +711,12 @@ export function buildSavingsBucketProjection({
         .filter((row) => row.item?.bucketId === bucket.id)
         .reduce((total, row) => {
           return total + (Number(row.amountsByPeriod[period.date]) || 0);
+        }, 0);
+      const validatedTransferIn = rows
+        .filter((row) => row.type === 'transfer')
+        .filter((row) => row.item?.bucketId === bucket.id)
+        .reduce((total, row) => {
+          return total + getValidatedPlannerAmount(row, period.date, plannerEntries);
         }, 0);
 
       const adjustmentTotal = savingsBucketAdjustments
@@ -652,8 +742,24 @@ export function buildSavingsBucketProjection({
 
             return totals;
           },
-          { in: 0, out: 0 }
+          { in: 0, out: 0, validatedIn: 0, validatedOut: 0 }
         );
+
+      transfers
+        .filter((transfer) => transfer.bucketId === bucket.id)
+        .filter((transfer) => transfer.payPeriodDate === period.date)
+        .filter((transfer) => transfer.validated)
+        .forEach((transfer) => {
+          const amount = Number(transfer.amount) || 0;
+
+          if (transfer.transferType === 'to_savings_bucket') {
+            transferRecordTotals.validatedIn += amount;
+          }
+
+          if (transfer.transferType === 'from_savings_bucket') {
+            transferRecordTotals.validatedOut += amount;
+          }
+        });
 
       balance +=
         transferIn +
@@ -661,20 +767,60 @@ export function buildSavingsBucketProjection({
         transferRecordTotals.in -
         transferRecordTotals.out;
 
+      validatedBalance +=
+        validatedTransferIn +
+        adjustmentTotal +
+        transferRecordTotals.validatedIn -
+        transferRecordTotals.validatedOut;
+
       transfersInByPeriod[period.date] = transferIn;
+      validatedTransfersInByPeriod[period.date] = validatedTransferIn;
       transferRecordsInByPeriod[period.date] = transferRecordTotals.in;
       transferRecordsOutByPeriod[period.date] = transferRecordTotals.out;
+      validatedTransferRecordsInByPeriod[period.date] =
+        transferRecordTotals.validatedIn;
+      validatedTransferRecordsOutByPeriod[period.date] =
+        transferRecordTotals.validatedOut;
       adjustmentsByPeriod[period.date] = adjustmentTotal;
       balanceByPeriod[period.date] = balance;
+      validatedBalanceByPeriod[period.date] = validatedBalance;
+
+      if (isPeriodThroughCurrent(period.date, currentPayPeriodDate)) {
+        plannedTransfersToDate += transferIn;
+        validatedPlannerTransfersToDate += validatedTransferIn;
+        transferRecordsInToDate += transferRecordTotals.in;
+        transferRecordsOutToDate += transferRecordTotals.out;
+        validatedTransferRecordsInToDate += transferRecordTotals.validatedIn;
+        validatedTransferRecordsOutToDate += transferRecordTotals.validatedOut;
+        adjustmentsToDate += adjustmentTotal;
+        currentProjectedBalance = balance;
+        currentValidatedBalance = validatedBalance;
+      }
     });
 
     return {
       bucket,
+      startingAmount: Number(bucket.startingAmount) || 0,
+      plannedTransfersToDate,
+      validatedPlannerTransfersToDate,
+      transferRecordsInToDate,
+      transferRecordsOutToDate,
+      validatedTransferRecordsInToDate,
+      validatedTransferRecordsOutToDate,
+      adjustmentsToDate,
+      currentProjectedBalance,
+      currentValidatedBalance,
+      finalProjectedBalance:
+        (balanceByPeriod[finalPeriodDate] ?? Number(bucket.startingAmount)) || 0,
       transfersInByPeriod,
+      validatedTransfersInByPeriod,
       transferRecordsInByPeriod,
       transferRecordsOutByPeriod,
+      validatedTransferRecordsInByPeriod,
+      validatedTransferRecordsOutByPeriod,
       adjustmentsByPeriod,
       balanceByPeriod,
+      validatedBalanceByPeriod,
     };
   });
 }

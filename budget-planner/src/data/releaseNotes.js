@@ -8,6 +8,7 @@ export const RELEASE_NOTES = {
     'Finalized FinPath web/PWA release.',
     'Confirmed local-first backup, import preview, and Data Health tools.',
     'Confirmed Reports, transfers, savings movement, budgets, and planner QA coverage.',
+    'Improved Savings Buckets with current projected balances, validated bucket balances, and read-only validated planner transfer activity.',
     'Confirmed mobile and PWA release readiness.',
     'Prepared the app for stable daily use before future desktop migration.',
   ],

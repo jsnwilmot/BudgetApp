@@ -1288,6 +1288,7 @@ export default function App() {
               accounts={accounts}
               scheduledItems={scheduledItems}
               plannerData={plannerData}
+              plannerEntries={plannerEntries}
               settings={settings}
               onSaveSavingsBucket={handleSaveSavingsBucket}
               onDeleteSavingsBucket={handleDeleteSavingsBucket}

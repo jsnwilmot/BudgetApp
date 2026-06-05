@@ -116,6 +116,32 @@ Savings Buckets, Budgets, Accounts, and Unified Transfers.
 - Budget reporting uses the same derived transaction helper as the Budgets
   page, so category budget status should match between Budgets and Reports.
 
+## Savings Bucket Balance Labels
+
+Savings Buckets now separates current money from future forecast money.
+
+- Starting bucket balance is the amount you already had assigned to that
+  bucket when it was created or last corrected.
+- Current projected bucket balance starts with the bucket balance, then adds
+  planner transfers, transfer records, and bucket adjustments through today's
+  current pay period.
+- Current validated bucket balance uses the same cutoff, but only includes
+  planner transfers and transfer records marked as validated. Bucket
+  adjustments are included because they do not have their own validation flag.
+- Final projected bucket balance includes the full projection range, including
+  future planned transfers.
+- Planner transfers are scheduled plans. Validated planner transfers appear as
+  read-only Bucket Activity so the user can see the confirmed planner movement
+  without creating hidden transfer records.
+- Manual transfer records are saved one-off movements between user-owned
+  accounts. They can be edited or deleted and are included separately from
+  planner activity.
+
+Do not add the same savings movement as both a validated planner transfer and
+a manual transfer record unless the extra record is intended to correct the
+balance. Savings Buckets shows a warning when the bucket, pay period, amount,
+and direction match.
+
 ## Data Health Checks
 
 Settings > Data Management includes a non-destructive Data Health section. It

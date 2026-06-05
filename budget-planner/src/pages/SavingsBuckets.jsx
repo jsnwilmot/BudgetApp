@@ -3,8 +3,10 @@ import { Plus, Trash2 } from 'lucide-react';
 import TransferEditor from '../components/TransferEditor';
 import TransferHistory from '../components/TransferHistory';
 import {
+  buildValidatedPlannerBucketActivities,
   buildSavingsBucketProjection,
   formatCurrency,
+  getCurrentPayPeriod,
 } from '../logic/projectionLogic';
 import { createNewTransfer } from '../logic/transferLogic';
 
@@ -439,6 +441,7 @@ export default function SavingsBuckets({
   accounts = [],
   scheduledItems,
   plannerData,
+  plannerEntries = {},
   settings,
   onSaveSavingsBucket,
   onDeleteSavingsBucket,
@@ -460,8 +463,44 @@ export default function SavingsBuckets({
       savingsBuckets,
       savingsBucketAdjustments,
       transfers,
+      plannerEntries,
     });
-  }, [plannerData, savingsBuckets, savingsBucketAdjustments, transfers]);
+  }, [
+    plannerData,
+    savingsBuckets,
+    savingsBucketAdjustments,
+    transfers,
+    plannerEntries,
+  ]);
+
+  const plannerActivities = useMemo(() => {
+    return buildValidatedPlannerBucketActivities({
+      payPeriods: plannerData.payPeriods,
+      rows: plannerData.rows,
+      plannerEntries,
+    });
+  }, [plannerData.payPeriods, plannerData.rows, plannerEntries]);
+
+  const duplicatePlannerTransferWarnings = useMemo(() => {
+    return plannerActivities.flatMap((activity) => {
+      return transfers
+        .filter((transfer) => transfer.transferType === 'to_savings_bucket')
+        .filter((transfer) => transfer.bucketId === activity.bucketId)
+        .filter((transfer) => transfer.payPeriodDate === activity.payPeriodDate)
+        .filter((transfer) => {
+          return Math.abs((Number(transfer.amount) || 0) - activity.amount) < 0.01;
+        })
+        .map((transfer) => ({
+          id: `${activity.id}-${transfer.id}`,
+          bucketId: activity.bucketId,
+          payPeriodDate: activity.payPeriodDate,
+          amount: activity.amount,
+        }));
+    });
+  }, [plannerActivities, transfers]);
+
+  const currentPayPeriod = getCurrentPayPeriod(plannerData.payPeriods);
+  const currentPayPeriodDate = currentPayPeriod?.date || '';
 
   const finalPeriod = plannerData.payPeriods[plannerData.payPeriods.length - 1];
   const finalPeriodDate = finalPeriod?.date || '';
@@ -473,44 +512,25 @@ export default function SavingsBuckets({
   const savingsProjectedEnd =
     projectedSavingsRow?.amountsByPeriod?.[finalPeriodDate] || 0;
 
-  const bucketProjectedEnd = bucketProjection.reduce((total, item) => {
-    return total + (item.balanceByPeriod[finalPeriodDate] || 0);
+  const savingsStartingBalance = accounts
+    .filter((account) => account.type === 'savings')
+    .filter((account) => account.active !== false)
+    .reduce((total, account) => total + (Number(account.startingBalance) || 0), 0);
+
+  const currentSavingsAccountBalance =
+    projectedSavingsRow?.amountsByPeriod?.[currentPayPeriodDate] ??
+    savingsStartingBalance;
+
+  const currentProjectedBucketTotal = bucketProjection.reduce((total, item) => {
+    return total + (Number(item.currentProjectedBalance) || 0);
   }, 0);
 
-  const bucketStartingTotal = savingsBuckets.reduce((total, bucket) => {
-    return total + (Number(bucket.startingAmount) || 0);
+  const currentValidatedBucketTotal = bucketProjection.reduce((total, item) => {
+    return total + (Number(item.currentValidatedBalance) || 0);
   }, 0);
 
-  const totalTransfersIn = bucketProjection.reduce((total, item) => {
-    return (
-      total +
-      Object.values(item.transfersInByPeriod).reduce((innerTotal, value) => {
-        return innerTotal + (Number(value) || 0);
-      }, 0)
-    );
-  }, 0);
-
-  const totalBucketAdjustments = savingsBucketAdjustments.reduce(
-    (total, adjustment) => total + (Number(adjustment.amount) || 0),
-    0
-  );
-  const totalTransferRecordsIn = bucketProjection.reduce((total, item) => {
-    return (
-      total +
-      Object.values(item.transferRecordsInByPeriod).reduce(
-        (innerTotal, value) => innerTotal + (Number(value) || 0),
-        0
-      )
-    );
-  }, 0);
-  const totalTransferRecordsOut = bucketProjection.reduce((total, item) => {
-    return (
-      total +
-      Object.values(item.transferRecordsOutByPeriod).reduce(
-        (innerTotal, value) => innerTotal + (Number(value) || 0),
-        0
-      )
-    );
+  const finalProjectedBucketTotal = bucketProjection.reduce((total, item) => {
+    return total + (Number(item.finalProjectedBalance) || 0);
   }, 0);
 
   function getBucketName(bucketId) {
@@ -519,7 +539,7 @@ export default function SavingsBuckets({
 
   function getProjectedBucketAmount(bucketId) {
     const projection = bucketProjection.find((item) => item.bucket.id === bucketId);
-    return projection?.balanceByPeriod[finalPeriodDate] || 0;
+    return projection?.finalProjectedBalance || 0;
   }
 
   function bucketIsUsedByTransfer(bucketId) {
@@ -622,58 +642,83 @@ export default function SavingsBuckets({
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
-            Bucket Starting Total
+            Current Projected Buckets
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(bucketStartingTotal, currency)}
+            {formatCurrency(currentProjectedBucketTotal, currency)}
           </p>
         </div>
 
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
-            Projected Transfers In
+            Current Validated Buckets
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totalTransfersIn, currency)}
+            {formatCurrency(currentValidatedBucketTotal, currency)}
           </p>
         </div>
 
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
-            Bucket Adjustments
+            Final Projected Buckets
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totalBucketAdjustments, currency)}
+            {formatCurrency(finalProjectedBucketTotal, currency)}
           </p>
         </div>
 
         <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 shadow-sm sm:p-5">
           <p className="text-sm font-medium text-slate-500">
-            Transfer Records Net
+            Current Savings Account Balance
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
-            {formatCurrency(totalTransferRecordsIn - totalTransferRecordsOut, currency)}
+            {formatCurrency(currentSavingsAccountBalance, currency)}
           </p>
         </div>
 
         <div
           className={`rounded-2xl border p-4 shadow-sm sm:p-5 ${
-            Math.abs(savingsProjectedEnd - bucketProjectedEnd) < 0.01
+            Math.abs(currentSavingsAccountBalance - currentProjectedBucketTotal) < 0.01
               ? 'border-emerald-200 bg-emerald-50'
               : 'border-amber-200 bg-amber-50'
           }`}
         >
           <p className="text-sm font-medium text-slate-500">
-            Savings vs Buckets Difference
+            Current Savings vs Buckets Difference
           </p>
           <p className="mt-2 text-2xl font-bold text-slate-950">
             {formatCurrency(
-              savingsProjectedEnd - bucketProjectedEnd,
+              currentSavingsAccountBalance - currentProjectedBucketTotal,
               currency
             )}
           </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Final Projection Difference:{' '}
+            {formatCurrency(savingsProjectedEnd - finalProjectedBucketTotal, currency)}
+          </p>
         </div>
       </div>
+
+      {duplicatePlannerTransferWarnings.length > 0 ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm">
+          <p className="font-semibold text-amber-900">
+            Possible duplicate bucket movement
+          </p>
+          <p className="mt-1">
+            A validated planner transfer and a manual transfer record have the
+            same bucket, pay period, and amount. This is allowed, but both are
+            counted if both records exist.
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {duplicatePlannerTransferWarnings.map((warning) => (
+              <li key={warning.id}>
+                {getBucketName(warning.bucketId)} on {warning.payPeriodDate}:{' '}
+                {formatCurrency(warning.amount, currency)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -681,29 +726,36 @@ export default function SavingsBuckets({
             Bucket Projection
           </h3>
           <p className="text-sm text-slate-500">
-            Starting amount plus scheduled transfers, transfer records, and
-            bucket adjustments.
+            Current projected includes planned transfers up to today's pay
+            period. Current validated only includes planner transfers and
+            transfer records marked as validated.
           </p>
         </div>
 
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px]">
+        <table className="w-full min-w-[1240px]">
           <thead>
             <tr className="bg-slate-900 text-white">
               <th className="px-4 py-3 text-left text-sm font-bold">Bucket</th>
               <th className="px-4 py-3 text-right text-sm font-bold">Starting</th>
               <th className="px-4 py-3 text-right text-sm font-bold">
-                Projected Transfers In
+                Planned Transfers To Date
               </th>
               <th className="px-4 py-3 text-right text-sm font-bold">
-                Transfer Records In
+                Validated Planner Transfers
               </th>
               <th className="px-4 py-3 text-right text-sm font-bold">
-                Transfer Records Out
+                Transfer Records Net
               </th>
               <th className="px-4 py-3 text-right text-sm font-bold">Adjustments</th>
               <th className="px-4 py-3 text-right text-sm font-bold">
-                Projected End Balance
+                Current Projected
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-bold">
+                Current Validated
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-bold">
+                Final Projected
               </th>
               <th className="px-4 py-3 text-right text-sm font-bold">Actions</th>
             </tr>
@@ -712,30 +764,16 @@ export default function SavingsBuckets({
           <tbody>
             {bucketProjection.length === 0 ? (
               <tr>
-                <td colSpan="8" className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan="10" className="px-4 py-8 text-center text-sm text-slate-500">
                   No savings buckets yet. Add a bucket to start tracking projected balances.
                 </td>
               </tr>
             ) : null}
 
             {bucketProjection.map((item) => {
-              const transfersIn = Object.values(item.transfersInByPeriod).reduce(
-                (total, value) => total + (Number(value) || 0),
-                0
-              );
-
-              const adjustments = Object.values(item.adjustmentsByPeriod).reduce(
-                (total, value) => total + (Number(value) || 0),
-                0
-              );
-              const transferRecordsIn = Object.values(
-                item.transferRecordsInByPeriod
-              ).reduce((total, value) => total + (Number(value) || 0), 0);
-              const transferRecordsOut = Object.values(
-                item.transferRecordsOutByPeriod
-              ).reduce((total, value) => total + (Number(value) || 0), 0);
-
               const usedByTransfer = bucketIsUsedByTransfer(item.bucket.id);
+              const transferRecordsNet =
+                item.transferRecordsInToDate - item.transferRecordsOutToDate;
 
               return (
                 <tr key={item.bucket.id} className="border-t border-slate-200">
@@ -753,26 +791,35 @@ export default function SavingsBuckets({
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-emerald-700">
-                    {formatCurrency(transfersIn, currency)}
+                    {formatCurrency(item.plannedTransfersToDate, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-emerald-700">
-                    {formatCurrency(transferRecordsIn, currency)}
+                    {formatCurrency(item.validatedPlannerTransfersToDate, currency)}
                   </td>
 
-                  <td className="px-4 py-3 text-right text-sm text-amber-700">
-                    {formatCurrency(transferRecordsOut, currency)}
+                  <td
+                    className={`px-4 py-3 text-right text-sm ${
+                      transferRecordsNet < 0 ? 'text-amber-700' : 'text-emerald-700'
+                    }`}
+                  >
+                    {formatCurrency(transferRecordsNet, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm text-slate-700">
-                    {formatCurrency(adjustments, currency)}
+                    {formatCurrency(item.adjustmentsToDate, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm font-bold text-slate-950">
-                    {formatCurrency(
-                      item.balanceByPeriod[finalPeriodDate],
-                      currency
-                    )}
+                    {formatCurrency(item.currentProjectedBalance, currency)}
+                  </td>
+
+                  <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700">
+                    {formatCurrency(item.currentValidatedBalance, currency)}
+                  </td>
+
+                  <td className="px-4 py-3 text-right text-sm font-bold text-slate-950">
+                    {formatCurrency(item.finalProjectedBalance, currency)}
                   </td>
 
                   <td className="px-4 py-3 text-right text-sm">
@@ -804,6 +851,7 @@ export default function SavingsBuckets({
 
       <TransferHistory
         transfers={transfers}
+        plannerActivities={plannerActivities}
         accounts={accounts}
         savingsBuckets={savingsBuckets}
         currency={currency}

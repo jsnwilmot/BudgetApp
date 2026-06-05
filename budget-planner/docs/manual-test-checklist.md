@@ -43,6 +43,16 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Manual account adjustment income/expense activity appears in report summary totals.
 - [ ] Add transfer and confirm Reports transfer totals change without inflating income or expenses.
 - [ ] Add savings transfer or bucket-linked transfer and confirm savings movement updates.
+- [ ] Savings Buckets shows Current Projected Buckets, Current Validated Buckets, Final Projected Buckets, Current Savings Account Balance, and Current Savings vs Buckets Difference.
+- [ ] Scheduled transfer to a savings bucket appears in the future bucket projection.
+- [ ] Unvalidated current-period planner transfer increases Current Projected bucket balance but not Current Validated bucket balance.
+- [ ] Validating that planner transfer updates Current Validated bucket balance.
+- [ ] Validated planner transfer appears as read-only Bucket Activity.
+- [ ] Manual transfer record appears in Bucket Activity with Edit/Delete actions.
+- [ ] Matching validated planner transfer and manual `to_savings_bucket` transfer shows a duplicate warning and does not crash or lose data.
+- [ ] Future planned transfer after today's current pay period affects Final Projected only.
+- [ ] Transfer from savings bucket subtracts from current projected and current validated when inside the current cutoff and validated for the validated balance.
+- [ ] Savings vs bucket difference labels clearly distinguish current difference from Final Projection Difference.
 - [ ] Known sample values show Income 2000, Expenses 100, Transfers 300, and Savings Movement 300 when entered in the same report period.
 - [ ] Add budget target and confirm Reports budget status matches Budgets.
 - [ ] Switch report period or month and confirm totals update.
