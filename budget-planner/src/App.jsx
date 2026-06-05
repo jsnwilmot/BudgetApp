@@ -1181,7 +1181,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-finpath-navy)] p-4 text-white">
-        <div className="rounded-2xl border border-[var(--color-finpath-teal)] bg-[var(--color-finpath-surface)] p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--color-finpath-teal)] bg-[var(--color-finpath-card)] p-6 shadow-sm">
           <img
             src={finPathLogo}
             alt="FinPath"

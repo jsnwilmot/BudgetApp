@@ -8,8 +8,7 @@ import {
   appSettings,
   budgetTargets,
   categories,
-  getDemoAppState,
-  getEmptyAppState
+  getDemoAppState
 } from "../data/seedData";
 import {
   getCurrentAppDataVersion,
@@ -640,14 +639,11 @@ export default function DataManagement({
     }
 
     try {
-      if (typeof onResetToEmptyState === "function") {
-        await onResetToEmptyState();
-      } else {
-        saveStoredAppData({
-          ...defaultAppState,
-          ...getEmptyAppState()
-        });
+      if (typeof onResetToEmptyState !== "function") {
+        throw new Error("onResetToEmptyState is required");
       }
+
+      await onResetToEmptyState();
     } catch (error) {
       console.error(error);
       setErrorMessage("Factory reset failed.");

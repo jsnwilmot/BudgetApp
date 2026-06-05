@@ -574,7 +574,6 @@ export async function archiveCategory(categoryId) {
 
       if (!category) {
         reject(new Error('Category was not found.'));
-        transaction.abort();
         return;
       }
 
@@ -668,7 +667,6 @@ export async function archiveBudgetTarget(budgetTargetId) {
 
       if (!target) {
         reject(new Error('Budget target was not found.'));
-        transaction.abort();
         return;
       }
 
