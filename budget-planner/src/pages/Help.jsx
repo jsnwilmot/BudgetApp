@@ -368,6 +368,13 @@ export default function Help() {
           Savings transfers affect savings movement. Budget reports compare
           category spending against monthly budget targets.
         </p>
+        <p>
+          Reports &gt; Bucket Balances uses the same current bucket projection
+          data as Savings Buckets. Starting bucket balances are the baseline;
+          current projected balances include bucket movement through the
+          current or selected report period, while current validated balances
+          include validated planner activity and validated transfer records.
+        </p>
       </HelpCard>
 
       <HelpCard title="Transfers">

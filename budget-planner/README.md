@@ -113,6 +113,11 @@ Savings Buckets, Budgets, Accounts, and Unified Transfers.
 - Savings movement uses savings bucket adjustments and bucket-linked transfer
   records, with simple duplicate protection for matching transfer/adjustment
   events.
+- Reports > Bucket Balances uses the same current bucket projection data as
+  Savings Buckets. Starting bucket balances are only the baseline; current
+  projected balances include planner transfers, transfer records, and bucket
+  adjustments through the selected report/current pay period. Current validated
+  balances include validated planner activity and validated transfer records.
 - Budget reporting uses the same derived transaction helper as the Budgets
   page, so category budget status should match between Budgets and Reports.
 
@@ -664,6 +669,8 @@ Completed:
 - Kept transfers separate from income and spending totals.
 - Improved savings movement reporting for bucket adjustments and transfer
   records.
+- Fixed Reports bucket balances to use current projected and validated bucket
+  projection data instead of only starting balances.
 - Aligned budget reporting with monthly budget targets.
 - Improved Reports labels, empty states, Help text, and manual test coverage.
 

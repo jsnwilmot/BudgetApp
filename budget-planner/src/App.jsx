@@ -1337,6 +1337,7 @@ export default function App() {
               budgetTargets={budgetTargets}
               categories={categories}
               plannerData={plannerData}
+              plannerEntries={plannerEntries}
               scheduledItems={scheduledItems}
               manualAdjustments={manualAdjustments}
               accounts={accounts}

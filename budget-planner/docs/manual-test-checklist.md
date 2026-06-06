@@ -47,6 +47,12 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Scheduled transfer to a savings bucket appears in the future bucket projection.
 - [ ] Unvalidated current-period planner transfer increases Current Projected bucket balance but not Current Validated bucket balance.
 - [ ] Validating that planner transfer updates Current Validated bucket balance.
+- [ ] Reports Bucket Balances chart uses current projected bucket balances.
+- [ ] Reports Bucket Balances table balance does not equal the starting amount when current movement exists.
+- [ ] Reports Movement In reflects planner transfer inflows.
+- [ ] Reports Movement Out reflects transfer records out of a bucket.
+- [ ] Reports Net Movement reflects transfer movement plus bucket adjustments.
+- [ ] Savings Buckets and Reports show consistent current projected bucket balances.
 - [ ] Validated planner transfer appears as read-only Bucket Activity.
 - [ ] Manual transfer record appears in Bucket Activity with Edit/Delete actions.
 - [ ] Matching validated planner transfer and manual `to_savings_bucket` transfer shows a duplicate warning and does not crash or lose data.

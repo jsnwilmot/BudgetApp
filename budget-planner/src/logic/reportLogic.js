@@ -749,6 +749,7 @@ export function buildReportCsvSections(reportData = {}) {
     budgetUsedPercentage = 0,
     categoryTotals = [],
     savingsSummary = { buckets: [], totals: {} },
+    bucketBalanceSummary = savingsSummary,
     transferSummary = {},
     trendSummary = {},
     hasReportData = false
@@ -839,20 +840,29 @@ export function buildReportCsvSections(reportData = {}) {
       normalizeNumber(savingsSummary.totals?.netTransfers)
     ],
     [],
-    ["Section", "Bucket", "Balance", "Movement In", "Movement Out", "Net Movement"]
+    [
+      "Section",
+      "Bucket",
+      "Current Projected",
+      "Current Validated",
+      "Movement In",
+      "Movement Out",
+      "Net Movement"
+    ]
   );
 
-  if ((savingsSummary.buckets || []).length === 0) {
-    rows.push(["Savings Buckets", "No savings buckets found", "", "", "", ""]);
+  if ((bucketBalanceSummary.buckets || []).length === 0) {
+    rows.push(["Savings Buckets", "No savings buckets found", "", "", "", "", ""]);
   } else {
-    savingsSummary.buckets.forEach((bucket) => {
+    bucketBalanceSummary.buckets.forEach((bucket) => {
       rows.push([
         "Savings Buckets",
         bucket.name,
-        normalizeNumber(bucket.balance),
-        normalizeNumber(bucket.transfersIn),
-        normalizeNumber(bucket.transfersOut),
-        normalizeNumber(bucket.netTransfers)
+        normalizeNumber(bucket.currentProjectedBalance ?? bucket.balance),
+        normalizeNumber(bucket.currentValidatedBalance ?? bucket.balance),
+        normalizeNumber(bucket.movementIn ?? bucket.transfersIn),
+        normalizeNumber(bucket.movementOut ?? bucket.transfersOut),
+        normalizeNumber(bucket.netMovement ?? bucket.netTransfers)
       ]);
     });
   }

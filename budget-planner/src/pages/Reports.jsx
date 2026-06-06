@@ -16,9 +16,11 @@ import {
   calculateBudgetUsage
 } from "../logic/budgetLogic";
 import { getCurrentMonthKey } from "../logic/dateLogic";
-import { formatCurrency } from "../logic/projectionLogic";
 import {
-  buildBucketBalanceChartData,
+  buildSavingsBucketProjection,
+  formatCurrency
+} from "../logic/projectionLogic";
+import {
   buildIncomeOutflowChartData,
   buildReportCsvSections,
   buildReportExportFileName,
@@ -250,6 +252,7 @@ export default function Reports({
   scheduledItems = [],
   manualAdjustments = [],
   accounts = [],
+  plannerEntries = {},
   miscExpenses = [],
   savingsBuckets = [],
   savingsBucketAdjustments = [],
@@ -423,6 +426,88 @@ export default function Reports({
     [savingsBuckets, scopedSavingsTransfers]
   );
 
+  const bucketProjection = useMemo(
+    () =>
+      buildSavingsBucketProjection({
+        payPeriods: plannerData?.payPeriods || [],
+        rows: plannerData?.rows || [],
+        savingsBuckets,
+        savingsBucketAdjustments,
+        transfers,
+        plannerEntries,
+      }),
+    [
+      plannerData?.payPeriods,
+      plannerData?.rows,
+      plannerEntries,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      transfers
+    ]
+  );
+
+  const bucketBalanceRows = useMemo(
+    () =>
+      bucketProjection.map((item) => {
+        const movementIn =
+          (Number(item.plannedTransfersToDate) || 0) +
+          (Number(item.transferRecordsInToDate) || 0);
+        const movementOut = Number(item.transferRecordsOutToDate) || 0;
+        const adjustments = Number(item.adjustmentsToDate) || 0;
+
+        return {
+          id: item.bucket.id,
+          name: item.bucket.name || "Unnamed bucket",
+          currentProjectedBalance: Number(item.currentProjectedBalance) || 0,
+          currentValidatedBalance: Number(item.currentValidatedBalance) || 0,
+          movementIn,
+          movementOut,
+          adjustments,
+          netMovement: movementIn - movementOut + adjustments,
+        };
+      }),
+    [bucketProjection]
+  );
+
+  const bucketBalanceChartData = useMemo(
+    () =>
+      [...bucketBalanceRows]
+        .sort(
+          (left, right) =>
+            right.currentProjectedBalance - left.currentProjectedBalance
+        )
+        .slice(0, 8)
+        .map((bucket) => ({
+          name: bucket.name,
+          value: bucket.currentProjectedBalance,
+        })),
+    [bucketBalanceRows]
+  );
+
+  const bucketBalanceSummary = useMemo(
+    () => ({
+      buckets: bucketBalanceRows,
+      totals: bucketBalanceRows.reduce(
+        (totals, bucket) => {
+          totals.currentProjectedBalance += bucket.currentProjectedBalance;
+          totals.currentValidatedBalance += bucket.currentValidatedBalance;
+          totals.movementIn += bucket.movementIn;
+          totals.movementOut += bucket.movementOut;
+          totals.netMovement += bucket.netMovement;
+          return totals;
+        },
+        {
+          currentProjectedBalance: 0,
+          currentValidatedBalance: 0,
+          movementIn: 0,
+          movementOut: 0,
+          netMovement: 0,
+        }
+      ),
+    }),
+    [bucketBalanceRows]
+  );
+
   const incomeOutflowChartData = useMemo(
     () => buildIncomeOutflowChartData(monthlySummary),
     [monthlySummary]
@@ -439,11 +524,6 @@ export default function Reports({
 
   const savingsTransferChartData = useMemo(
     () => buildSavingsTransferChartData(savingsSummary),
-    [savingsSummary]
-  );
-
-  const bucketBalanceChartData = useMemo(
-    () => buildBucketBalanceChartData(savingsSummary),
     [savingsSummary]
   );
 
@@ -549,6 +629,7 @@ export default function Reports({
       budgetUsedPercentage,
       categoryTotals,
       savingsSummary,
+      bucketBalanceSummary,
       transferSummary,
       trendSummary,
       hasReportData
@@ -1310,10 +1391,10 @@ export default function Reports({
 
           <ChartCard
             title="Bucket Balances"
-            helper="Shows up to eight savings buckets with the highest balances."
+            helper="Shows current projected savings bucket balances."
           >
-            {savingsSummary.buckets.length === 0 ? (
-              <EmptyChartState message="No savings buckets found yet." />
+            {bucketBalanceRows.length === 0 ? (
+              <EmptyChartState message="No savings buckets yet. Add buckets to track how your savings is assigned." />
             ) : (
               <>
                 <MeasuredChartFrame
@@ -1358,14 +1439,17 @@ export default function Reports({
                 </MeasuredChartFrame>
 
                 <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-[760px] divide-y divide-slate-200 text-sm">
+                  <table className="min-w-[920px] divide-y divide-slate-200 text-sm">
                     <thead>
                       <tr>
                         <th className="py-3 pr-4 text-left font-semibold text-slate-600">
                           Bucket
                         </th>
                         <th className="py-3 pr-4 text-right font-semibold text-slate-600">
-                          Balance
+                          Current Projected
+                        </th>
+                        <th className="py-3 pr-4 text-right font-semibold text-slate-600">
+                          Current Validated
                         </th>
                         <th className="py-3 pr-4 text-right font-semibold text-slate-600">
                           Movement In
@@ -1380,22 +1464,25 @@ export default function Reports({
                     </thead>
 
                     <tbody className="divide-y divide-slate-100">
-                      {savingsSummary.buckets.map((bucket) => (
+                      {bucketBalanceRows.map((bucket) => (
                         <tr key={bucket.id || bucket.name}>
                           <td className="py-3 pr-4 font-medium text-slate-900">
                             {bucket.name}
                           </td>
                           <td className="py-3 pr-4 text-right text-slate-700">
-                            {currencyFormatter.format(bucket.balance)}
+                            {currencyFormatter.format(bucket.currentProjectedBalance)}
                           </td>
                           <td className="py-3 pr-4 text-right text-slate-700">
-                            {currencyFormatter.format(bucket.transfersIn)}
+                            {currencyFormatter.format(bucket.currentValidatedBalance)}
                           </td>
                           <td className="py-3 pr-4 text-right text-slate-700">
-                            {currencyFormatter.format(bucket.transfersOut)}
+                            {currencyFormatter.format(bucket.movementIn)}
+                          </td>
+                          <td className="py-3 pr-4 text-right text-slate-700">
+                            {currencyFormatter.format(bucket.movementOut)}
                           </td>
                           <td className="py-3 text-right font-semibold text-slate-950">
-                            {currencyFormatter.format(bucket.netTransfers)}
+                            {currencyFormatter.format(bucket.netMovement)}
                           </td>
                         </tr>
                       ))}
