@@ -365,8 +365,16 @@ export default function Help() {
           account movement does not inflate spending.
         </p>
         <p>
-          Savings transfers affect savings movement. Budget reports compare
-          category spending against monthly budget targets.
+          Planned To Savings means scheduled planner transfers. Validated
+          Planner Transfers means planned transfers marked as confirmed.
+          Transfer Records In/Out are manual transfer records, and Bucket
+          Adjustments are corrections, interest, fees, or other manual bucket
+          changes. Net Savings Movement uses validated planner transfers plus
+          manual transfer records and adjustments.
+        </p>
+        <p>
+          Budget reports compare category spending against monthly budget
+          targets.
         </p>
         <p>
           Reports &gt; Bucket Balances uses the same current bucket projection

@@ -22,23 +22,21 @@ import {
 } from "../logic/projectionLogic";
 import {
   buildIncomeOutflowChartData,
+  buildReportTransferChartData,
+  buildReportTransferSummary,
   buildReportCsvSections,
   buildReportExportFileName,
   buildReportRowsFromPlannerData,
-  buildSavingsTransferChartData,
   calculateMonthlyTrendRows,
   calculatePayPeriodTrendRows,
   calculateBudgetUsedPercentage,
   calculateCategoryTotals,
   calculateMonthlySummary,
-  calculateSavingsSummary,
   calculateSavingsTransferTrendRows,
   calculateTrendSummary,
   dedupeSavingsMovements,
   getAvailableMonths,
   getAvailablePayPeriods,
-  getItemsForMonth,
-  getItemsForPayPeriod,
   getMonthLabel,
   getRowsForMonth,
   getRowsForPayPeriod
@@ -51,7 +49,14 @@ import { tableRowsToCsv } from "../utils/csv";
 import { downloadTextFile } from "../utils/downloadFile";
 
 const INCOME_OUTFLOW_COLORS = ["#2563eb", "#475569", "#f97316", "#059669"];
-const SAVINGS_COLORS = ["#059669", "#dc2626", "#2563eb"];
+const SAVINGS_COLORS = [
+  "#0f766e",
+  "#2563eb",
+  "#059669",
+  "#dc2626",
+  "#ca8a04",
+  "#7c3aed"
+];
 const CATEGORY_COLOR = "#7c3aed";
 const BUCKET_COLOR = "#0f766e";
 const TREND_COLORS = {
@@ -311,34 +316,6 @@ export default function Reports({
     return getRowsForMonth(reportRows, activeSelectedMonth);
   }, [activeSelectedMonth, activeSelectedPayPeriod, reportFilter, reportRows]);
 
-  const scopedSavingsTransfers = useMemo(() => {
-    const movementSource =
-      savingsBucketAdjustments.length > 0 || transfers.length > 0
-        ? dedupeSavingsMovements([...transfers, ...savingsBucketAdjustments])
-        : dedupeSavingsMovements(savingsTransfers);
-
-    if (reportFilter === "payPeriod") {
-      return getItemsForPayPeriod(movementSource, activeSelectedPayPeriod);
-    }
-
-    return getItemsForMonth(movementSource, activeSelectedMonth);
-  }, [
-    activeSelectedMonth,
-    activeSelectedPayPeriod,
-    reportFilter,
-    savingsBucketAdjustments,
-    savingsTransfers,
-    transfers
-  ]);
-
-  const scopedTransferRecords = useMemo(() => {
-    if (reportFilter === "payPeriod") {
-      return getItemsForPayPeriod(transfers, activeSelectedPayPeriod);
-    }
-
-    return getItemsForMonth(transfers, activeSelectedMonth);
-  }, [activeSelectedMonth, activeSelectedPayPeriod, reportFilter, transfers]);
-
   const reportTransactions = useMemo(
     () =>
       buildTransactionsFromAppData({
@@ -419,11 +396,6 @@ export default function Reports({
   const categoryTotals = useMemo(
     () => calculateCategoryTotals(scopedExpenseTransactions, categories).slice(0, 5),
     [categories, scopedExpenseTransactions]
-  );
-
-  const savingsSummary = useMemo(
-    () => calculateSavingsSummary(savingsBuckets, scopedSavingsTransfers),
-    [savingsBuckets, scopedSavingsTransfers]
   );
 
   const bucketProjection = useMemo(
@@ -522,9 +494,35 @@ export default function Reports({
     [categoryTotals]
   );
 
+  const transferSummary = useMemo(
+    () =>
+      buildReportTransferSummary({
+        plannerData,
+        plannerEntries,
+        transfers,
+        savingsBucketAdjustments,
+        savingsBuckets,
+        accounts,
+        selectedView: reportFilter,
+        selectedMonth: activeSelectedMonth,
+        selectedPayPeriod: activeSelectedPayPeriod
+      }),
+    [
+      accounts,
+      activeSelectedMonth,
+      activeSelectedPayPeriod,
+      plannerData,
+      plannerEntries,
+      reportFilter,
+      savingsBucketAdjustments,
+      savingsBuckets,
+      transfers
+    ]
+  );
+
   const savingsTransferChartData = useMemo(
-    () => buildSavingsTransferChartData(savingsSummary),
-    [savingsSummary]
+    () => buildReportTransferChartData(transferSummary),
+    [transferSummary]
   );
 
   const monthlyTrendRows = useMemo(
@@ -580,32 +578,6 @@ export default function Reports({
     [budgetMonthKey, budgetTargets, reportTransactions, categories]
   );
 
-  const transferSummary = useMemo(() => {
-    return scopedTransferRecords.reduce(
-      (summary, transfer) => {
-        const amount = Math.abs(Number(transfer.amount) || 0);
-
-        if (transfer.transferType === "to_savings_bucket") {
-          summary.toSavings += amount;
-        } else if (transfer.transferType === "from_savings_bucket") {
-          summary.fromSavings += amount;
-        } else {
-          summary.accountTransfers += amount;
-        }
-
-        summary.total += amount;
-        return summary;
-      },
-      {
-        total: monthlySummary.transfersIn + monthlySummary.transfersOut,
-        plannedToSavings: monthlySummary.transfersIn,
-        toSavings: 0,
-        fromSavings: 0,
-        accountTransfers: 0
-      }
-    );
-  }, [monthlySummary.transfersIn, monthlySummary.transfersOut, scopedTransferRecords]);
-
   const hasReportData =
     reportRows.length > 0 ||
     miscExpenses.length > 0 ||
@@ -628,7 +600,6 @@ export default function Reports({
       summary: monthlySummary,
       budgetUsedPercentage,
       categoryTotals,
-      savingsSummary,
       bucketBalanceSummary,
       transferSummary,
       trendSummary,
@@ -793,8 +764,8 @@ export default function Reports({
         <>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
             Transfers are shown separately so they do not inflate income or
-            spending totals. Savings movement includes bucket adjustments and
-            bucket-linked transfer records.
+            spending totals. Planned, validated, manual, and adjustment-based
+            savings movement are reported separately.
           </div>
 
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -835,31 +806,38 @@ export default function Reports({
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <StatCard
-                label="Total Transfers"
-                value={currencyFormatter.format(transferSummary.total)}
-                helper="Shown outside income and spending"
-              />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               <StatCard
                 label="Planned To Savings"
                 value={currencyFormatter.format(transferSummary.plannedToSavings)}
                 helper="Scheduled planner transfers"
               />
               <StatCard
-                label="Transfers To Savings"
-                value={currencyFormatter.format(transferSummary.toSavings)}
-                helper="Transfer records into savings"
+                label="Validated Planner Transfers"
+                value={currencyFormatter.format(
+                  transferSummary.validatedPlannerTransfers
+                )}
+                helper="Planner transfers marked validated"
               />
               <StatCard
-                label="Transfers From Savings"
-                value={currencyFormatter.format(transferSummary.fromSavings)}
-                helper="Transfer records back to chequing"
+                label="Transfer Records In"
+                value={currencyFormatter.format(transferSummary.transferRecordsIn)}
+                helper="Manual records into savings"
               />
               <StatCard
-                label="Account Transfers"
-                value={currencyFormatter.format(transferSummary.accountTransfers)}
-                helper="Transfers without bucket movement"
+                label="Transfer Records Out"
+                value={currencyFormatter.format(transferSummary.transferRecordsOut)}
+                helper="Manual records from savings"
+              />
+              <StatCard
+                label="Bucket Adjustments"
+                value={currencyFormatter.format(transferSummary.bucketAdjustments)}
+                helper="Manual bucket corrections"
+              />
+              <StatCard
+                label="Net Savings Movement"
+                value={currencyFormatter.format(transferSummary.netSavingsMovement)}
+                helper="Validated planner transfers plus manual movement"
               />
             </div>
           </section>
@@ -1029,7 +1007,7 @@ export default function Reports({
 
             <ChartCard
               title="Savings Movement"
-              helper="Compares bucket-linked transfers and savings bucket adjustments without counting them as regular spending."
+              helper="Shows planned planner transfers, validated planner transfers, manual transfer records, and bucket adjustments without counting them as regular spending."
             >
               {!chartHasAnyValue(savingsTransferChartData) ? (
                 <EmptyChartState message="No transfers or savings movement found for this filter." />
@@ -1077,34 +1055,59 @@ export default function Reports({
                 </MeasuredChartFrame>
               )}
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-medium text-slate-500">
-                    Movement In
-                  </p>
-                  <p className="mt-2 text-xl font-bold text-slate-950">
-                    {currencyFormatter.format(savingsSummary.totals.transfersIn)}
-                  </p>
-                </div>
+              {transferSummary.activityRows.length > 0 && (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-[900px] divide-y divide-slate-200 text-sm">
+                    <thead>
+                      <tr>
+                        <th className="py-3 pr-4 text-left font-semibold text-slate-600">
+                          Date
+                        </th>
+                        <th className="py-3 pr-4 text-left font-semibold text-slate-600">
+                          Source
+                        </th>
+                        <th className="py-3 pr-4 text-left font-semibold text-slate-600">
+                          Bucket
+                        </th>
+                        <th className="py-3 pr-4 text-left font-semibold text-slate-600">
+                          Type
+                        </th>
+                        <th className="py-3 pr-4 text-right font-semibold text-slate-600">
+                          Amount
+                        </th>
+                        <th className="py-3 text-left font-semibold text-slate-600">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
 
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-medium text-slate-500">
-                    Movement Out
-                  </p>
-                  <p className="mt-2 text-xl font-bold text-slate-950">
-                    {currencyFormatter.format(savingsSummary.totals.transfersOut)}
-                  </p>
+                    <tbody className="divide-y divide-slate-100">
+                      {transferSummary.activityRows.map((activity) => (
+                        <tr key={activity.id}>
+                          <td className="py-3 pr-4 text-slate-700">
+                            {activity.dateLabel}
+                          </td>
+                          <td className="py-3 pr-4 text-slate-700">
+                            {activity.source}
+                          </td>
+                          <td className="py-3 pr-4 font-medium text-slate-900">
+                            {activity.bucket}
+                          </td>
+                          <td className="py-3 pr-4 text-slate-700">
+                            {activity.type}
+                          </td>
+                          <td className="py-3 pr-4 text-right font-semibold text-slate-950">
+                            {currencyFormatter.format(activity.amount)}
+                          </td>
+                          <td className="py-3 text-slate-700">
+                            {activity.status}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-medium text-slate-500">
-                    Net Movement
-                  </p>
-                  <p className="mt-2 text-xl font-bold text-slate-950">
-                    {currencyFormatter.format(savingsSummary.totals.netTransfers)}
-                  </p>
-                </div>
-              </div>
+              )}
             </ChartCard>
           </section>
 

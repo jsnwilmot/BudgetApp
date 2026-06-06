@@ -1,3 +1,6 @@
+import { getEntryKey } from "./projectionLogic";
+import { getTransferBucketEffect } from "./transferLogic";
+
 export function normalizeNumber(value) {
   const numberValue = Number(value ?? 0);
   return Number.isFinite(numberValue) ? numberValue : 0;
@@ -235,6 +238,312 @@ export function getItemsForMonth(items = [], monthKey) {
 
 export function getItemsForPayPeriod(items = [], payPeriodDate) {
   return items.filter((item) => getItemPayPeriodDate(item) === payPeriodDate);
+}
+
+function getIsoDateValue(value) {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    const dateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (dateMatch) {
+      return `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+    }
+  }
+
+  const date = parseReportDate(value);
+  return date
+    ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(date.getDate()).padStart(2, "0")}`
+    : "";
+}
+
+function getNextPayPeriodDate(payPeriods = [], selectedPayPeriod) {
+  return [...payPeriods]
+    .map((period) => period.date)
+    .filter(Boolean)
+    .sort()
+    .find((periodDate) => periodDate > selectedPayPeriod);
+}
+
+function isDateInPayPeriodWindow(dateValue, selectedPayPeriod, payPeriods = []) {
+  const dateKey = getIsoDateValue(dateValue);
+
+  if (!dateKey || !selectedPayPeriod) {
+    return false;
+  }
+
+  if (dateKey === selectedPayPeriod) {
+    return true;
+  }
+
+  const nextPayPeriodDate = getNextPayPeriodDate(payPeriods, selectedPayPeriod);
+
+  if (!nextPayPeriodDate) {
+    return false;
+  }
+
+  return dateKey >= selectedPayPeriod && dateKey < nextPayPeriodDate;
+}
+
+function itemMatchesReportFilter(
+  item = {},
+  { selectedView = "month", selectedMonth = "", selectedPayPeriod = "", payPeriods = [] } = {}
+) {
+  if (selectedView === "payPeriod") {
+    const explicitPayPeriodDate = getIsoDateValue(
+      item.payPeriodDate || item.periodDate || item.payDate
+    );
+
+    if (explicitPayPeriodDate) {
+      return explicitPayPeriodDate === selectedPayPeriod;
+    }
+
+    return isDateInPayPeriodWindow(item.date, selectedPayPeriod, payPeriods);
+  }
+
+  return [item.payPeriodDate, item.periodDate, item.payDate, item.date].some(
+    (dateValue) => formatMonthKey(dateValue) === selectedMonth
+  );
+}
+
+function getBucketIdFromPlannerRow(row = {}) {
+  return (
+    row.item?.bucketId ||
+    row.item?.savingsBucketId ||
+    row.bucketId ||
+    row.savingsBucketId ||
+    null
+  );
+}
+
+function buildBucketNameMap(savingsBuckets = []) {
+  return new Map(
+    savingsBuckets
+      .filter((bucket) => bucket?.id)
+      .map((bucket) => [bucket.id, bucket.name || "Unnamed bucket"])
+  );
+}
+
+function getBucketName(bucketId, bucketNameMap) {
+  return bucketId ? bucketNameMap.get(bucketId) || bucketId : "No bucket";
+}
+
+function isSavingsPlannerTransfer(row = {}, accounts = []) {
+  if (row.type !== "transfer") {
+    return false;
+  }
+
+  if (getBucketIdFromPlannerRow(row)) {
+    return true;
+  }
+
+  const savingsAccountIds = new Set(
+    accounts
+      .filter((account) => account.type === "savings")
+      .map((account) => account.id)
+  );
+
+  return Boolean(
+    row.item?.toAccountId && savingsAccountIds.has(row.item.toAccountId)
+  );
+}
+
+function getPlannerAmount(row = {}, periodDate) {
+  return normalizeNumber(row.amountsByPeriod?.[periodDate]);
+}
+
+function getPlannerActivityDateLabel(periodDate, payPeriods = []) {
+  return (
+    payPeriods.find((period) => period.date === periodDate)?.label ||
+    formatFullDateLabel(periodDate)
+  );
+}
+
+export function buildReportTransferChartData(transferSummary = {}) {
+  return [
+    {
+      name: "Planned",
+      value: normalizeNumber(transferSummary.plannedToSavings)
+    },
+    {
+      name: "Validated",
+      value: normalizeNumber(transferSummary.validatedPlannerTransfers)
+    },
+    {
+      name: "Records In",
+      value: normalizeNumber(transferSummary.transferRecordsIn)
+    },
+    {
+      name: "Records Out",
+      value: normalizeNumber(transferSummary.transferRecordsOut)
+    },
+    {
+      name: "Adjustments",
+      value: normalizeNumber(transferSummary.bucketAdjustments)
+    },
+    {
+      name: "Net",
+      value: normalizeNumber(transferSummary.netSavingsMovement)
+    }
+  ];
+}
+
+export function buildReportTransferSummary({
+  plannerData = {},
+  plannerEntries = {},
+  transfers = [],
+  savingsBucketAdjustments = [],
+  savingsBuckets = [],
+  accounts = [],
+  selectedView = "month",
+  selectedMonth = "",
+  selectedPayPeriod = ""
+} = {}) {
+  const payPeriods = plannerData?.payPeriods || [];
+  const plannerRows = plannerData?.rows || [];
+  const bucketNameMap = buildBucketNameMap(savingsBuckets);
+  const filterOptions = {
+    selectedView,
+    selectedMonth,
+    selectedPayPeriod,
+    payPeriods
+  };
+  const selectedPeriods =
+    selectedView === "payPeriod"
+      ? payPeriods.filter((period) => period.date === selectedPayPeriod)
+      : payPeriods.filter((period) => formatMonthKey(period.date) === selectedMonth);
+  const summary = {
+    plannedToSavings: 0,
+    validatedPlannerTransfers: 0,
+    transferRecordsIn: 0,
+    transferRecordsOut: 0,
+    accountTransfers: 0,
+    bucketAdjustments: 0,
+    netSavingsMovement: 0,
+    activityRows: []
+  };
+
+  selectedPeriods.forEach((period) => {
+    plannerRows
+      .filter((row) => isSavingsPlannerTransfer(row, accounts))
+      .forEach((row) => {
+        const amount = getPlannerAmount(row, period.date);
+
+        if (amount === 0) {
+          return;
+        }
+
+        const entry = plannerEntries[getEntryKey(row.id, period.date)];
+        const validated = Boolean(entry?.validated);
+        const bucketId = getBucketIdFromPlannerRow(row);
+
+        summary.plannedToSavings += amount;
+
+        if (validated) {
+          summary.validatedPlannerTransfers += amount;
+        }
+
+        summary.activityRows.push({
+          id: `planner-${row.id}-${period.date}`,
+          date: period.date,
+          dateLabel: getPlannerActivityDateLabel(period.date, payPeriods),
+          source: "Planner",
+          bucket: getBucketName(bucketId, bucketNameMap),
+          type: validated ? "Validated Planner Transfer" : "Planned Transfer",
+          amount,
+          status: validated ? "Validated" : "Planned",
+          sortDate: period.date
+        });
+      });
+  });
+
+  transfers
+    .filter((transfer) => itemMatchesReportFilter(transfer, filterOptions))
+    .forEach((transfer) => {
+      const amount = Math.abs(normalizeNumber(transfer.amount));
+      const bucketId = transfer.bucketId || transfer.savingsBucketId || null;
+      const bucketEffect = getTransferBucketEffect(transfer);
+
+      if (bucketEffect.transfersIn > 0) {
+        summary.transferRecordsIn += bucketEffect.transfersIn;
+        summary.activityRows.push({
+          id: transfer.id || `transfer-in-${summary.activityRows.length}`,
+          date: transfer.payPeriodDate || transfer.date || "",
+          dateLabel: formatFullDateLabel(transfer.payPeriodDate || transfer.date),
+          source: "Transfer Record",
+          bucket: getBucketName(bucketId, bucketNameMap),
+          type: "Manual Transfer In",
+          amount: bucketEffect.transfersIn,
+          status: "Manual",
+          sortDate: getIsoDateValue(transfer.payPeriodDate || transfer.date)
+        });
+        return;
+      }
+
+      if (bucketEffect.transfersOut > 0) {
+        summary.transferRecordsOut += bucketEffect.transfersOut;
+        summary.activityRows.push({
+          id: transfer.id || `transfer-out-${summary.activityRows.length}`,
+          date: transfer.payPeriodDate || transfer.date || "",
+          dateLabel: formatFullDateLabel(transfer.payPeriodDate || transfer.date),
+          source: "Transfer Record",
+          bucket: getBucketName(bucketId, bucketNameMap),
+          type: "Manual Transfer Out",
+          amount: bucketEffect.transfersOut,
+          status: "Manual",
+          sortDate: getIsoDateValue(transfer.payPeriodDate || transfer.date)
+        });
+        return;
+      }
+
+      summary.accountTransfers += amount;
+    });
+
+  savingsBucketAdjustments
+    .filter((adjustment) => itemMatchesReportFilter(adjustment, filterOptions))
+    .forEach((adjustment) => {
+      const amount = normalizeNumber(adjustment.amount);
+      const bucketId = adjustment.bucketId || adjustment.savingsBucketId || null;
+
+      if (amount === 0) {
+        return;
+      }
+
+      summary.bucketAdjustments += amount;
+      summary.activityRows.push({
+        id: adjustment.id || `adjustment-${summary.activityRows.length}`,
+        date: adjustment.payPeriodDate || adjustment.date || "",
+        dateLabel: formatFullDateLabel(adjustment.payPeriodDate || adjustment.date),
+        source: "Bucket Adjustment",
+        bucket: getBucketName(bucketId, bucketNameMap),
+        type: "Bucket Adjustment",
+        amount,
+        status: "Adjustment",
+        sortDate: getIsoDateValue(adjustment.payPeriodDate || adjustment.date)
+      });
+    });
+
+  summary.netSavingsMovement =
+    summary.validatedPlannerTransfers +
+    summary.transferRecordsIn -
+    summary.transferRecordsOut +
+    summary.bucketAdjustments;
+  summary.activityRows.sort((left, right) => {
+    const dateSort = String(left.sortDate || "").localeCompare(
+      String(right.sortDate || "")
+    );
+
+    if (dateSort !== 0) {
+      return dateSort;
+    }
+
+    return String(left.type || "").localeCompare(String(right.type || ""));
+  });
+
+  return summary;
 }
 
 function isMiscExpenseRow(row) {
@@ -754,6 +1063,7 @@ export function buildReportCsvSections(reportData = {}) {
     trendSummary = {},
     hasReportData = false
   } = reportData;
+  const transferActivityRows = transferSummary.activityRows || [];
   const totalExpenses =
     normalizeNumber(summary.expenses) + normalizeNumber(summary.miscExpenses);
   const netCashFlow =
@@ -788,22 +1098,40 @@ export function buildReportCsvSections(reportData = {}) {
     ["Summary", "Budget Used %", normalizeNumber(budgetUsedPercentage)],
     [],
     ["Section", "Field", "Value"],
-    ["Transfers", "Total Transfers", normalizeNumber(transferSummary.total)],
     [
       "Transfers",
       "Planned To Savings",
       normalizeNumber(transferSummary.plannedToSavings)
     ],
-    ["Transfers", "Transfers To Savings", normalizeNumber(transferSummary.toSavings)],
     [
       "Transfers",
-      "Transfers From Savings",
-      normalizeNumber(transferSummary.fromSavings)
+      "Validated Planner Transfers",
+      normalizeNumber(transferSummary.validatedPlannerTransfers)
+    ],
+    [
+      "Transfers",
+      "Transfer Records In",
+      normalizeNumber(transferSummary.transferRecordsIn)
+    ],
+    [
+      "Transfers",
+      "Transfer Records Out",
+      normalizeNumber(transferSummary.transferRecordsOut)
+    ],
+    [
+      "Transfers",
+      "Bucket Adjustments",
+      normalizeNumber(transferSummary.bucketAdjustments)
     ],
     [
       "Transfers",
       "Account Transfers",
       normalizeNumber(transferSummary.accountTransfers)
+    ],
+    [
+      "Transfers",
+      "Net Savings Movement",
+      normalizeNumber(transferSummary.netSavingsMovement)
     ],
     [],
     ["Section", "Category", "Total"]
@@ -826,19 +1154,63 @@ export function buildReportCsvSections(reportData = {}) {
     ["Section", "Field", "Value"],
     [
       "Savings Movement",
-      "Movement In",
-      normalizeNumber(savingsSummary.totals?.transfersIn)
+      "Planned To Savings",
+      normalizeNumber(transferSummary.plannedToSavings)
     ],
     [
       "Savings Movement",
-      "Movement Out",
-      normalizeNumber(savingsSummary.totals?.transfersOut)
+      "Validated Planner Transfers",
+      normalizeNumber(transferSummary.validatedPlannerTransfers)
     ],
     [
       "Savings Movement",
-      "Net Movement",
-      normalizeNumber(savingsSummary.totals?.netTransfers)
+      "Transfer Records In",
+      normalizeNumber(transferSummary.transferRecordsIn)
     ],
+    [
+      "Savings Movement",
+      "Transfer Records Out",
+      normalizeNumber(transferSummary.transferRecordsOut)
+    ],
+    [
+      "Savings Movement",
+      "Bucket Adjustments",
+      normalizeNumber(transferSummary.bucketAdjustments)
+    ],
+    [
+      "Savings Movement",
+      "Net Savings Movement",
+      normalizeNumber(transferSummary.netSavingsMovement)
+    ],
+    [],
+    ["Section", "Date", "Source", "Bucket", "Type", "Amount", "Status"]
+  );
+
+  if (transferActivityRows.length === 0) {
+    rows.push([
+      "Savings Movement Activity",
+      "No transfer or savings movement found",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]);
+  } else {
+    transferActivityRows.forEach((activity) => {
+      rows.push([
+        "Savings Movement Activity",
+        activity.date || activity.dateLabel || "",
+        activity.source || "",
+        activity.bucket || "",
+        activity.type || "",
+        normalizeNumber(activity.amount),
+        activity.status || ""
+      ]);
+    });
+  }
+
+  rows.push(
     [],
     [
       "Section",

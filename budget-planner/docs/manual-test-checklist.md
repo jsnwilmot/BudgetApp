@@ -49,9 +49,15 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Validating that planner transfer updates Current Validated bucket balance.
 - [ ] Reports Bucket Balances chart uses current projected bucket balances.
 - [ ] Reports Bucket Balances table balance does not equal the starting amount when current movement exists.
-- [ ] Reports Movement In reflects planner transfer inflows.
-- [ ] Reports Movement Out reflects transfer records out of a bucket.
-- [ ] Reports Net Movement reflects transfer movement plus bucket adjustments.
+- [ ] Pay Period view planned transfer appears under Reports Planned To Savings.
+- [ ] Validated planner transfer appears under Reports Validated Planner Transfers.
+- [ ] Manual transfer into savings appears under Reports Transfer Records In.
+- [ ] Manual transfer from savings appears under Reports Transfer Records Out.
+- [ ] Bucket adjustment appears in Reports Bucket Adjustments or Net Savings Movement.
+- [ ] Reports Net Savings Movement reflects validated planner transfers plus manual transfer records and bucket adjustments.
+- [ ] Reports Savings Movement no longer shows an empty state when planned, validated, manual, or adjustment activity exists.
+- [ ] Month view includes all matching transfer activity in the month.
+- [ ] Pay Period view includes only the selected pay period's transfer activity.
 - [ ] Savings Buckets and Reports show consistent current projected bucket balances.
 - [ ] Validated planner transfer appears as read-only Bucket Activity.
 - [ ] Manual transfer record appears in Bucket Activity with Edit/Delete actions.

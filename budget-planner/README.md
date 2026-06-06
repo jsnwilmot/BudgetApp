@@ -110,9 +110,17 @@ Savings Buckets, Budgets, Accounts, and Unified Transfers.
   data.
 - Transfers are shown separately so internal account movement does not inflate
   income or spending.
-- Savings movement uses savings bucket adjustments and bucket-linked transfer
-  records, with simple duplicate protection for matching transfer/adjustment
-  events.
+- Planned To Savings means scheduled planner transfers for the selected report
+  period.
+- Validated Planner Transfers means scheduled planner transfers whose planner
+  cells are marked validated.
+- Transfer Records In/Out are manually saved transfer records that move money
+  into or out of savings buckets.
+- Bucket Adjustments are corrections, interest, fees, or other manual bucket
+  changes.
+- Net Savings Movement uses validated planner transfers plus manual transfer
+  records and bucket adjustments. Unvalidated planned transfers remain separate
+  as planned movement.
 - Reports > Bucket Balances uses the same current bucket projection data as
   Savings Buckets. Starting bucket balances are only the baseline; current
   projected balances include planner transfers, transfer records, and bucket
@@ -669,6 +677,8 @@ Completed:
 - Kept transfers separate from income and spending totals.
 - Improved savings movement reporting for bucket adjustments and transfer
   records.
+- Fixed Reports transfer summaries so planned, validated, manual, and
+  adjustment-based savings movement are clearly separated.
 - Fixed Reports bucket balances to use current projected and validated bucket
   projection data instead of only starting balances.
 - Aligned budget reporting with monthly budget targets.
