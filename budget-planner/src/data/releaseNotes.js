@@ -11,6 +11,7 @@ export const RELEASE_NOTES = {
     'Improved Savings Buckets with current projected balances, validated bucket balances, and read-only validated planner transfer activity.',
     'Fixed Reports bucket balances so they use current bucket projection data instead of only starting balances.',
     'Fixed Reports transfer summaries so planned, validated, manual, and adjustment-based savings movement are clearly separated.',
+    'Improved missing-account alerts with clearer copy and focused Transactions navigation.',
     'Confirmed mobile and PWA release readiness.',
     'Prepared the app for stable daily use before future desktop migration.',
   ],

@@ -55,6 +55,69 @@ function buildIdMap(items = []) {
   );
 }
 
+function cleanAlertDescription(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function normalizeAlertDescription(value) {
+  return cleanAlertDescription(value).toLowerCase();
+}
+
+function getAlertDescriptionScore(value) {
+  const description = cleanAlertDescription(value);
+  const words = description.split(' ').filter(Boolean);
+  const titleCaseWords = words.filter((word) => /^[A-Z][a-z]/.test(word)).length;
+  const allCapsWords = words.filter(
+    (word) =>
+      word.length > 1 && /[A-Z]/.test(word) && word === word.toUpperCase()
+  ).length;
+  const uppercaseCharacters = (description.match(/[A-Z]/g) || []).length;
+
+  return titleCaseWords * 100 - allCapsWords * 10 + uppercaseCharacters;
+}
+
+function getMissingAccountAlertDetails(transaction = {}, settings = {}) {
+  const details = [];
+
+  if (transaction.date) {
+    details.push(formatShortDate(transaction.date));
+  }
+
+  if (transaction.amount !== undefined && transaction.amount !== null) {
+    details.push(formatAlertCurrency(Math.abs(transaction.amount), settings?.currency));
+  }
+
+  return details.length > 0 ? ` ${details.join(' · ')}.` : '';
+}
+
+function buildMissingAccountAlert(transaction = {}, description, settings = {}) {
+  const normalizedDescription =
+    normalizeAlertDescription(description) || 'transaction';
+
+  return {
+    id: `missing-account:${normalizedDescription}`,
+    type: 'data-warning',
+    severity: 'info',
+    title: `${description} needs an account`,
+    message: `This planned transaction is missing the account or bucket it should use. Assign an account so projections and reports stay accurate.${getMissingAccountAlertDetails(
+      transaction,
+      settings
+    )}`,
+    source: 'data',
+    sourceId: transaction.sourceId || transaction.id || null,
+    actionLabel: 'Fix account',
+    actionPage: 'transactions',
+    actionState: {
+      transactionSearch: description,
+      accountFilter: '__missing__',
+      highlightMissingAccount: true,
+    },
+    date: transaction.date || '',
+  };
+}
+
 export function getLowBalanceAlerts({
   plannerData,
   settings,
@@ -290,11 +353,14 @@ export function getDataWarningAlerts({
   savingsBuckets = [],
   savingsBucketAdjustments = [],
   transfers = [],
+  settings = {},
 } = {}) {
   const alerts = [];
   const categoryMap = buildIdMap(categories);
   const accountMap = buildIdMap(accounts);
   const bucketMap = buildIdMap(savingsBuckets);
+  const missingAccountAlerts = new Map();
+  const missingAccountScheduledItemKeys = new Set();
 
   scheduledItems.forEach((item) => {
     const normalizedItem = normalizeScheduledItem(item);
@@ -346,19 +412,48 @@ export function getDataWarningAlerts({
     }
 
     if (transaction.accountId && !accountMap.has(transaction.accountId)) {
-      alerts.push({
-        id: `data-warning-transaction-account-${transaction.id}`,
-        type: 'data-warning',
-        severity: 'info',
-        title: 'Transaction account missing',
-        message: `${transaction.description || 'A transaction'} references a missing account.`,
-        source: 'data',
-        sourceId: transaction.id || null,
-        actionLabel: 'Review transactions',
-        actionPage: 'transactions',
+      const description = cleanAlertDescription(
+        transaction.description || 'Transaction'
+      );
+      const normalizedDescription =
+        normalizeAlertDescription(description) || 'transaction';
+      const descriptionKey = `missing-account:${normalizedDescription}`;
+      const existingAlert = missingAccountAlerts.get(descriptionKey);
+      const scheduledItemKey =
+        transaction.source === 'scheduled-item' && transaction.sourceId
+          ? `missing-account-scheduled-item:${transaction.sourceId}`
+          : '';
+
+      if (existingAlert) {
+        if (getAlertDescriptionScore(description) > existingAlert.descriptionScore) {
+          missingAccountAlerts.set(descriptionKey, {
+            alert: buildMissingAccountAlert(transaction, description, settings),
+            descriptionScore: getAlertDescriptionScore(description),
+          });
+        }
+
+        return;
+      }
+
+      if (
+        scheduledItemKey &&
+        missingAccountScheduledItemKeys.has(scheduledItemKey)
+      ) {
+        return;
+      }
+
+      if (scheduledItemKey) {
+        missingAccountScheduledItemKeys.add(scheduledItemKey);
+      }
+
+      missingAccountAlerts.set(descriptionKey, {
+        alert: buildMissingAccountAlert(transaction, description, settings),
+        descriptionScore: getAlertDescriptionScore(description),
       });
     }
   });
+
+  missingAccountAlerts.forEach(({ alert }) => alerts.push(alert));
 
   savingsBucketAdjustments.forEach((adjustment) => {
     const bucketId = adjustment.bucketId || adjustment.savingsBucketId;
@@ -526,6 +621,7 @@ export function generateAlerts({
       savingsBuckets,
       savingsBucketAdjustments,
       transfers,
+      settings,
     }),
   ];
 

@@ -76,6 +76,27 @@ function compareDate(left, right) {
   return leftDate.localeCompare(rightDate);
 }
 
+function transactionHasMissingAccount(transaction = {}) {
+  return transaction.accountName === 'Missing account';
+}
+
+function transactionHasMissingLocation(transaction = {}) {
+  return (
+    transactionHasMissingAccount(transaction) ||
+    transaction.savingsBucketName === 'Missing savings bucket'
+  );
+}
+
+function getTransactionLocation(transaction = {}) {
+  if (transactionHasMissingAccount(transaction)) {
+    return transaction.accountName;
+  }
+
+  return transaction.savingsBucketId
+    ? transaction.savingsBucketName
+    : transaction.accountName;
+}
+
 export default function Transactions({
   settings,
   scheduledItems = [],
@@ -85,17 +106,25 @@ export default function Transactions({
   savingsBuckets = [],
   accounts = [],
   categories = [],
+  navigationState = null,
 }) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(
+    () => navigationState?.transactionSearch || ''
+  );
   const [typeFilter, setTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [accountFilter, setAccountFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState(
+    () => navigationState?.accountFilter || 'all'
+  );
   const [bucketFilter, setBucketFilter] = useState('all');
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [sortOrder, setSortOrder] = useState('date-desc');
   const [exportMessage, setExportMessage] = useState('');
+  const [highlightMissingAccount, setHighlightMissingAccount] = useState(
+    () => Boolean(navigationState?.highlightMissingAccount)
+  );
   const currency = settings?.currency || 'CAD';
 
   const transactions = useMemo(
@@ -162,8 +191,16 @@ export default function Transactions({
         }
 
         if (
+          accountFilter === '__missing__' &&
+          !transactionHasMissingAccount(transaction)
+        ) {
+          return false;
+        }
+
+        if (
           accountFilter !== 'all' &&
           accountFilter !== '__none' &&
+          accountFilter !== '__missing__' &&
           transaction.accountId !== accountFilter
         ) {
           return false;
@@ -359,11 +396,17 @@ export default function Transactions({
             <span className="text-sm font-medium text-slate-700">Account</span>
             <select
               value={accountFilter}
-              onChange={(event) => setAccountFilter(event.target.value)}
+              onChange={(event) => {
+                setAccountFilter(event.target.value);
+                setHighlightMissingAccount(
+                  event.target.value === '__missing__'
+                );
+              }}
               className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-900"
             >
               <option value="all">All accounts</option>
               <option value="__none">No account</option>
+              <option value="__missing__">Missing account</option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
@@ -450,6 +493,16 @@ export default function Transactions({
         </div>
       </section>
 
+      {highlightMissingAccount ? (
+        <div
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+          role="status"
+        >
+          Showing transactions that need an account. Edit the source scheduled
+          item or transaction to assign one.
+        </div>
+      ) : null}
+
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {filteredTransactions.length === 0 ? (
           <div className="p-8 text-center">
@@ -466,15 +519,19 @@ export default function Transactions({
           <div className="grid gap-3 p-3 md:hidden">
             {filteredTransactions.map((transaction) => {
               const signedAmount = getTransactionAmountLabel(transaction);
-              const location =
-                transaction.savingsBucketId
-                  ? transaction.savingsBucketName
-                  : transaction.accountName;
+              const emphasizeMissingAccount =
+                highlightMissingAccount &&
+                transactionHasMissingLocation(transaction);
+              const location = getTransactionLocation(transaction);
 
               return (
                 <article
                   key={transaction.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4"
+                  className={`rounded-xl border p-4 ${
+                    emphasizeMissingAccount
+                      ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-300'
+                      : 'border-slate-200 bg-white'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -513,7 +570,13 @@ export default function Transactions({
                     </div>
                     <div className="flex justify-between gap-3">
                       <dt className="text-slate-500">Account/Bucket</dt>
-                      <dd className="break-anywhere text-right font-medium text-slate-800">
+                      <dd
+                        className={`break-anywhere text-right font-medium ${
+                          emphasizeMissingAccount
+                            ? 'text-amber-900'
+                            : 'text-slate-800'
+                        }`}
+                      >
                         {location}
                       </dd>
                     </div>
@@ -556,13 +619,20 @@ export default function Transactions({
               <tbody>
                 {filteredTransactions.map((transaction) => {
                   const signedAmount = getTransactionAmountLabel(transaction);
-                  const location =
-                    transaction.savingsBucketId
-                      ? transaction.savingsBucketName
-                      : transaction.accountName;
+                  const emphasizeMissingAccount =
+                    highlightMissingAccount &&
+                    transactionHasMissingLocation(transaction);
+                  const location = getTransactionLocation(transaction);
 
                   return (
-                    <tr key={transaction.id} className="border-t border-slate-200">
+                    <tr
+                      key={transaction.id}
+                      className={`border-t ${
+                        emphasizeMissingAccount
+                          ? 'border-amber-300 bg-amber-50'
+                          : 'border-slate-200'
+                      }`}
+                    >
                       <td className="px-4 py-3 text-sm text-slate-700">
                         {formatDate(transaction.date)}
                       </td>
@@ -591,7 +661,13 @@ export default function Transactions({
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        <span className="block max-w-[180px] truncate">
+                        <span
+                          className={`block max-w-[180px] truncate ${
+                            emphasizeMissingAccount
+                              ? 'font-bold text-amber-900'
+                              : ''
+                          }`}
+                        >
                           {location}
                         </span>
                       </td>

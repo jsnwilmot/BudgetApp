@@ -68,7 +68,7 @@ export default function AlertList({
                   {alert.actionPage && alert.actionLabel && onAction ? (
                     <button
                       type="button"
-                      onClick={() => onAction(alert.actionPage)}
+                      onClick={() => onAction(alert)}
                       className="rounded-lg border border-current px-3 py-2 text-sm font-semibold hover:bg-white/60"
                     >
                       {alert.actionLabel}

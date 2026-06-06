@@ -18,6 +18,12 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Main navigation opens Dashboard, Planner, Transactions, Reports, Manage, Settings, and Help.
 - [ ] Manage opens Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
 - [ ] Saved local data remains after refresh.
+- [ ] Two missing-account planned rows named `Property Taxes` and `Property taxes` produce one Dashboard alert.
+- [ ] Missing-account alert copy includes the transaction description, date, and amount when available.
+- [ ] Fix account opens Transactions with the matching description search and Missing account filter applied.
+- [ ] Focused missing-account Transactions view shows the helper message and visibly highlights the affected row.
+- [ ] Dismissing a missing-account alert still works.
+- [ ] Unrelated Dashboard alerts still navigate and dismiss normally.
 
 ## Core Workflows
 

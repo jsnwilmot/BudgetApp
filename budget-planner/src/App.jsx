@@ -188,6 +188,8 @@ function hasNoUserRecords({
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [transactionNavigationState, setTransactionNavigationState] =
+    useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [settings, setSettings] = useState(appSettings);
   const [budgetTargets, setBudgetTargets] = useState(seedBudgetTargets);
@@ -521,7 +523,27 @@ export default function App() {
     [visibleAlerts]
   );
 
-  const handleAlertAction = useCallback((pageId) => {
+  const handlePageChange = useCallback((pageId) => {
+    if (pageId !== 'transactions') {
+      setTransactionNavigationState(null);
+    }
+
+    setCurrentPage(pageId);
+  }, []);
+
+  const handleAlertAction = useCallback((alertOrPageId) => {
+    const pageId =
+      typeof alertOrPageId === 'string'
+        ? alertOrPageId
+        : alertOrPageId?.actionPage;
+
+    if (!pageId) {
+      return;
+    }
+
+    setTransactionNavigationState(
+      pageId === 'transactions' ? alertOrPageId?.actionState || null : null
+    );
     setCurrentPage(pageId);
   }, []);
 
@@ -1204,7 +1226,7 @@ export default function App() {
         <AppSplash onFinished={handleSplashFinished} />
       ) : null}
 
-      <AppShell currentPage={currentPage} onPageChange={setCurrentPage}>
+      <AppShell currentPage={currentPage} onPageChange={handlePageChange}>
 
         <Suspense fallback={<PageLoadingFallback />}>
           {currentPage === 'dashboard' ? (
@@ -1263,6 +1285,7 @@ export default function App() {
               savingsBuckets={savingsBuckets}
               accounts={accounts}
               categories={categories}
+              navigationState={transactionNavigationState}
             />
           ) : null}
 

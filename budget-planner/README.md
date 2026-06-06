@@ -29,6 +29,8 @@ release that should show the one-time What's New popup.
 ## Features
 
 - Dashboard with cash-flow summary, projection chart, and alerts.
+- Missing-account alerts are deduplicated and open Transactions with the
+  affected item filtered and highlighted.
 - Planner with editable projected and actual amounts plus a current pay period summary.
 - Transactions view derived from scheduled items, adjustments, and savings activity.
 - Manage area for Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
@@ -431,6 +433,8 @@ branding. The GitHub Pages base path remains `/BudgetApp/`.
 - Added local in-app alerts for low balances, budgets, upcoming bills, setup,
   and data warnings.
 - Added Dashboard and contextual page-level alert panels.
+- Missing-account alerts link to a focused Transactions view so the affected
+  planned item is clear.
 
 ### Phase 1W: Data Cleanup And Migration Safety
 

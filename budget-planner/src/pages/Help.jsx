@@ -317,6 +317,19 @@ export default function Help() {
         </div>
       </HelpCard>
 
+      <HelpCard title="Missing Account Alerts">
+        <p>
+          Missing-account alerts appear when a planned transaction references
+          an account that is no longer available. Use Fix account to open
+          Transactions filtered to the affected item.
+        </p>
+        <p>
+          The highlighted transaction shows what needs attention. Edit its
+          source scheduled item or transaction to assign the correct account so
+          projections and reports stay accurate.
+        </p>
+      </HelpCard>
+
       <HelpCard title="Planner Total Rows">
         <div className="grid gap-3 md:grid-cols-2">
           {plannerTotals.map(([title, description]) => (
