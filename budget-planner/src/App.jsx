@@ -190,6 +190,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [transactionNavigationState, setTransactionNavigationState] =
     useState(null);
+  const [scheduledItemNavigationState, setScheduledItemNavigationState] =
+    useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [settings, setSettings] = useState(appSettings);
   const [budgetTargets, setBudgetTargets] = useState(seedBudgetTargets);
@@ -528,6 +530,10 @@ export default function App() {
       setTransactionNavigationState(null);
     }
 
+    if (pageId !== 'scheduled-items') {
+      setScheduledItemNavigationState(null);
+    }
+
     setCurrentPage(pageId);
   }, []);
 
@@ -543,6 +549,14 @@ export default function App() {
 
     setTransactionNavigationState(
       pageId === 'transactions' ? alertOrPageId?.actionState || null : null
+    );
+    setScheduledItemNavigationState(
+      pageId === 'scheduled-items' && alertOrPageId?.actionState
+        ? {
+            ...alertOrPageId.actionState,
+            requestId: crypto.randomUUID(),
+          }
+        : null
     );
     setCurrentPage(pageId);
   }, []);
@@ -1262,10 +1276,13 @@ export default function App() {
 
           {currentPage === 'scheduled-items' ? (
             <ScheduledItems
+              key={scheduledItemNavigationState?.requestId || 'scheduled-items'}
               scheduledItems={scheduledItems}
+              accounts={accounts}
               categories={categories}
               savingsBuckets={savingsBuckets}
               settings={settings}
+              navigationState={scheduledItemNavigationState}
               alerts={scheduledItemAlerts}
               onAlertAction={handleAlertAction}
               onDismissAlert={handleDismissAlert}

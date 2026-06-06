@@ -5,6 +5,7 @@ import {
   getScheduledItemOccurrences,
   isValidDateString,
   normalizeScheduledItem,
+  scheduledItemRequiresAccount,
 } from './scheduledItemLogic';
 
 function normalizeNumber(value) {
@@ -92,28 +93,39 @@ function getMissingAccountAlertDetails(transaction = {}, settings = {}) {
   return details.length > 0 ? ` ${details.join(' · ')}.` : '';
 }
 
-function buildMissingAccountAlert(transaction = {}, description, settings = {}) {
+function buildMissingAccountAlert(
+  transaction = {},
+  description,
+  settings = {},
+  sourceScheduledItem = null
+) {
   const normalizedDescription =
     normalizeAlertDescription(description) || 'transaction';
+  const hasScheduledItemSource = Boolean(sourceScheduledItem?.id);
 
   return {
     id: `missing-account:${normalizedDescription}`,
     type: 'data-warning',
     severity: 'info',
     title: `${description} needs an account`,
-    message: `This planned transaction is missing the account or bucket it should use. Assign an account so projections and reports stay accurate.${getMissingAccountAlertDetails(
+    message: `This planned transaction is missing the account it should use. Assign an account so projections and reports stay accurate.${getMissingAccountAlertDetails(
       transaction,
       settings
     )}`,
-    source: 'data',
+    source: hasScheduledItemSource ? 'scheduled-items' : 'data',
     sourceId: transaction.sourceId || transaction.id || null,
-    actionLabel: 'Fix account',
-    actionPage: 'transactions',
-    actionState: {
-      transactionSearch: description,
-      accountFilter: '__missing__',
-      highlightMissingAccount: true,
-    },
+    actionLabel: hasScheduledItemSource ? 'Assign account' : 'Fix account',
+    actionPage: hasScheduledItemSource ? 'scheduled-items' : 'transactions',
+    actionState: hasScheduledItemSource
+      ? {
+          scheduledItemId: sourceScheduledItem.id,
+          scheduledItemSearch: sourceScheduledItem.name || description,
+        }
+      : {
+          transactionSearch: description,
+          accountFilter: '__missing__',
+          highlightMissingAccount: true,
+        },
     date: transaction.date || '',
   };
 }
@@ -359,6 +371,12 @@ export function getDataWarningAlerts({
   const categoryMap = buildIdMap(categories);
   const accountMap = buildIdMap(accounts);
   const bucketMap = buildIdMap(savingsBuckets);
+  const scheduledItemMap = new Map(
+    scheduledItems
+      .map((item) => normalizeScheduledItem(item))
+      .filter((item) => item.id)
+      .map((item) => [item.id, item])
+  );
   const missingAccountAlerts = new Map();
   const missingAccountScheduledItemKeys = new Set();
 
@@ -411,7 +429,21 @@ export function getDataWarningAlerts({
       });
     }
 
-    if (transaction.accountId && !accountMap.has(transaction.accountId)) {
+    const sourceScheduledItem =
+      transaction.source === 'scheduled-item'
+        ? scheduledItemMap.get(transaction.sourceId)
+        : null;
+    const scheduledItemAccountSource =
+      sourceScheduledItem &&
+      scheduledItemRequiresAccount(sourceScheduledItem.type)
+        ? sourceScheduledItem
+        : null;
+    const scheduledItemNeedsAccount =
+      scheduledItemAccountSource && !transaction.accountId;
+    const accountReferenceIsMissing =
+      transaction.accountId && !accountMap.has(transaction.accountId);
+
+    if (scheduledItemNeedsAccount || accountReferenceIsMissing) {
       const description = cleanAlertDescription(
         transaction.description || 'Transaction'
       );
@@ -427,7 +459,12 @@ export function getDataWarningAlerts({
       if (existingAlert) {
         if (getAlertDescriptionScore(description) > existingAlert.descriptionScore) {
           missingAccountAlerts.set(descriptionKey, {
-            alert: buildMissingAccountAlert(transaction, description, settings),
+            alert: buildMissingAccountAlert(
+              transaction,
+              description,
+              settings,
+              scheduledItemAccountSource
+            ),
             descriptionScore: getAlertDescriptionScore(description),
           });
         }
@@ -447,7 +484,12 @@ export function getDataWarningAlerts({
       }
 
       missingAccountAlerts.set(descriptionKey, {
-        alert: buildMissingAccountAlert(transaction, description, settings),
+        alert: buildMissingAccountAlert(
+          transaction,
+          description,
+          settings,
+          scheduledItemAccountSource
+        ),
         descriptionScore: getAlertDescriptionScore(description),
       });
     }

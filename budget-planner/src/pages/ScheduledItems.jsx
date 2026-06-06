@@ -17,6 +17,7 @@ import {
   getScheduledItemOccurrences,
   isValidDateString,
   normalizeScheduledItem,
+  scheduledItemRequiresAccount,
   scheduledItemFrequencies,
   scheduledItemTypes,
 } from '../logic/scheduledItemLogic';
@@ -106,7 +107,17 @@ function getDueDisplay(item) {
   return formatDueDate(item.startDate);
 }
 
-function createNewScheduledItem(settings) {
+function getDefaultAccountId(accounts = []) {
+  return (
+    accounts.find(
+      (account) =>
+        account.active !== false &&
+        String(account.name || '').trim().toLowerCase() === 'main chequing'
+    )?.id || ''
+  );
+}
+
+function createNewScheduledItem(settings, accounts = []) {
   const startDate =
     settings?.payPeriodAnchorDate && isValidDateString(settings.payPeriodAnchorDate)
       ? settings.payPeriodAnchorDate
@@ -123,7 +134,7 @@ function createNewScheduledItem(settings) {
     dueDay: Number(startDate.slice(8, 10)),
     dueMonth: Number(startDate.slice(5, 7)),
     categoryId: null,
-    accountId: 'acct-chequing',
+    accountId: getDefaultAccountId(accounts) || null,
     savingsBucketId: null,
     active: true,
     allowLineItems: false,
@@ -171,7 +182,7 @@ function getAssignmentRuleLabel(rule) {
   return 'previous pay period before the due date';
 }
 
-function validateScheduledItem(formState) {
+function validateScheduledItem(formState, accounts = []) {
   const name = String(formState.name || '').trim();
   const amount = Number(formState.amount);
   const dueDay = formState.dueDay === '' ? null : Number(formState.dueDay);
@@ -184,6 +195,15 @@ function validateScheduledItem(formState) {
   if (!Number.isFinite(amount)) return 'Amount must be a valid number.';
   if (amount < 0) return 'Amount must be greater than or equal to 0.';
   if (!scheduledItemTypes.includes(formState.type)) return 'Choose a valid type.';
+  if (
+    scheduledItemRequiresAccount(formState.type) &&
+    !accounts.some(
+      (account) =>
+        account.active !== false && account.id === formState.accountId
+    )
+  ) {
+    return 'Choose an active account for this scheduled item.';
+  }
   if (formState.type === 'transfer' && !formState.savingsBucketId) {
     return 'Choose a savings bucket for this transfer item.';
   }
@@ -220,8 +240,17 @@ function validateScheduledItem(formState) {
   return '';
 }
 
-function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, onCancel, onSave }) {
+function ScheduledItemForm({
+  item,
+  accounts = [],
+  categories,
+  savingsBuckets = [],
+  settings,
+  onCancel,
+  onSave,
+}) {
   const normalizedItem = normalizeScheduledItem(item);
+  const defaultAccountId = getDefaultAccountId(accounts);
   const [formState, setFormState] = useState({
     ...normalizedItem,
     amount: String(normalizedItem.amount ?? 0),
@@ -230,12 +259,23 @@ function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, on
     endDate: normalizedItem.endDate ?? '',
     notes: normalizedItem.notes ?? '',
     categoryId: normalizedItem.categoryId ?? '',
+    accountId: normalizedItem.accountId || defaultAccountId,
     savingsBucketId:
       normalizedItem.savingsBucketId || normalizedItem.bucketId || '',
     active: normalizedItem.active ?? true,
     allowLineItems: normalizedItem.allowLineItems ?? false,
   });
   const [errorMessage, setErrorMessage] = useState('');
+  const activeAccounts = useMemo(
+    () =>
+      accounts
+        .filter((account) => account.active !== false)
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [accounts]
+  );
+  const selectedAccountIsMissing =
+    Boolean(formState.accountId) &&
+    !activeAccounts.some((account) => account.id === formState.accountId);
 
   const categoryOptions = useMemo(
     () =>
@@ -251,6 +291,12 @@ function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, on
     setFormState((current) => ({
       ...current,
       [fieldName]: value,
+      ...(fieldName === 'type' &&
+      scheduledItemRequiresAccount(value) &&
+      !current.accountId &&
+      defaultAccountId
+        ? { accountId: defaultAccountId }
+        : {}),
     }));
     setErrorMessage('');
   }
@@ -258,7 +304,7 @@ function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, on
   function handleSubmit(event) {
     event.preventDefault();
 
-    const validationError = validateScheduledItem(formState);
+    const validationError = validateScheduledItem(formState, accounts);
 
     if (validationError) {
       setErrorMessage(validationError);
@@ -277,6 +323,7 @@ function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, on
       endDate: formState.endDate || null,
       notes: String(formState.notes || '').trim(),
       categoryId: formState.categoryId || null,
+      accountId: formState.accountId || null,
       savingsBucketId: selectedSavingsBucketId,
       bucketId: selectedSavingsBucketId,
       active: Boolean(formState.active),
@@ -332,6 +379,35 @@ function ScheduledItemForm({ item, categories, savingsBuckets = [], settings, on
             required
           />
         </label>
+
+        {scheduledItemRequiresAccount(formState.type) ? (
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              {formState.type === 'income'
+                ? 'Deposited to account'
+                : 'Paid from account'}
+            </span>
+            <select
+              value={formState.accountId || ''}
+              onChange={(event) => updateField('accountId', event.target.value)}
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-900"
+              required
+            >
+              <option value="">Choose an account</option>
+              {selectedAccountIsMissing ? (
+                <option value={formState.accountId}>Missing account</option>
+              ) : null}
+              {activeAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-slate-500">
+              Generated transactions and projections use this account.
+            </span>
+          </label>
+        ) : null}
 
         {formState.type === 'transfer' ? (
           <label className="block">
@@ -541,6 +617,7 @@ function SummaryCard({ label, value, helper }) {
 
 export default function ScheduledItems({
   scheduledItems,
+  accounts = [],
   categories = [],
   savingsBuckets = [],
   settings,
@@ -550,12 +627,20 @@ export default function ScheduledItems({
   onSaveScheduledItem,
   onDuplicateScheduledItem,
   onDeleteScheduledItem,
+  navigationState = null,
 }) {
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const focusedItem = navigationState?.scheduledItemId
+    ? scheduledItems.find(
+        (item) => item.id === navigationState.scheduledItemId
+      ) || null
+    : null;
+  const [selectedItem, setSelectedItem] = useState(focusedItem);
+  const [searchTerm, setSearchTerm] = useState(
+    navigationState?.scheduledItemSearch || focusedItem?.name || ''
+  );
   const [typeFilter, setTypeFilter] = useState('all');
   const [frequencyFilter, setFrequencyFilter] = useState('all');
-  const [activeFilter, setActiveFilter] = useState('active');
+  const [activeFilter, setActiveFilter] = useState(focusedItem ? 'all' : 'active');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -673,7 +758,7 @@ export default function ScheduledItems({
   }
 
   function handleAddNew() {
-    setSelectedItem(createNewScheduledItem(settings));
+    setSelectedItem(createNewScheduledItem(settings, accounts));
     setMessage('');
     setErrorMessage('');
   }
@@ -1079,6 +1164,7 @@ export default function ScheduledItems({
       {selectedItem ? (
         <ScheduledItemForm
           item={selectedItem}
+          accounts={accounts}
           categories={categories}
           savingsBuckets={savingsBuckets}
           settings={settings}

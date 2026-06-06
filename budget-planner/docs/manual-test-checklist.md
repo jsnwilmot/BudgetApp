@@ -20,8 +20,14 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Saved local data remains after refresh.
 - [ ] Two missing-account planned rows named `Property Taxes` and `Property taxes` produce one Dashboard alert.
 - [ ] Missing-account alert copy includes the transaction description, date, and amount when available.
-- [ ] Fix account opens Transactions with the matching description search and Missing account filter applied.
-- [ ] Focused missing-account Transactions view shows the helper message and visibly highlights the affected row.
+- [ ] Assign account opens the affected source scheduled item when it is available.
+- [ ] Scheduled income shows a Deposited to account field.
+- [ ] Scheduled expenses and debts show a Paid from account field.
+- [ ] Main Chequing is selected by default when an item has no saved account.
+- [ ] Saving a scheduled item account updates its generated transaction and removes its missing-account alert.
+- [ ] Scheduled transfers retain their existing savings bucket and transfer behavior.
+- [ ] Older saved scheduled items without `accountId` load and can be assigned an account.
+- [ ] JSON backup export/import preserves scheduled item `accountId` without changing record IDs.
 - [ ] Dismissing a missing-account alert still works.
 - [ ] Unrelated Dashboard alerts still navigate and dismiss normally.
 

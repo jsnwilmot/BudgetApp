@@ -29,11 +29,13 @@ release that should show the one-time What's New popup.
 ## Features
 
 - Dashboard with cash-flow summary, projection chart, and alerts.
-- Missing-account alerts are deduplicated and open Transactions with the
-  affected item filtered and highlighted.
+- Missing-account alerts are deduplicated and open the affected scheduled item
+  when possible so its deposit or paid-from account can be assigned.
 - Planner with editable projected and actual amounts plus a current pay period summary.
 - Transactions view derived from scheduled items, adjustments, and savings activity.
 - Manage area for Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
+- Scheduled income, expenses, and debts support account assignment so generated
+  transactions and projections use the intended account.
 - Unified transfer workflow for account-to-account and savings bucket movement.
 - Reports with filters, charts, trends, print view, and report CSV export.
 - Settings with editable planner settings and data management tools.

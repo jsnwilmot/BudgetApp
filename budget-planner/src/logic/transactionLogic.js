@@ -3,6 +3,7 @@ import {
   getProjectionType,
   getScheduledItemOccurrences,
   normalizeScheduledItem,
+  scheduledItemRequiresAccount,
 } from './scheduledItemLogic';
 
 function normalizeNumber(value) {
@@ -269,12 +270,11 @@ export function buildTransactionsFromAppData({
           'Missing category'
         ),
         accountId,
-        accountName: resolveName(
-          accountId,
-          accountNames,
-          'No account',
-          'Missing account'
-        ),
+        accountName: accountId
+          ? resolveName(accountId, accountNames, 'No account', 'Missing account')
+          : scheduledItemRequiresAccount(item.type)
+            ? 'Missing account'
+            : 'No account',
         savingsBucketId: bucketId,
         savingsBucketName: resolveName(
           bucketId,

@@ -250,6 +250,7 @@ export function buildPlannerRows({
         type: getProjectionType(item.type),
         scheduledItemType: item.type,
         categoryId: item.categoryId,
+        accountId: item.accountId,
         item,
         plannedByPeriod,
         amountsByPeriod,
@@ -319,40 +320,51 @@ export function buildExportPlannerRows(plannerData) {
   });
 }
 
-function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
-  const getValidatedAmount = (row) => {
-    const entryKey = getEntryKey(row.id, periodDate);
-    const entry = plannerEntries[entryKey];
+function getValidatedRowAmount(row, periodDate, plannerEntries) {
+  const entryKey = getEntryKey(row.id, periodDate);
+  const entry = plannerEntries[entryKey];
 
-    if (!entry?.validated) {
-      return 0;
+  if (!entry?.validated) {
+    return 0;
+  }
+
+  return Number(row.amountsByPeriod[periodDate]) || 0;
+}
+
+function calculateScheduledAccountEffects(
+  rows,
+  periodDate,
+  accountTypeById,
+  plannerEntries = null
+) {
+  return rows.reduce(
+    (effects, row) => {
+      const amount = plannerEntries
+        ? getValidatedRowAmount(row, periodDate, plannerEntries)
+        : Number(row.amountsByPeriod[periodDate]) || 0;
+
+      if (row.type === 'transfer') {
+        effects.chequing -= amount;
+        effects.savings += amount;
+        return effects;
+      }
+
+      const accountType = accountTypeById.get(row.accountId);
+      const signedAmount = row.type === 'income' ? amount : -amount;
+
+      if (!accountType || accountType === 'chequing') {
+        effects.chequing += signedAmount;
+      } else if (accountType === 'savings') {
+        effects.savings += signedAmount;
+      }
+
+      return effects;
+    },
+    {
+      chequing: 0,
+      savings: 0,
     }
-
-    return Number(row.amountsByPeriod[periodDate]) || 0;
-  };
-
-  const income = rows
-    .filter((row) => row.type === 'income')
-    .reduce((total, row) => total + getValidatedAmount(row), 0);
-
-  const expensesOnly = rows
-    .filter((row) => row.type === 'expense')
-    .reduce((total, row) => total + getValidatedAmount(row), 0);
-
-  const transfers = rows
-    .filter((row) => row.type === 'transfer')
-    .reduce((total, row) => total + getValidatedAmount(row), 0);
-
-  const expenses = expensesOnly + transfers;
-
-  return {
-    income,
-    expenses,
-    expensesOnly,
-    transfers,
-    netChequing: income - expenses,
-    netSavings: transfers,
-  };
+  );
 }
 
   function calculateProjectionRows({
@@ -380,6 +392,9 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
       (total, account) => total + (Number(account.startingBalance) || 0),
       0
     );
+  const accountTypeById = new Map(
+    accounts.map((account) => [account.id, account.type])
+  );
 
   const projectedChequing = {};
   const validatedChequing = {};
@@ -391,9 +406,15 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
 
   payPeriods.forEach((period) => {
     const totals = calculatePeriodTotals(rows, period.date);
-    const validatedTotals = calculateValidatedPeriodTotals(
+    const scheduledAccountEffects = calculateScheduledAccountEffects(
       rows,
       period.date,
+      accountTypeById
+    );
+    const validatedScheduledAccountEffects = calculateScheduledAccountEffects(
+      rows,
+      period.date,
+      accountTypeById,
       plannerEntries
     );
 
@@ -485,14 +506,16 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
     );
 
     chequingBalance +=
-      totals.netChequing + chequingAdjustments + chequingTransferEffect;
+      scheduledAccountEffects.chequing +
+      chequingAdjustments +
+      chequingTransferEffect;
     validatedChequingBalance +=
-      validatedTotals.netChequing +
+      validatedScheduledAccountEffects.chequing +
       chequingAdjustments +
       validatedChequingTransferEffect;
 
     savingsBalance +=
-      totals.netSavings +
+      scheduledAccountEffects.savings +
       savingsAdjustments +
       savingsBucketAdjustmentsForPeriod +
       savingsTransferEffect;
@@ -505,7 +528,7 @@ function calculateValidatedPeriodTotals(rows, periodDate, plannerEntries) {
         .filter((transfer) => transfer.transferType === 'to_savings_bucket')
         .reduce((total, transfer) => total + (Number(transfer.amount) || 0), 0);
     netChequingChange[period.date] =
-      totals.netChequing + chequingTransferEffect;
+      scheduledAccountEffects.chequing + chequingTransferEffect;
     projectedChequing[period.date] = chequingBalance;
     validatedChequing[period.date] = validatedChequingBalance;
     projectedSavings[period.date] = savingsBalance;

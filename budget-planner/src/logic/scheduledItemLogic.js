@@ -106,6 +106,10 @@ export function getProjectionType(type) {
   return 'expense';
 }
 
+export function scheduledItemRequiresAccount(type) {
+  return ['income', 'expense', 'debt'].includes(type);
+}
+
 export function getCategoryTypesForScheduledType(type) {
   if (type === 'income') return ['income', 'general'];
   if (type === 'transfer' || type === 'savings') {

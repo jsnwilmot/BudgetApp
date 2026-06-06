@@ -319,14 +319,14 @@ export default function Help() {
 
       <HelpCard title="Missing Account Alerts">
         <p>
-          Missing-account alerts appear when a planned transaction references
-          an account that is no longer available. Use Fix account to open
-          Transactions filtered to the affected item.
+          Scheduled income, expenses, and debts need an account so generated
+          transactions and projections stay accurate. Missing-account alerts
+          open the source scheduled item so you can assign the account.
         </p>
         <p>
-          The highlighted transaction shows what needs attention. Edit its
-          source scheduled item or transaction to assign the correct account so
-          projections and reports stay accurate.
+          Income uses a deposit account. Expenses and debts use a paid-from
+          account. Existing scheduled transfers continue to use their savings
+          bucket and transfer setup.
         </p>
       </HelpCard>
 
