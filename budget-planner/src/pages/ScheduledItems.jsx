@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import AlertList from '../components/AlertList';
 import { formatCurrency } from '../logic/projectionLogic';
+import { getLocalToday, parseLocalDate } from '../logic/dateLogic';
 import {
   getCategoryTypesForScheduledType,
   getMonthlyEquivalentAmount,
@@ -69,8 +70,7 @@ function getCategoryName(categoryId, categories = []) {
 }
 
 function getToday() {
-  const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return parseLocalDate(getLocalToday());
 }
 
 function getDatePlusDays(date, days) {
@@ -121,7 +121,7 @@ function createNewScheduledItem(settings, accounts = []) {
   const startDate =
     settings?.payPeriodAnchorDate && isValidDateString(settings.payPeriodAnchorDate)
       ? settings.payPeriodAnchorDate
-      : new Date().toISOString().slice(0, 10);
+      : getLocalToday();
 
   return normalizeScheduledItem({
     id: `scheduled-${crypto.randomUUID()}`,

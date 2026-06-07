@@ -6,6 +6,7 @@ import TransferEditor from '../components/TransferEditor';
 import TransferHistory from '../components/TransferHistory';
 import { formatCurrency } from '../logic/projectionLogic';
 import { createNewTransfer } from '../logic/transferLogic';
+import { getLocalToday } from '../logic/dateLogic';
 
 const ACCOUNT_TYPES = [
   { value: 'chequing', label: 'Chequing' },
@@ -24,10 +25,6 @@ const MANUAL_ADJUSTMENT_TYPES = [
   { value: 'refund', label: 'Refund' },
   { value: 'other', label: 'Other' },
 ];
-
-function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function getAccountTypeLabel(type) {
   return ACCOUNT_TYPES.find((option) => option.value === type)?.label || type || 'Account';
@@ -83,7 +80,7 @@ function createNewAccount() {
 function createNewAdjustment(accounts, payPeriods) {
   const activeAccounts = accounts.filter((account) => account.active !== false);
   const firstAccount = activeAccounts[0];
-  const defaultDate = payPeriods[0]?.date || getTodayDate();
+  const defaultDate = payPeriods[0]?.date || getLocalToday();
 
   return {
     id: `adjustment-${crypto.randomUUID()}`,
@@ -303,9 +300,9 @@ function AdjustmentForm({
         ? adjustment.accountId
         : activeAccounts[0]?.id || '',
       adjustmentType: adjustment.adjustmentType || 'correction',
-      date: adjustment.date || getTodayDate(),
+      date: adjustment.date || getLocalToday(),
       payPeriodDate:
-        adjustment.payPeriodDate || payPeriods[0]?.date || getTodayDate(),
+        adjustment.payPeriodDate || payPeriods[0]?.date || getLocalToday(),
       amount: adjustment.amount ?? 0,
       categoryId: adjustment.categoryId || '',
       notes: adjustment.notes || '',
@@ -458,7 +455,7 @@ function AdjustmentForm({
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
           >
             {payPeriods.length === 0 ? (
-              <option value={formState.payPeriodDate || getTodayDate()}>
+              <option value={formState.payPeriodDate || getLocalToday()}>
                 Current date
               </option>
             ) : null}

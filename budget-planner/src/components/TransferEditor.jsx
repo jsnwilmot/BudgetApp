@@ -5,16 +5,13 @@ import {
   inferTransferType,
   validateTransfer,
 } from '../logic/transferLogic';
+import { getLocalToday } from '../logic/dateLogic';
 
 const TRANSFER_TYPE_OPTIONS = [
   { value: 'to_savings_bucket', label: 'To Savings Bucket' },
   { value: 'from_savings_bucket', label: 'From Savings Bucket' },
   { value: 'account_transfer', label: 'Account Transfer' },
 ];
-
-function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function TransferEditor({
   transfer,
@@ -35,9 +32,9 @@ export default function TransferEditor({
     return {
       ...baseTransfer,
       ...transfer,
-      date: transfer?.date || baseTransfer.date || getTodayDate(),
+      date: transfer?.date || baseTransfer.date || getLocalToday(),
       payPeriodDate:
-        transfer?.payPeriodDate || baseTransfer.payPeriodDate || getTodayDate(),
+        transfer?.payPeriodDate || baseTransfer.payPeriodDate || getLocalToday(),
       amount: transfer?.amount ?? baseTransfer.amount ?? 0,
       bucketId:
         transfer?.bucketId ||
@@ -192,7 +189,7 @@ export default function TransferEditor({
               required
             >
               {payPeriods.length === 0 ? (
-                <option value={formState.payPeriodDate || getTodayDate()}>
+                <option value={formState.payPeriodDate || getLocalToday()}>
                   Current date
                 </option>
               ) : null}

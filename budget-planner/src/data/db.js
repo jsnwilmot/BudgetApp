@@ -5,7 +5,10 @@ import {
   getEmptyAppState,
 } from './seedData';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
-import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
+import {
+  isValidDateString,
+  normalizeScheduledItem,
+} from '../logic/scheduledItemLogic';
 import { normalizeTransfer } from '../logic/transferLogic';
 import {
   APP_DATA_VERSION,
@@ -63,8 +66,13 @@ function openDatabase() {
         resolve(db);
       };
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result;
+
+        // Keep creation checks compatible with every older database version.
+        if (event.oldVersion >= DB_VERSION) {
+          return;
+        }
 
         if (!db.objectStoreNames.contains(STORES.plannerEntries)) {
           db.createObjectStore(STORES.plannerEntries, {
@@ -138,15 +146,6 @@ function openDatabase() {
   return databasePromise;
 }
 
-function isValidDateString(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
 export function validateAppSettings(settings = {}) {
   const safeSettings =
     settings && typeof settings === 'object' ? settings : {};
@@ -217,9 +216,30 @@ async function replaceStoreRecords(storeName, records = []) {
     const transaction = db.transaction(storeName, 'readwrite');
     const store = transaction.objectStore(storeName);
     const clearRequest = store.clear();
+    let settled = false;
+
+    function fail(message, abortTransaction = false) {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      if (abortTransaction) {
+        try {
+          transaction.abort();
+        } catch (error) {
+          if (error?.name !== 'InvalidStateError') {
+            console.error(error);
+          }
+        }
+      }
+
+      reject(new Error(message));
+    }
 
     clearRequest.onerror = () => {
-      reject(new Error(`Failed to clear ${storeName}.`));
+      fail(`Failed to clear ${storeName}.`, true);
     };
 
     clearRequest.onsuccess = () => {
@@ -227,16 +247,25 @@ async function replaceStoreRecords(storeName, records = []) {
         const req = store.put(record);
 
         req.onerror = () => {
-          reject(new Error(`Failed to write record to ${storeName}.`));
+          fail(`Failed to write record to ${storeName}.`, true);
         };
       });
     };
 
     transaction.onerror = () => {
-      reject(new Error(`Failed to replace ${storeName}.`));
+      fail(`Failed to replace ${storeName}.`);
+    };
+
+    transaction.onabort = () => {
+      fail(`Failed to replace ${storeName}.`);
     };
 
     transaction.oncomplete = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
       resolve(records);
     };
   });
@@ -460,14 +489,6 @@ async function replaceCompleteAppData(appData = {}) {
     savingsBucketAdjustments: savedSavingsBucketAdjustments,
     transfers: savedTransfers,
   };
-}
-
-export function getDemoState() {
-  return getSafeAppData(getDemoAppState());
-}
-
-export function getEmptyState() {
-  return getSafeAppData(getEmptyAppState());
 }
 
 async function getResetStateWithPreservedMetadata(resetState) {

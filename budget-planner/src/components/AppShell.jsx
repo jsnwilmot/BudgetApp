@@ -20,19 +20,12 @@ const managePageIds = [
   'categories',
 ];
 
-const pageLabels = {
-  dashboard: 'Dashboard',
-  planner: 'Planner',
-  transactions: 'Transactions',
-  reports: 'Reports',
-  manage: 'Manage',
+const subPageLabels = {
   'scheduled-items': 'Scheduled Items',
   accounts: 'Accounts',
   'savings-buckets': 'Savings Buckets',
   budgets: 'Budgets',
   categories: 'Categories',
-  settings: 'Settings',
-  help: 'Help',
 };
 
 const navItems = [
@@ -79,7 +72,7 @@ export default function AppShell({ currentPage, onPageChange, children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentItem =
     navItems.find((item) => item.id === currentPage) || {
-      label: pageLabels[currentPage] || 'Dashboard',
+      label: subPageLabels[currentPage] || 'Dashboard',
     };
 
   function handlePageChange(pageId) {

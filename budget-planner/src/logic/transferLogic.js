@@ -1,3 +1,6 @@
+import { getLocalToday } from './dateLogic';
+import { isValidDateString } from './scheduledItemLogic';
+
 const TRANSFER_TYPES = [
   'to_savings_bucket',
   'from_savings_bucket',
@@ -8,21 +11,8 @@ function createTimestamp() {
   return new Date().toISOString();
 }
 
-function isValidDateString(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-
-function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function getCurrentPayPeriod(payPeriods = []) {
-  const today = getTodayDate();
+  const today = getLocalToday();
 
   return (
     [...payPeriods].reverse().find((period) => period.date <= today) ||
@@ -75,8 +65,8 @@ export function createNewTransfer(accounts = [], savingsBuckets = [], payPeriods
   const timestamp = createTimestamp();
   const transfer = {
     id: `transfer-${crypto.randomUUID()}`,
-    date: getTodayDate(),
-    payPeriodDate: currentPeriod?.date || getTodayDate(),
+    date: getLocalToday(),
+    payPeriodDate: currentPeriod?.date || getLocalToday(),
     fromAccountId: fromAccount?.id || '',
     toAccountId: toAccount?.id || '',
     amount: 0,

@@ -1,5 +1,8 @@
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
-import { normalizeScheduledItem } from '../logic/scheduledItemLogic';
+import {
+  isValidDateString,
+  normalizeScheduledItem,
+} from '../logic/scheduledItemLogic';
 import { normalizeTransfer } from '../logic/transferLogic';
 import {
   appSettings as defaultAppSettings,
@@ -83,15 +86,7 @@ export function safeTimestampString(value, fallback = '') {
 }
 
 export function safeDateString(value, fallback = '') {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return fallback;
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-  return !Number.isNaN(date.getTime()) &&
-    date.toISOString().slice(0, 10) === value
-    ? value
-    : fallback;
+  return isValidDateString(value) ? value : fallback;
 }
 
 function normalizeSettingRule(rule) {
@@ -148,10 +143,6 @@ export function normalizeAppSettingsRecord(settings = {}) {
       safeSettings.monthlyBillAssignmentRule
     ),
   };
-}
-
-function isValidDateString(value) {
-  return safeDateString(value, '') === value;
 }
 
 function isValidTimestampString(value) {

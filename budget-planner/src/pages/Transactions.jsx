@@ -4,9 +4,10 @@ import { formatCurrency } from '../logic/projectionLogic';
 import {
   buildTransactionsFromAppData,
   calculateTransactionSummary,
-  getTransactionAmountLabel,
+  getTransactionSignedAmount,
   transactionMatchesDateRange,
 } from '../logic/transactionLogic';
+import { getLocalToday } from '../logic/dateLogic';
 import { rowsToCsv } from '../utils/csv';
 import { downloadTextFile } from '../utils/downloadFile';
 
@@ -43,10 +44,6 @@ function formatDate(value) {
     day: '2-digit',
     year: 'numeric',
   });
-}
-
-function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function getTypeClass(type) {
@@ -272,11 +269,11 @@ export default function Transactions({
       Category: transaction.categoryName,
       Account: transaction.accountName,
       'Savings Bucket': transaction.savingsBucketName,
-      Amount: getTransactionAmountLabel(transaction),
+      Amount: getTransactionSignedAmount(transaction),
       Source: sourceLabels[transaction.source] || transaction.source,
       Notes: transaction.notes,
     }));
-    const filename = `transactions-export-${getTodayKey()}.csv`;
+    const filename = `transactions-export-${getLocalToday()}.csv`;
 
     downloadTextFile({
       content: rowsToCsv(headers, rows),
@@ -518,7 +515,7 @@ export default function Transactions({
           <>
           <div className="grid gap-3 p-3 md:hidden">
             {filteredTransactions.map((transaction) => {
-              const signedAmount = getTransactionAmountLabel(transaction);
+              const signedAmount = getTransactionSignedAmount(transaction);
               const emphasizeMissingAccount =
                 highlightMissingAccount &&
                 transactionHasMissingLocation(transaction);
@@ -618,7 +615,7 @@ export default function Transactions({
 
               <tbody>
                 {filteredTransactions.map((transaction) => {
-                  const signedAmount = getTransactionAmountLabel(transaction);
+                  const signedAmount = getTransactionSignedAmount(transaction);
                   const emphasizeMissingAccount =
                     highlightMissingAccount &&
                     transactionHasMissingLocation(transaction);

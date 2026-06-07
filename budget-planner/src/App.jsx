@@ -78,6 +78,7 @@ import {
   getCurrentAppDataVersion,
   getCurrentAppVersion,
   getSafeAppData,
+  normalizePlannerEntriesRecord,
 } from './data/migrations';
 import { generateAlerts, getAlertCounts } from './logic/alertLogic';
 import { calculateBudgetUsage } from './logic/budgetLogic';
@@ -99,6 +100,7 @@ const ScheduledItems = lazy(() => import('./pages/ScheduledItems'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const finPathLogo = `${import.meta.env.BASE_URL}brand/finpath-logo-horizontal.png`;
+const DISMISSED_ALERT_IDS_STORAGE_KEY = 'finpath.dismissedAlertIds';
 
 function PageLoadingFallback() {
   return (
@@ -119,6 +121,19 @@ function markReleaseNotesSeen() {
   localStorage.setItem(RELEASE_NOTES_STORAGE_KEY, APP_VERSION);
 }
 
+function getStoredDismissedAlertIds() {
+  try {
+    const storedIds = JSON.parse(
+      localStorage.getItem(DISMISSED_ALERT_IDS_STORAGE_KEY) || '[]'
+    );
+
+    return Array.isArray(storedIds)
+      ? storedIds.filter((id) => typeof id === 'string' && id)
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 const normalizedSeedScheduledItems = seedScheduledItems.map((item) =>
   normalizeScheduledItem(item)
@@ -215,7 +230,9 @@ export default function App() {
   const [selectedCell, setSelectedCell] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('');
-  const [dismissedAlertIds, setDismissedAlertIds] = useState([]);
+  const [dismissedAlertIds, setDismissedAlertIds] = useState(
+    getStoredDismissedAlertIds
+  );
   const [releaseNotesSeen, setReleaseNotesSeen] = useState(
     () => localStorage.getItem(RELEASE_NOTES_STORAGE_KEY) === APP_VERSION
   );
@@ -228,7 +245,7 @@ export default function App() {
     setSettings(loadedData.settings);
     setBudgetTargets(loadedData.budgetTargets);
     setCategories(loadedData.categories);
-    setPlannerEntries(loadedData.plannerEntries);
+    setPlannerEntries(normalizePlannerEntriesRecord(loadedData.plannerEntries));
     setScheduledItems(loadedData.scheduledItems);
     setAccounts(loadedData.accounts);
     setManualAdjustments(loadedData.manualAdjustments);
@@ -315,6 +332,16 @@ export default function App() {
     loadSavedData();
   }, [applyLoadedData]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        DISMISSED_ALERT_IDS_STORAGE_KEY,
+        JSON.stringify(dismissedAlertIds)
+      );
+    } catch (error) {
+      console.error('Could not save dismissed alerts.', error);
+    }
+  }, [dismissedAlertIds]);
 
   useEffect(() => {
     if (!statusMessage) {
@@ -1167,26 +1194,22 @@ export default function App() {
       replaceTransfers(safeImportedData.transfers),
     ]);
 
-    setSettings(savedImportedSettings);
-    setBudgetTargets(savedImportedBudgetTargets);
-    setCategories(savedImportedCategories);
-    setAppMetadata(savedImportedAppMetadata);
-    setPlannerEntries(
-      Object.fromEntries(
-        savedImportedPlannerEntries.map((entry) => [entry.entryKey, entry])
-      )
-    );
-    setScheduledItems(savedImportedScheduledItems);
-    setAccounts(savedImportedAccounts);
-    setManualAdjustments(savedImportedManualAdjustments);
-    setSavingsBuckets(
-      savedImportedSavingsBuckets.filter((bucket) => !bucket.deletedAt)
-    );
-    setSavingsBucketAdjustments(savedImportedSavingsBucketAdjustments);
-    setTransfers(savedImportedTransfers);
+    applyLoadedData({
+      settings: savedImportedSettings,
+      budgetTargets: savedImportedBudgetTargets,
+      categories: savedImportedCategories,
+      appMetadata: savedImportedAppMetadata,
+      plannerEntries: savedImportedPlannerEntries,
+      scheduledItems: savedImportedScheduledItems,
+      accounts: savedImportedAccounts,
+      manualAdjustments: savedImportedManualAdjustments,
+      savingsBuckets: savedImportedSavingsBuckets,
+      savingsBucketAdjustments: savedImportedSavingsBucketAdjustments,
+      transfers: savedImportedTransfers,
+    });
     setDismissedAlertIds([]);
     setStatusMessage('Backup imported successfully.');
-  }, []);
+  }, [applyLoadedData]);
 
   const handleResetToDemoData = useCallback(async () => {
     const demoData = await resetAppToDemoData();
@@ -1450,7 +1473,9 @@ export default function App() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-4 left-4 right-4 z-50 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-800 shadow-xl sm:left-auto sm:max-w-sm"
+          className={`fixed left-4 right-4 z-50 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-800 shadow-xl sm:left-auto sm:max-w-sm ${
+            needRefresh ? 'bottom-20' : 'bottom-4'
+          }`}
         >
           <div className="flex items-start justify-between gap-3">
             <p>{statusMessage}</p>

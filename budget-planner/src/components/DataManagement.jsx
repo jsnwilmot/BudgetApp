@@ -1,113 +1,20 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   createBackupSnapshot,
   getBackupFileName,
   validateBackupFile
 } from "../services/backupService";
 import {
-  appSettings,
-  budgetTargets,
-  categories,
-  getDemoAppState
-} from "../data/seedData";
-import {
-  getCurrentAppDataVersion,
-  getCurrentAppVersion,
-  getDataHealthSummary,
-  getSafeAppData
+  getDataHealthSummary
 } from "../data/migrations";
 import { downloadTextFile } from "../utils/downloadFile";
 import { rowsToCsv } from "../utils/csv";
+import { getLocalToday } from "../logic/dateLogic";
 
-const PRIMARY_STORAGE_KEY = "budgetAppData";
-
-const POSSIBLE_STORAGE_KEYS = [
-  "budgetAppData",
-  "budget-planner-state",
-  "budgetPlannerState",
-  "budgetPlannerData",
-  "payPlannerData",
-  "plannerData"
-];
-
-const defaultAppState = {
-  appVersion: getCurrentAppVersion(),
-  appDataVersion: getCurrentAppDataVersion(),
-  appMetadata: {},
-  settings: appSettings,
-  budgetTargets,
-  categories,
-  planner: {
-    rows: [],
-    payPeriods: [],
-    income: [],
-    fixedExpenses: [],
-    miscPayments: [],
-    miscExpenses: []
-  },
-  savings: {
-    buckets: [],
-    transfers: []
-  },
-  transfers: []
-};
-
-function getActiveStorageKey() {
-  for (const key of POSSIBLE_STORAGE_KEYS) {
-    const stored = localStorage.getItem(key);
-
-    if (stored) {
-      return key;
-    }
-  }
-
-  return PRIMARY_STORAGE_KEY;
-}
-
-function safeJsonParse(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
-
-function getStoredAppData() {
-  const activeKey = getActiveStorageKey();
-  const stored = localStorage.getItem(activeKey);
-
-  if (!stored) {
-    return {
-      storageKey: activeKey,
-      data: defaultAppState
-    };
-  }
-
-  const parsed = safeJsonParse(stored);
-
-  if (!parsed || typeof parsed !== "object") {
-    return {
-      storageKey: activeKey,
-      data: defaultAppState
-    };
-  }
-
-  return {
-    storageKey: activeKey,
-    data: parsed
-  };
-}
-
-function saveStoredAppData(data) {
-  const activeKey = getActiveStorageKey();
-  localStorage.setItem(activeKey, JSON.stringify(data));
-
-  return activeKey;
-}
+const ACTIVE_STORAGE_LABEL = "IndexedDB";
 
 function getDatedFileName(prefix, extension) {
-  const date = new Date().toISOString().slice(0, 10);
-  return `${prefix}-${date}.${extension}`;
+  return `${prefix}-${getLocalToday()}.${extension}`;
 }
 
 function formatBackupDate(timestamp) {
@@ -381,15 +288,9 @@ export default function DataManagement({
   const [errorMessage, setErrorMessage] = useState("");
   const [, setHealthCheckNonce] = useState(0);
 
-  const activeStorageKey = useMemo(() => getActiveStorageKey(), []);
-  const dataHealth = (() => {
-    const { data } =
-      appData && typeof appData === "object"
-        ? { data: appData }
-        : getStoredAppData();
-
-    return getDataHealthSummary(data);
-  })();
+  const dataHealth = getDataHealthSummary(
+    appData && typeof appData === "object" ? appData : {}
+  );
 
   function clearMessages() {
     setSuccessMessage("");
@@ -406,14 +307,10 @@ export default function DataManagement({
   }
 
   function getCurrentAppData() {
-    if (appData && typeof appData === "object") {
-      return {
-        storageKey: activeStorageKey,
-        data: appData
-      };
-    }
-
-    return getStoredAppData();
+    return {
+      storageKey: ACTIVE_STORAGE_LABEL,
+      data: appData && typeof appData === "object" ? appData : {}
+    };
   }
 
   async function handleExportBackup() {
@@ -509,24 +406,16 @@ export default function DataManagement({
     }
 
     const backupData = pendingImport.data;
-    const storageKeyFromBackup = backupData?.storageKey;
     const dataToRestore = { ...backupData };
 
     delete dataToRestore.storageKey;
 
     try {
-      if (typeof onImportData === "function") {
-        await onImportData(dataToRestore);
-      } else {
-        if (storageKeyFromBackup) {
-          localStorage.setItem(
-            storageKeyFromBackup,
-            JSON.stringify(dataToRestore)
-          );
-        } else {
-          saveStoredAppData(dataToRestore);
-        }
+      if (typeof onImportData !== "function") {
+        throw new Error("onImportData is required");
       }
+
+      await onImportData(dataToRestore);
     } catch (error) {
       console.error(error);
       setErrorMessage("Backup import failed.");
@@ -609,12 +498,11 @@ export default function DataManagement({
     clearMessages();
 
     try {
-      if (typeof onRepairLocalData === "function") {
-        await onRepairLocalData();
-      } else {
-        const { data } = getCurrentAppData();
-        saveStoredAppData(getSafeAppData(data));
+      if (typeof onRepairLocalData !== "function") {
+        throw new Error("onRepairLocalData is required");
       }
+
+      await onRepairLocalData();
     } catch (error) {
       console.error(error);
       setErrorMessage("Local data repair failed.");
@@ -665,14 +553,11 @@ export default function DataManagement({
     }
 
     try {
-      if (typeof onResetToDemoData === "function") {
-        await onResetToDemoData();
-      } else {
-        saveStoredAppData({
-          ...defaultAppState,
-          ...getDemoAppState()
-        });
+      if (typeof onResetToDemoData !== "function") {
+        throw new Error("onResetToDemoData is required");
       }
+
+      await onResetToDemoData();
     } catch (error) {
       console.error(error);
       setErrorMessage("Reset to demo data failed.");
@@ -699,7 +584,7 @@ export default function DataManagement({
           repair local records, or reset the app to demo or empty data.
         </p>
         <p className="mt-2 text-xs text-slate-500">
-          Local data location: this browser profile ({activeStorageKey})
+          Local data location: this browser profile ({ACTIVE_STORAGE_LABEL})
         </p>
       </div>
 
@@ -727,10 +612,11 @@ export default function DataManagement({
             Local data safety
           </h4>
           <p className="mt-2 text-sm text-slate-700">
-            Your data is stored locally in this browser on this device. Clearing
-            browser data, clearing site data, switching browsers, switching
-            devices, or uninstalling the PWA can remove your budget data. Export
-            backups regularly and keep them somewhere safe.
+            Your app records are stored locally in IndexedDB in this browser on
+            this device. Clearing browser data, clearing site data, switching
+            browsers, switching devices, or uninstalling the PWA can remove
+            your budget data. Export backups regularly and keep them somewhere
+            safe.
           </p>
           <p className="mt-2 text-sm font-medium text-slate-800">
             Export a backup before major updates or before clearing browser

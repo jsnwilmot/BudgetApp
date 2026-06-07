@@ -13,13 +13,9 @@ import {
   normalizeScheduledItem,
 } from './scheduledItemLogic';
 import { getTransferAccountEffects } from './transferLogic';
+import { formatCurrency } from '../utils/currency';
 
-export function formatCurrency(value, currency = 'CAD') {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency,
-  }).format(value || 0);
-}
+export { formatCurrency };
 
 export function getEntryKey(scheduledItemId, payPeriodDate) {
   return `${scheduledItemId}__${payPeriodDate}`;

@@ -1,5 +1,12 @@
-import { addDays, formatShortDate, parseLocalDate } from './dateLogic';
+import {
+  addDays,
+  formatShortDate,
+  getLocalToday,
+  parseLocalDate,
+} from './dateLogic';
 import { getBackupReminderStatus } from '../data/migrations';
+import { formatCurrency } from '../utils/currency';
+import { normalizeNumber } from '../utils/numbers';
 import {
   getProjectionType,
   getScheduledItemOccurrences,
@@ -8,24 +15,16 @@ import {
   scheduledItemRequiresAccount,
 } from './scheduledItemLogic';
 
-function normalizeNumber(value) {
-  const numberValue = Number(value ?? 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
+function getToday(currentDate = null) {
+  if (!currentDate) {
+    return parseLocalDate(getLocalToday());
+  }
 
-function getToday(currentDate = new Date()) {
   return new Date(
     currentDate.getFullYear(),
     currentDate.getMonth(),
     currentDate.getDate()
   );
-}
-
-function formatAlertCurrency(value, currency = 'CAD') {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency,
-  }).format(normalizeNumber(value));
 }
 
 function getDaysUntil(dateString, currentDate = new Date()) {
@@ -87,7 +86,7 @@ function getMissingAccountAlertDetails(transaction = {}, settings = {}) {
   }
 
   if (transaction.amount !== undefined && transaction.amount !== null) {
-    details.push(formatAlertCurrency(Math.abs(transaction.amount), settings?.currency));
+    details.push(formatCurrency(Math.abs(transaction.amount), settings?.currency));
   }
 
   return details.length > 0 ? ` ${details.join(' · ')}.` : '';
@@ -159,7 +158,7 @@ export function getLowBalanceAlerts({
           type: 'low-balance',
           severity: 'danger',
           title: 'Negative projected balance',
-          message: `Projected chequing is ${formatAlertCurrency(
+          message: `Projected chequing is ${formatCurrency(
             balance,
             settings?.currency
           )} for ${formatShortDate(period.date)}.`,
@@ -171,13 +170,13 @@ export function getLowBalanceAlerts({
         };
       }
 
-      if (balance >= dangerThreshold && balance < warningThreshold) {
+      if (balance < warningThreshold) {
         return {
           id: `low-balance-warning-${period.date}`,
           type: 'low-balance',
           severity: 'warning',
           title: 'Low projected balance',
-          message: `Projected chequing is ${formatAlertCurrency(
+          message: `Projected chequing is ${formatCurrency(
             balance,
             settings?.currency
           )} for ${formatShortDate(period.date)}.`,
@@ -204,7 +203,7 @@ export function getBudgetAlerts(budgetUsageRows = [], settings = {}) {
           type: 'over-budget',
           severity: 'danger',
           title: 'Over budget',
-          message: `${row.name} is over by ${formatAlertCurrency(
+          message: `${row.name} is over by ${formatCurrency(
             Math.abs(row.remaining),
             settings?.currency
           )}.`,
@@ -221,7 +220,7 @@ export function getBudgetAlerts(budgetUsageRows = [], settings = {}) {
           type: 'near-budget',
           severity: 'warning',
           title: 'Near budget limit',
-          message: `${row.name} is ${row.usedPercentage}% used with ${formatAlertCurrency(
+          message: `${row.name} is ${row.usedPercentage}% used with ${formatCurrency(
             row.remaining,
             settings?.currency
           )} remaining.`,
@@ -269,7 +268,7 @@ export function getUpcomingBillAlerts({
         message: `${item.name || 'Scheduled item'} is due ${getDuePhrase(
           occurrence,
           currentDate
-        )} for ${formatAlertCurrency(item.amount, settings?.currency)}.`,
+        )} for ${formatCurrency(item.amount, settings?.currency)}.`,
         source: 'scheduled-items',
         sourceId: item.id,
         actionLabel: 'Review scheduled items',

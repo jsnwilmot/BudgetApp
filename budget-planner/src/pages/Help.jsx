@@ -144,9 +144,10 @@ export default function Help() {
 
         <HelpCard title="Local Data and Backups">
           <p>
-            Data is stored in browser-managed local storage. Clearing
-            browser/site data, switching browsers, switching devices, or
-            uninstalling the PWA can remove local records.
+            App records are stored in browser-managed IndexedDB. Small interface
+            preferences, such as dismissed non-danger alerts, may use
+            localStorage. Clearing browser/site data, switching browsers,
+            switching devices, or uninstalling the PWA can remove local records.
           </p>
           <p>
             Export a backup before major updates or before clearing browser
@@ -164,6 +165,10 @@ export default function Help() {
           <p>
             This reminder does not mean data has been uploaded anywhere.
             Backups are downloaded files that you need to store somewhere safe.
+          </p>
+          <p>
+            Dismissed non-danger alerts stay dismissed after refresh in this
+            browser profile. Danger alerts remain visible.
           </p>
         </HelpCard>
 

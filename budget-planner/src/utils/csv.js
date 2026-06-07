@@ -14,6 +14,7 @@ function escapeCsvValue(value) {
   return stringValue;
 }
 
+// Converts object rows using the supplied header names as object keys and CSV columns.
 export function rowsToCsv(headers, rows) {
   const headerRow = headers.map(escapeCsvValue).join(",");
 
@@ -24,6 +25,7 @@ export function rowsToCsv(headers, rows) {
   return [headerRow, ...dataRows].join("\n");
 }
 
+// Converts a complete two-dimensional table where each inner array is one CSV row.
 export function tableRowsToCsv(rows) {
   return rows
     .map((row) => row.map((value) => escapeCsvValue(value)).join(","))

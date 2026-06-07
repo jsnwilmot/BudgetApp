@@ -4,6 +4,7 @@ import {
   getCurrentAppDataVersion,
   getCurrentAppVersion
 } from "../data/migrations";
+import { isValidDateString } from "../logic/scheduledItemLogic";
 
 const currencyOptions = ["CAD", "USD"];
 const payFrequencyOptions = [7, 14, 28, 30];
@@ -28,15 +29,6 @@ function settingsToForm(settings) {
     monthlyBillAssignmentRule:
       settings.monthlyBillAssignmentRule || "previous-pay-period"
   };
-}
-
-function isValidDateString(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-  return !Number.isNaN(date.getTime()) && value === date.toISOString().slice(0, 10);
 }
 
 function validateSettings(formState) {

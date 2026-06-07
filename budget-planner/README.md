@@ -53,9 +53,10 @@ release that should show the one-time What's New popup.
 
 ## Local-First Data
 
-User data is stored locally in the browser through IndexedDB and local storage.
-Export backups before clearing browser data, switching browsers, switching
-devices, or updating/deploying major versions.
+App records are stored locally in the browser through IndexedDB. Small interface
+preferences, including dismissed non-danger alerts and release-note state, use
+localStorage. Export backups before clearing browser data, switching browsers,
+switching devices, or updating/deploying major versions.
 
 There is no cloud account, server database, or automatic sync in this MVP. The
 planned long-term direction is a desktop app with app-managed SQLite storage for

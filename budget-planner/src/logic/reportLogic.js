@@ -1,10 +1,8 @@
 import { getEntryKey } from "./projectionLogic";
 import { getTransferBucketEffect } from "./transferLogic";
+import { normalizeNumber } from "../utils/numbers";
 
-export function normalizeNumber(value) {
-  const numberValue = Number(value ?? 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
+export { normalizeNumber };
 
 export function formatMonthKey(dateValue) {
   if (!dateValue) return "";

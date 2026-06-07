@@ -1,24 +1,12 @@
-import { addDays, formatDateKey, parseLocalDate } from './dateLogic';
+import { addDays, parseLocalDate } from './dateLogic';
 import {
   getProjectionType,
   getScheduledItemOccurrences,
+  isValidDateString,
   normalizeScheduledItem,
   scheduledItemRequiresAccount,
 } from './scheduledItemLogic';
-
-function normalizeNumber(value) {
-  const numberValue = Number(value ?? 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function isValidDateString(value) {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  const date = parseLocalDate(value);
-  return !Number.isNaN(date.getTime()) && formatDateKey(date) === value;
-}
+import { normalizeNumber } from '../utils/numbers';
 
 function getDateValue(value) {
   return isValidDateString(value) ? value : '';
@@ -85,7 +73,7 @@ function getScheduledTransactionType(item) {
   return 'expense';
 }
 
-function getTransactionSignedAmount(transaction) {
+export function getTransactionSignedAmount(transaction) {
   const amount = normalizeNumber(transaction.amount);
 
   if (transaction.type === 'income' || transaction.type === 'transfer-in') {
@@ -290,11 +278,6 @@ export function buildTransactionsFromAppData({
     .filter(Boolean);
 
   return [...manualRows, ...savingsRows, ...transferRows, ...scheduledRows];
-}
-
-export function getTransactionAmountLabel(transaction) {
-  const signedAmount = getTransactionSignedAmount(transaction);
-  return signedAmount;
 }
 
 export function calculateTransactionSummary(transactions = []) {

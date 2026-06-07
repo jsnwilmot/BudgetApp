@@ -13,6 +13,8 @@ export const RELEASE_NOTES = {
     'Fixed Reports transfer summaries so planned, validated, manual, and adjustment-based savings movement are clearly separated.',
     'Improved missing-account alerts with clearer copy and deduplication.',
     'Added account assignment to scheduled income, expenses, and debts, with missing-account alerts opening the source scheduled item.',
+    'Kept non-danger alert dismissals after refresh and prevented update notices from covering status messages.',
+    'Hardened IndexedDB replacement writes and removed stale full-app localStorage diagnostics.',
     'Confirmed mobile and PWA release readiness.',
     'Prepared the app for stable daily use before future desktop migration.',
   ],

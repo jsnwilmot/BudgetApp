@@ -1,7 +1,4 @@
-function normalizeNumber(value) {
-  const numberValue = Number(value ?? 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
+import { normalizeNumber } from '../utils/numbers';
 
 function getMonthKey(dateValue) {
   if (typeof dateValue !== 'string') {

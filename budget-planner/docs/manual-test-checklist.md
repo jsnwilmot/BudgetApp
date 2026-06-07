@@ -29,7 +29,10 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Older saved scheduled items without `accountId` load and can be assigned an account.
 - [ ] JSON backup export/import preserves scheduled item `accountId` without changing record IDs.
 - [ ] Dismissing a missing-account alert still works.
+- [ ] Dismissed non-danger alerts stay dismissed after refresh.
+- [ ] Danger alerts remain visible and cannot be dismissed.
 - [ ] Unrelated Dashboard alerts still navigate and dismiss normally.
+- [ ] PWA update banner and status message stack without overlap.
 
 ## Core Workflows
 
@@ -43,6 +46,7 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Budgets still calculate used, remaining, near-budget, and over-budget states.
 - [ ] Reports still open and charts render.
 - [ ] Data Health loads.
+- [ ] Data Health reports the currently loaded IndexedDB data and does not show stale full-app localStorage data.
 - [ ] Data Health shows collection counts.
 - [ ] Run Health Check button works without changing data.
 - [ ] Existing healthy data shows no serious errors.

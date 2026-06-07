@@ -35,6 +35,10 @@ export function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+export function getLocalToday() {
+  return formatDateKey(new Date());
+}
+
 export function formatShortDate(dateString) {
   const date = parseLocalDate(dateString);
 
