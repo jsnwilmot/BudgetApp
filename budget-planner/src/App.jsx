@@ -82,6 +82,12 @@ import {
 } from './data/migrations';
 import { generateAlerts, getAlertCounts } from './logic/alertLogic';
 import { calculateBudgetUsage } from './logic/budgetLogic';
+import {
+  applyPlannerLastEntrySaveAction,
+  isPlannerCellMarked,
+  isPlannerLastEntryMarkerValid,
+  normalizePlannerLastEntryMarker,
+} from './logic/plannerLastEntryMarker';
 import { buildExportPlannerRows, buildPlannerRows } from './logic/projectionLogic';
 import { getCurrentMonthKey } from './logic/dateLogic';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
@@ -254,7 +260,7 @@ export default function App() {
     );
     setSavingsBucketAdjustments(loadedData.savingsBucketAdjustments);
     setTransfers(loadedData.transfers || []);
-    setAppMetadata(loadedData.appMetadata);
+    setAppMetadata(normalizeAppMetadata(loadedData.appMetadata));
   }, []);
 
   useEffect(() => {
@@ -542,6 +548,35 @@ export default function App() {
     [visibleAlerts]
   );
 
+  const plannerLastEntryMarker = useMemo(
+    () => normalizePlannerLastEntryMarker(appMetadata.plannerLastEntryMarker),
+    [appMetadata.plannerLastEntryMarker]
+  );
+
+  useEffect(() => {
+    if (
+      loading ||
+      !plannerLastEntryMarker ||
+      isPlannerLastEntryMarkerValid(plannerLastEntryMarker, plannerData)
+    ) {
+      return;
+    }
+
+    async function clearInvalidPlannerLastEntryMarker() {
+      try {
+        const savedMetadata = await saveAppMetadata({
+          ...appMetadata,
+          plannerLastEntryMarker: null,
+        });
+        setAppMetadata(savedMetadata);
+      } catch (error) {
+        console.error('Could not clear invalid planner marker.', error);
+      }
+    }
+
+    clearInvalidPlannerLastEntryMarker();
+  }, [appMetadata, loading, plannerData, plannerLastEntryMarker]);
+
   const budgetAlerts = useMemo(
     () => visibleAlerts.filter((alert) => alert.source === 'budgets'),
     [visibleAlerts]
@@ -625,14 +660,33 @@ export default function App() {
     );
   }, [handleCompleteOnboarding]);
 
-  const handleSaveCell = useCallback(async (entryKey, entry) => {
+  const handleSaveCell = useCallback(async (entryKey, entry, options = {}) => {
     try {
       const savedEntry = await savePlannerEntry(entryKey, entry);
+      const nextMarker = applyPlannerLastEntrySaveAction({
+        currentMarker: appMetadata.plannerLastEntryMarker,
+        rowId: entry.scheduledItemId,
+        periodDate: entry.payPeriodDate,
+        lastEntryAction: options.lastEntryAction,
+      });
+      const markerChanged =
+        JSON.stringify(nextMarker) !==
+        JSON.stringify(normalizePlannerLastEntryMarker(appMetadata.plannerLastEntryMarker));
+      const savedMetadata = markerChanged
+        ? await saveAppMetadata({
+            ...appMetadata,
+            plannerLastEntryMarker: nextMarker,
+          })
+        : null;
 
       setPlannerEntries((currentEntries) => ({
         ...currentEntries,
         [entryKey]: savedEntry,
       }));
+
+      if (savedMetadata) {
+        setAppMetadata(savedMetadata);
+      }
 
       setSelectedCell(null);
       setStatusMessage('Planner entry saved.');
@@ -640,11 +694,24 @@ export default function App() {
       console.error(error);
       setStatusMessage('Could not save planner entry.');
     }
-  }, []);
+  }, [appMetadata]);
 
   const handleClearCell = useCallback(async (entryKey) => {
     try {
       await deletePlannerEntry(entryKey);
+      const shouldClearMarker =
+        selectedCell &&
+        isPlannerCellMarked(
+          appMetadata.plannerLastEntryMarker,
+          selectedCell.row.id,
+          selectedCell.period.date
+        );
+      const savedMetadata = shouldClearMarker
+        ? await saveAppMetadata({
+            ...appMetadata,
+            plannerLastEntryMarker: null,
+          })
+        : null;
 
       setPlannerEntries((currentEntries) => {
         const nextEntries = { ...currentEntries };
@@ -652,13 +719,17 @@ export default function App() {
         return nextEntries;
       });
 
+      if (savedMetadata) {
+        setAppMetadata(savedMetadata);
+      }
+
       setSelectedCell(null);
       setStatusMessage('Planner entry cleared.');
     } catch (error) {
       console.error(error);
       setStatusMessage('Could not clear planner entry.');
     }
-  }, []);
+  }, [appMetadata, selectedCell]);
 
   const handleSaveScheduledItem = useCallback(async (updatedItem) => {
     try {
@@ -708,6 +779,14 @@ export default function App() {
         currentItems.filter((item) => item.id !== id)
       );
 
+      if (appMetadata.plannerLastEntryMarker?.plannerItemId === id) {
+        const savedMetadata = await saveAppMetadata({
+          ...appMetadata,
+          plannerLastEntryMarker: null,
+        });
+        setAppMetadata(savedMetadata);
+      }
+
       setStatusMessage('Scheduled item deleted.');
     } catch (error) {
       console.error(error);
@@ -715,7 +794,7 @@ export default function App() {
       throw error;
     }
 
-  }, []);
+  }, [appMetadata]);
 
   const handleSaveAccount = useCallback(async (updatedAccount) => {
     try {
@@ -1287,6 +1366,7 @@ export default function App() {
             <Planner
               plannerData={plannerData}
               plannerEntries={plannerEntries}
+              plannerLastEntryMarker={plannerLastEntryMarker}
               settings={settings}
               alerts={plannerAlerts}
               onCellClick={setSelectedCell}
@@ -1432,8 +1512,10 @@ export default function App() {
       </AppShell>
 
       <CellEditor
+        key={selectedCell?.entryKey || 'closed-planner-cell-editor'}
         selectedCell={selectedCell}
         plannerEntries={plannerEntries}
+        plannerLastEntryMarker={plannerLastEntryMarker}
         settings={settings}
         onClose={handleCloseCell}
         onSave={handleSaveCell}

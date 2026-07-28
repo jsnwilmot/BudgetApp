@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
+import { getLastEntrySaveAction, isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { formatCurrency, getLineItemTotal, sumLineItems } from '../logic/projectionLogic';
 
 function createLineItem() {
@@ -12,6 +13,7 @@ function createLineItem() {
 export default function CellEditor({
   selectedCell,
   plannerEntries,
+  plannerLastEntryMarker,
   settings,
   onClose,
   onSave,
@@ -24,6 +26,11 @@ export default function CellEditor({
   const entry = plannerEntries[selectedCell.entryKey] || {};
   const currency = settings?.currency || 'CAD';
   const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
+  const isLastEntryCell = isPlannerCellMarked(
+    plannerLastEntryMarker,
+    selectedCell.row.id,
+    selectedCell.period.date
+  );
   const hasSavedLineItems = Boolean(entry.lineItems?.length);
   const hasSavedActualAmount =
     entry.actualAmount !== undefined &&
@@ -52,22 +59,32 @@ export default function CellEditor({
     const formData = new FormData(event.currentTarget);
     const useActual = formData.get('useActual') === 'on';
     const validated = formData.get('validated') === 'on';
+    const markAsLastEntry = formData.get('lastEntry') === 'on';
     const actualAmountValue = Number(formData.get('actualAmount'));
     const notes = String(formData.get('notes') || '');
 
-    onSave(selectedCell.entryKey, {
-      scheduledItemId: selectedCell.row.id,
-      payPeriodDate: selectedCell.period.date,
-      plannedAmount: selectedCell.plannedAmount,
-      actualAmount: Number.isNaN(actualAmountValue)
-        ? selectedCell.plannedAmount
-        : actualAmountValue,
-      useActual,
-      validated,
-      notes,
-      lineItems: [],
-      updatedAt: new Date().toISOString(),
-    });
+    onSave(
+      selectedCell.entryKey,
+      {
+        scheduledItemId: selectedCell.row.id,
+        payPeriodDate: selectedCell.period.date,
+        plannedAmount: selectedCell.plannedAmount,
+        actualAmount: Number.isNaN(actualAmountValue)
+          ? selectedCell.plannedAmount
+          : actualAmountValue,
+        useActual,
+        validated,
+        notes,
+        lineItems: [],
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        lastEntryAction: getLastEntrySaveAction({
+          wasMarked: isLastEntryCell,
+          shouldBeMarked: markAsLastEntry,
+        }),
+      }
+    );
   }
 
   function handleLineItemSubmit(event) {
@@ -75,6 +92,7 @@ export default function CellEditor({
 
     const formData = new FormData(event.currentTarget);
     const validated = formData.get('validated') === 'on';
+    const markAsLastEntry = formData.get('lastEntry') === 'on';
     const notes = String(formData.get('notes') || '');
 
     const descriptions = formData.getAll('lineDescription');
@@ -90,17 +108,26 @@ export default function CellEditor({
 
     const total = sumLineItems(cleanedLineItems);
 
-    onSave(selectedCell.entryKey, {
-      scheduledItemId: selectedCell.row.id,
-      payPeriodDate: selectedCell.period.date,
-      plannedAmount: selectedCell.plannedAmount,
-      actualAmount: total,
-      useActual: true,
-      validated,
-      notes,
-      lineItems: cleanedLineItems,
-      updatedAt: new Date().toISOString(),
-    });
+    onSave(
+      selectedCell.entryKey,
+      {
+        scheduledItemId: selectedCell.row.id,
+        payPeriodDate: selectedCell.period.date,
+        plannedAmount: selectedCell.plannedAmount,
+        actualAmount: total,
+        useActual: true,
+        validated,
+        notes,
+        lineItems: cleanedLineItems,
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        lastEntryAction: getLastEntrySaveAction({
+          wasMarked: isLastEntryCell,
+          shouldBeMarked: markAsLastEntry,
+        }),
+      }
+    );
   }
 
   function addLineItem(event) {
@@ -249,6 +276,18 @@ export default function CellEditor({
             </span>
           </label>
 
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+            <input
+              name="lastEntry"
+              type="checkbox"
+              defaultChecked={isLastEntryCell}
+              className="h-4 w-4"
+            />
+            <span className="text-sm font-medium text-slate-700">
+              Mark as last entry
+            </span>
+          </label>
+
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Notes</span>
             <textarea
@@ -314,6 +353,18 @@ export default function CellEditor({
             />
             <span className="text-sm font-medium text-slate-700">
               Mark as validated
+            </span>
+          </label>
+
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+            <input
+              name="lastEntry"
+              type="checkbox"
+              defaultChecked={isLastEntryCell}
+              className="h-4 w-4"
+            />
+            <span className="text-sm font-medium text-slate-700">
+              Mark as last entry
             </span>
           </label>
 

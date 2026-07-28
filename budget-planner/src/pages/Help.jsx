@@ -1,6 +1,6 @@
 const appAreas = [
   ['Dashboard', 'Use this for the daily cash-flow overview, alerts, and projection chart.'],
-  ['Planner', 'Use this for pay-period forecasting and validating planned items.'],
+  ['Planner', 'Use this for pay-period forecasting, Last Entry marking, and validating planned items.'],
   ['Transactions', 'Review derived income, expenses, transfers, and adjustments.'],
   ['Reports', 'Review filtered summaries, charts, trends, print view, and CSV exports.'],
   ['Manage', 'Open setup pages for scheduled items, accounts, savings buckets, budgets, and categories.'],
@@ -176,7 +176,9 @@ export default function Help() {
           <p>
             Export Backup saves a versioned JSON file with your FinPath
             settings, accounts, categories, scheduled items, planner entries,
-            savings buckets, transfers, budgets, and local metadata.
+            savings buckets, transfers, budgets, and local metadata. The
+            Planner Last Entry marker is included as one optional metadata
+            reference when selected.
           </p>
           <p>
             Import Backup validates the file, shows a preview, and requires
@@ -332,6 +334,23 @@ export default function Help() {
           Income uses a deposit account. Expenses and debts use a paid-from
           account. Existing scheduled transfers continue to use their savings
           bucket and transfer setup.
+        </p>
+      </HelpCard>
+
+      <HelpCard title="Planner Last Entry">
+        <p>
+          Open a Planner amount cell, select Mark as last entry in the Edit
+          Planner Cell panel, and save the cell. The selected cell becomes
+          highlighted in the Planner.
+        </p>
+        <p>
+          Selecting another cell as Last Entry replaces the previous marker.
+          Unchecking Mark as last entry on the marked cell and saving removes
+          the marker. Closing without saving does not change the marker.
+        </p>
+        <p>
+          Last Entry is separate from validation and does not change amounts,
+          balances, budgets, reports, recurrence, or transactions.
         </p>
       </HelpCard>
 

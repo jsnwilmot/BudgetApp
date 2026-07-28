@@ -17,6 +17,7 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] What's New popup does not reappear after dismissal for the same version.
 - [ ] Main navigation opens Dashboard, Planner, Transactions, Reports, Manage, Settings, and Help.
 - [ ] Manage opens Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
+- [ ] No chatbot launcher, widget, panel, or chatbot navigation item appears.
 - [ ] Saved local data remains after refresh.
 - [ ] Two missing-account planned rows named `Property Taxes` and `Property taxes` produce one Dashboard alert.
 - [ ] Missing-account alert copy includes the transaction description, date, and amount when available.
@@ -40,6 +41,14 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Splash screen does not block app access.
 - [ ] What's New popup appears for the current app version when unseen.
 - [ ] Payday workflow works: add income, regular bills, misc expenses, misc payments, and savings transfers, then compare Dashboard, Planner, and Reports totals.
+- [ ] Planner grid cells do not show Last Entry checkboxes or labels.
+- [ ] Edit Planner Cell shows Mark as last entry directly below Mark as validated.
+- [ ] Saving one Planner cell with Mark as last entry checked highlights that amount cell.
+- [ ] Saving a different Planner cell with Mark as last entry checked clears the previous highlight.
+- [ ] Unchecking Mark as last entry on the marked cell and saving leaves all Planner cells unmarked.
+- [ ] Closing Edit Planner Cell without saving does not change the existing Last Entry marker.
+- [ ] Planner Last Entry remains selected after refresh, navigation away from Planner, and reopening the PWA if practical.
+- [ ] Planner Last Entry does not change validation, amount values, account balances, budgets, reports, recurrence, transactions, or planner sorting.
 - [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.
@@ -88,6 +97,7 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Backup export still downloads JSON.
 - [ ] Backup JSON includes `appName`, `exportVersion`, `schemaVersion`, `exportedAt`, `source`, `basePath`, and `data`.
 - [ ] Backup JSON includes `transfers`, `savingsBucketAdjustments`, `plannerEntries`, `settings`, and `budgets`.
+- [ ] Backup JSON preserves `appMetadata.plannerLastEntryMarker` when a Planner Last Entry cell is selected.
 - [ ] Backup import preview still opens for a valid backup.
 - [ ] Backup import shows warnings for older backups where applicable.
 - [ ] Backup import requires confirmation before replacing local data.

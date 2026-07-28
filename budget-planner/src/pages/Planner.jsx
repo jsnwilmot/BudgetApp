@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import AlertList from '../components/AlertList';
+import { isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
 import { getLocalToday } from '../logic/dateLogic';
 
@@ -113,6 +114,7 @@ function PlannerRow({
   row,
   payPeriods,
   plannerEntries,
+  plannerLastEntryMarker,
   currency,
   onCellClick,
 }) {
@@ -135,11 +137,20 @@ function PlannerRow({
         const hasNote = Boolean(entry?.notes?.trim());
         const hasLineItems = Boolean(entry?.lineItems?.length);
         const canEdit = editable;
+        const lastEntrySelected = isPlannerCellMarked(
+          plannerLastEntryMarker,
+          row.id,
+          period.date
+        );
+        const amountLabel =
+          amount === 0 ? 'No amount' : formatCurrency(amount, currency);
 
         return (
           <td
             key={period.date}
-            className={`min-w-36 border border-slate-200 px-2 py-2 text-right text-sm ${getAmountClass(amount)}`}
+            className={`min-w-36 border border-slate-200 px-2 py-2 text-right text-sm ${getAmountClass(amount)} ${
+              lastEntrySelected ? 'planner-last-entry-cell' : ''
+            }`}
           >
             {canEdit ? (
               <button
@@ -155,6 +166,11 @@ function PlannerRow({
                 }
                 className="group flex w-full items-center justify-end gap-2 rounded-lg px-2 py-1 hover:bg-white"
                 title={hasNote ? entry.notes : 'Edit planned amount'}
+                aria-label={
+                  lastEntrySelected
+                    ? `${row.name}, ${period.label}, ${amountLabel}. Marked as Last Entry.`
+                    : undefined
+                }
               >
                 <span>
                   {amount === 0 ? '—' : formatCurrency(amount, currency)}
@@ -194,6 +210,7 @@ function PlannerRow({
 export default function Planner({
   plannerData,
   plannerEntries,
+  plannerLastEntryMarker,
   settings,
   alerts = [],
   onCellClick,
@@ -244,7 +261,9 @@ export default function Planner({
           Biweekly budget grid
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Click a planned amount to enter the actual value, add a note, mark it as validated, or add line items for misc rows.
+          Click a planned amount to enter the actual value, add a note, mark it
+          as validated, mark it as the last entry, or add line items for misc
+          rows.
         </p>
       </div>
 
@@ -406,6 +425,7 @@ export default function Planner({
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  plannerLastEntryMarker={plannerLastEntryMarker}
                   currency={currency}
                   onCellClick={onCellClick}
                 />
@@ -427,6 +447,7 @@ export default function Planner({
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  plannerLastEntryMarker={plannerLastEntryMarker}
                   currency={currency}
                   onCellClick={onCellClick}
                 />
@@ -448,6 +469,7 @@ export default function Planner({
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  plannerLastEntryMarker={plannerLastEntryMarker}
                   currency={currency}
                   onCellClick={onCellClick}
                 />
@@ -469,6 +491,7 @@ export default function Planner({
                   row={row}
                   payPeriods={plannerData.payPeriods}
                   plannerEntries={plannerEntries}
+                  plannerLastEntryMarker={plannerLastEntryMarker}
                   currency={currency}
                   onCellClick={onCellClick}
                 />

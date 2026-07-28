@@ -57,6 +57,12 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.planner-last-entry-cell {
+  background: #ecfdf5 !important;
+  box-shadow: inset 0 0 0 2px var(--color-finpath-teal);
+  position: relative;
+}
+
 table {
   border-collapse: collapse;
 }

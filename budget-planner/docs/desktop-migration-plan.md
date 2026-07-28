@@ -150,7 +150,11 @@ internally, but it must not replace FinPath record IDs.
 ### `app_metadata`
 
 - Primary key: `id`, expected `app-metadata`
-- Fields: `lastBackupAt`, `onboardingCompletedAt`, `createdAt`, `updatedAt`
+- Fields: `lastBackupAt`, `plannerLastEntryMarker`, `onboardingCompletedAt`,
+  `createdAt`, `updatedAt`
+- Important: `plannerLastEntryMarker` is nullable and should be cleared during
+  import if its scheduled item ID, pay-period occurrence, or planner cell key no
+  longer resolves.
 - Flexible fields: `raw_json`
 
 ### `accounts`

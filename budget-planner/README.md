@@ -31,7 +31,8 @@ release that should show the one-time What's New popup.
 - Dashboard with cash-flow summary, projection chart, and alerts.
 - Missing-account alerts are deduplicated and open the affected scheduled item
   when possible so its deposit or paid-from account can be assigned.
-- Planner with editable projected and actual amounts plus a current pay period summary.
+- Planner with editable projected and actual amounts, a single Last Entry cell
+  marker, and a current pay period summary.
 - Transactions view derived from scheduled items, adjustments, and savings activity.
 - Manage area for Scheduled Items, Accounts, Savings Buckets, Budgets, and Categories.
 - Scheduled income, expenses, and debts support account assignment so generated
@@ -69,6 +70,11 @@ Use `Settings > Data Management`.
 - `Export Backup` downloads a local JSON backup file with app metadata, app
   version, data version, settings, planner entries, accounts, scheduled items,
   categories, transfers, budgets, savings buckets, and adjustments.
+- Planner Last Entry is stored as one optional app metadata reference, not as
+  separate flags on every planner entry.
+- To mark Last Entry, open a Planner amount cell, check Mark as last entry in
+  the edit panel, and save. The selected Planner cell is highlighted in the
+  grid.
 - The app records the last successful backup export and recommends a new backup
   if no backup exists or the last one is older than 30 days.
 - `Import Backup` previews the backup counts, then replaces current local data
@@ -101,6 +107,10 @@ IDs, scheduled item IDs, savings bucket IDs, transfer IDs, budget IDs, and
 planner entry keys. Import validation checks the file shape, previews record
 counts, shows warnings for older or incomplete backups, and requires
 confirmation before replacing local data.
+
+The optional `appMetadata.plannerLastEntryMarker` field stores the one selected
+Planner amount cell by scheduled item ID, pay-period occurrence date, and cell
+key. Older data without this field is treated as no selected marker.
 
 Older BudgetApp backups remain supported where the data can be normalized
 safely. Transfer records are included in current backups and repairs. The

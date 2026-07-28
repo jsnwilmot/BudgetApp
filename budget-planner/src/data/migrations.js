@@ -153,6 +153,26 @@ function hasFiniteNumber(value) {
   return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value));
 }
 
+export function normalizePlannerLastEntryMarker(marker) {
+  if (!isPlainObject(marker)) {
+    return null;
+  }
+
+  const plannerItemId = safeString(marker.plannerItemId);
+  const occurrenceId = safeString(marker.occurrenceId);
+  const cellKey = safeString(marker.cellKey);
+
+  if (!plannerItemId || !occurrenceId) {
+    return null;
+  }
+
+  return {
+    plannerItemId,
+    occurrenceId,
+    cellKey: cellKey || `${plannerItemId}__${occurrenceId}`,
+  };
+}
+
 export function normalizeAppMetadataRecord(metadata = {}) {
   const timestamp = createTimestamp();
   const safeMetadata = isPlainObject(metadata) ? metadata : {};
@@ -161,6 +181,9 @@ export function normalizeAppMetadataRecord(metadata = {}) {
     ...safeMetadata,
     id: safeString(safeMetadata.id, APP_METADATA_ID),
     lastBackupAt: safeTimestampString(safeMetadata.lastBackupAt, ''),
+    plannerLastEntryMarker: normalizePlannerLastEntryMarker(
+      safeMetadata.plannerLastEntryMarker
+    ),
     onboardingCompletedAt: safeTimestampString(
       safeMetadata.onboardingCompletedAt,
       ''
