@@ -2,6 +2,19 @@
 
 This document expands the concise Future Roadmap in `README.md` into implementation-ready feature direction. It is planning documentation only. Items are not considered implemented until their own development, testing, documentation, and release work is complete.
 
+## Priority: Continuous Planner with Year Navigation
+
+**Status:** Product direction approved, implementation pending. Track in [Epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3). The entire following calendar year should be selectable by December 1, regardless of the normal 3/6/12/18/24-month projection horizon.
+
+- [Continuous Planner product and technical plan](continuous-planner-plan.md)
+- [Continuous Planner acceptance matrix](continuous-planner-acceptance.md)
+- [Phase 1: Historical data and balance integrity](https://github.com/jsnwilmot/BudgetApp/issues/4)
+- [Phase 2: Rolling projection and year-specific calculation](https://github.com/jsnwilmot/BudgetApp/issues/5)
+- [Phase 3: Year navigation and accessible UX](https://github.com/jsnwilmot/BudgetApp/issues/6)
+- [Phase 4: Full acceptance, restore testing and release review](https://github.com/jsnwilmot/BudgetApp/issues/7)
+
+The Planner must keep its original pay-period identity, confirmed history, and carried-forward account/bucket balances. **Year navigation is independent of the projection range**. No annual reset, silent anchor change, destructive data migration or production release is approved by this roadmap entry. Implement as reviewed, separately accepted phases.
+
 ## Existing Future Work
 
 - Desktop SQLite storage.
