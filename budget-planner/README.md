@@ -818,6 +818,7 @@ regularly and before any browser cleanup or deployment change.
 
 ## Future Roadmap
 
+- **Priority, planned only:** Continuous Planner with rolling projections and calendar-year navigation. View the entire next year by December 1 and retain prior years without resetting the original pay-period anchor. Execution: [product/technical plan](docs/continuous-planner-plan.md), [acceptance matrix](docs/continuous-planner-acceptance.md), and [tracking epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3). **Not yet implemented.**
 - Desktop SQLite storage.
 - Further performance tuning after desktop packaging.
 - More automated test coverage.
