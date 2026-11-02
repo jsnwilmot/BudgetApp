@@ -663,9 +663,8 @@ export default function App() {
   const handleSaveCell = useCallback(async (entryKey, entry, options = {}) => {
     try {
       const source = scheduledItems.find((item) => item.id === entry.scheduledItemId) || selectedCell?.row.item;
-      const savedEntry = await savePlannerEntry(entryKey, {
-        ...plannerEntries[entryKey], ...entry,
-        scheduledItemSnapshot: plannerEntries[entryKey]?.scheduledItemSnapshot || source,
+      const savedEntry = await savePlannerEntry(entryKey, entry, {
+        source, review: options.historicalReview,
       });
       const nextMarker = applyPlannerLastEntrySaveAction({
         currentMarker: appMetadata.plannerLastEntryMarker,
@@ -698,7 +697,7 @@ export default function App() {
       console.error(error);
       setStatusMessage('Could not save planner entry.');
     }
-  }, [appMetadata, plannerEntries, scheduledItems, selectedCell]);
+  }, [appMetadata, scheduledItems, selectedCell]);
 
   const handleClearCell = useCallback(async (entryKey) => {
     try {
@@ -1532,6 +1531,9 @@ export default function App() {
         selectedCell={selectedCell}
         plannerEntries={plannerEntries}
         plannerLastEntryMarker={plannerLastEntryMarker}
+        accounts={accounts}
+        savingsBuckets={savingsBuckets}
+        categories={categories}
         settings={settings}
         onClose={handleCloseCell}
         onSave={handleSaveCell}

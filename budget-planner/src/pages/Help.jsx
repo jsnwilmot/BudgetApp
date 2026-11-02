@@ -375,9 +375,15 @@ export default function Help() {
           recording the same movement manually as well as in Planner counts both.
         </p>
         <p>
-          Older backups still import. Missing historical source details or missing
-          confirmed amounts cannot be reconstructed reliably; review Data Health
-          and keep your original backup. This review build does not add year navigation.
+          Older backups still import. Missing confirmed amounts or source provenance
+          remain uncertain, even if a current schedule or an inferred snapshot exists.
+          Amber cell warnings and Data Health identify these entries. Notes, markers,
+          validation changes and ordinary amount edits do not clear the warnings.
+          In the cell editor, compare an original backup or statement, then explicitly
+          confirm the amount and source details separately with a reference. If source
+          details differ, restore correct details before confirming. Keep the original
+          backup; the app records your acknowledgement, not proof of financial facts.
+          This review build does not add year navigation.
         </p>
       </HelpCard>
 

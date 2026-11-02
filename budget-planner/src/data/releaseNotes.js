@@ -6,7 +6,8 @@ export const RELEASE_NOTES = {
   date: '2026-11-02',
   highlights: [
     'Preserved saved planner amounts, notes, line items and source snapshots when recurring items change or are deleted.',
-    'Kept historical markers eligible outside the visible forecast.',
+    'Kept historical markers eligible outside the visible forecast; routine edits now retain historical uncertainty warnings.',
+    'Added separate amount and source reconciliation confirmations with an original backup or statement reference.',
     'Protected anchor and pay frequency while dated records exist; resetting settings retains the cadence.',
     'Reconciled retained dated activity with account and savings bucket opening balances.',
     'Corrected transfers between accounts of the same type and report movement identity handling.',

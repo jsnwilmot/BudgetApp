@@ -104,3 +104,51 @@ Remaining review risks:
 7. Production build reports stale Browserslist compatibility data. Build and PWA generation succeed; updating unrelated dependency metadata is outside this phase.
 
 Manual review steps are the dedicated Phase 1 section in `manual-test-checklist.md`. PR checks run tests, lint and production build with Node 22 and have read-only repository permissions; the existing deployment workflow is unchanged and triggers only on main/manual dispatch. This branch does not merge or deploy.
+
+## F1/F2 architecture remediation revision — 2026-11-02
+
+Review basis: PR review `5735975676` at `1dd1e2f4ce2d49596883f96e95865920305fe11c`, and the matching findings in Issue #4. The initial Architect disposition was changes requested. This revision implements corrections for F1/F2; independent re-review and owner acceptance remain pending. Earlier evidence above describes the initial candidate; this section supersedes its warning/reconciliation behavior and browser NOT RUN statements only for checks explicitly executed below.
+
+### F1 — routine saves cannot certify a historical amount
+
+Removed unconditional `historicalAmountNeedsReview: false` assignments from **both** editor handlers. Storage now reads the existing cell in its write transaction and applies a shared history policy before saving. A stale payload with a false flag, a newly supplied fallback planned value, a note/marker save, validation toggle or line-item edit cannot remove an existing warning. Source enrichment uses the same policy and cannot clear it either.
+
+The editor provides a separate, unchecked amount confirmation. Resolving it requires deliberate acknowledgement plus a nonblank original backup/statement reference. The reference and acknowledgement time are preserved in `historicalReview.amount`. Merely entering reference text does not acknowledge anything. Source confirmation does not resolve the amount warning. Existing amounts, notes, line items and stable keys are retained; the shared policy only governs provenance and review metadata.
+
+### F2 — an inferred current source is not verified historical classification
+
+Data Health checks source provenance for saved cells even when `plannedAmount` and the current scheduled item exist. The grid exposes an amber warning and accessible provisional-source context, and the editor shows the account/type/category/bucket details being proposed for review.
+
+Optional metadata:
+
+- `historicalSourceNeedsReview`: persistent unresolved classification warning.
+- `scheduledItemSnapshotProvenance`: `captured-at-entry-save` for a genuinely new cell captured when saved; `unverified-current-source` for inferred legacy/source-enrichment snapshots; `user-reconciled` only after explicit source acknowledgement with a reference.
+- `historicalReview.source`: the evidence reference and acknowledgement timestamp, separate from amount reconciliation.
+
+Snapshots from the earlier review build without provenance are conservatively uncertain: that build could have captured an already changed source. Presence of a snapshot, a false flag or incoming audit/provenance fields in a routine save cannot certify an existing legacy cell. A `user-reconciled` source also requires a stored reference. Ordinary snapshot enrichment never creates evidence. A borrowed snapshot is not a new capture.
+
+The fallback still participates in existing projection math, but is explicitly **provisional**. Neither code nor a user checkbox reconstructs a lost historical fact. If displayed source details are wrong, do not confirm them; restore correct details from the original backup first. No historical source reclassification editor, migration, recurrence engine or Transactions ledger was added.
+
+### Concrete synthetic reconciliation procedure
+
+The existing `test/fixtures/current-backup.json` is a **synthetic** original-backup example. Its `salary__2026-12-30` cell has planned amount **1000 CAD** and a source snapshot with ID `salary`, type `income`, account `c` (Chequing), and no category/bucket. Its original line-item fixture is described by `history-ledger.js`; these are test facts, not a user's statement.
+
+1. Export the current dataset and keep that file unchanged. Use an isolated browser profile to compare the original backup's cell key, amount and source IDs with the flagged entry.
+2. Reproduce F2 by removing provenance/snapshot from a saved 2026 cell and reassigning the current salary source to `s` (Savings). Current-source inference must remain flagged; a routine save or an inferred snapshot of `s` is not proof of the original account `c`.
+3. If the current source details differ from the original, use the existing import-preview/confirmation flow in the isolated profile to restore the correct original backup. This replaces the dataset, so compare subsequent valid changes before doing any owner-approved restore on a real device. Do not simply relabel the present-day schedule as original history.
+4. Open the historical cell and compare the displayed details to the original evidence. Confirm **source details only**, referencing `current-backup.json / salary__2026-12-30 / original account c, income, no category or bucket`. Source uncertainty resolves; any unresolved amount warning remains.
+5. Separately compare the effective confirmed amount to the original record. If correction is required, enter the supported actual/line-item correction, then explicitly confirm the amount with its original backup/statement reference. An actual correction does not prove a previously unknown planned snapshot; preserve the original files and distinguish the two.
+6. Export, restore in a fresh profile, and check flags, evidence references, marker, stable IDs and balances. If original evidence is missing or ambiguous, leave the applicable confirmation unchecked. Acknowledgements record the user's review, not automated authentication of financial facts.
+
+### Automated and isolated-browser evidence
+
+- The unit/storage suite adds F1/F2 tests for note/marker/validation-only payloads, both standard and line-item values, fallback planned amounts, evidence-required rollback, independent amount/source acknowledgement, legacy reassigned account/type/category provenance, inferred and pre-provenance snapshots, source edit/delete, backup round trip and submitted provenance/audit without acknowledgement. Earlier ledger/ID/backup/transaction regressions remain in the suite. Final exact-head test count, lint, build, diff and Node 22 CI results are recorded in the PR.
+- Browser harness: `npm run test:browser`, against a local **production preview**, Chromium `154.0.8037.57`, Playwright Core, Linux, clock `2026-12-30T12:00:00Z`, fresh isolated contexts at 1440×1000 and 375×812. Real browser IndexedDB, file upload/download, service worker and offline mode are used, not fake IndexedDB. Results and downloads/screenshots are written to a new `/tmp/finpath-phase1-browser-*` directory per run; no user browser/profile or production financial data is accessed.
+- Completed browser assertions: standard and line-item note/marker saves preserve both warnings; Data Health exposes both uncertainties; blank-reference confirmation blocks save; explicit amount acknowledgement leaves source warning; explicit source acknowledgement leaves unresolved amount warning; actual JSON export and fresh-profile restore preserve flags, evidence and marker; navigation/refresh do not write planner entries; service-worker-controlled offline reload and new-page reopen retain entries; reassigned source remains provisional; restored original source is reconciled only with evidence; mobile review controls are visible with no page overflow; UI schedule edit/deactivate/delete retains entry keys, notes, snapshots and unresolved warnings. Final run also imports the legacy JSON fixture in a fresh profile and checks that viewing does not silently add a source snapshot.
+- Cross-screen browser spot checks use the December reference ledger: Planner projected/validated chequing **1620**, projected savings **645**; Dashboard next-period chequing/savings **1620/645**; current projected/validated buckets **645/645**. Reports for Dec 30 show income **1000** and expenses **240**, comprising bill 230 plus manual fee 10. Transfers are separate movements, not part of that expense card. These are finite-scope spot checks, not complete CP-36–42 acceptance.
+
+### Remaining gate and limitations
+
+F1/F2 are corrected in implementation and regression coverage, subject to independent Architect re-review. OS-installed/standalone PWA installation and launch cannot be established by a headless browser: only service-worker offline reload/reopen is asserted. Broader multi-tab source editing, all mobile/PWA devices, all import/repair workflows and comprehensive cross-screen acceptance remain pending. The harness does not authenticate real owner statements or reconcile real financial records. F3 is unchanged: Transactions uses current source-oriented recurrence, not a historical validated occurrence ledger; deactivated/deleted planner history may not appear there. Phase 4 needs an explicit integration resolution/acceptance decision. Phase 1 remains unaccepted; do not merge/deploy or start Phase 2.
+
+Changed files for this revision: `plannerHistory.js`, `db.js`, `migrations.js`, `App.jsx`, `CellEditor.jsx`, `Planner.jsx`; targeted unit/storage and browser tests; dev-only Playwright Core dependency and browser script; README, Help, review release notes, this evidence report and the manual checklist. ExportVersion 1, schema/data version 2, IndexedDB version 9, financial source IDs and accounting keys remain unchanged. Additive metadata is retained through the existing extensible import/export normalization; no on-view migration is introduced.

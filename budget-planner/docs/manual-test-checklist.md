@@ -185,3 +185,12 @@ Use a separate browser profile with synthetic fixtures. Export first; never repl
 - [ ] Import `test/fixtures/legacy-backup.json`. Preserve IDs and values on export/restore. For legacy entries without original amount/source details, Data Health reports uncertainty; compare a statement before correcting.
 - [ ] Check Planner, Dashboard, Reports, CSV/print, account comparisons and buckets under their documented finite scopes. No year controls or rolling forecast should appear.
 - [ ] Check desktop, 375px mobile, offline PWA refresh and a second tab. Record review findings before accepting Phase 1.
+
+### F1/F2 historical warning remediation
+
+- [ ] With a legacy saved cell missing its amount/snapshot provenance, edit only notes, marker or validation in each standard/line-item editor. Amber/Data Health warnings must remain after save, refresh and backup restore.
+- [ ] Checking a reconciliation confirmation without a backup/statement reference must block save. Providing text alone without a checkbox must not resolve a warning.
+- [ ] Confirm only the amount against the original evidence: source warning remains. Confirm only the source: unresolved amount warning remains. Restore the downloaded backup in a fresh isolated profile and verify flags and evidence references.
+- [ ] Reassign a legacy source from Chequing to Savings before a snapshot exists. Its current classification must remain provisional, including after source edits/deletion and automatic snapshot enrichment.
+- [ ] Treat older snapshots with no provenance as uncertain. Restore original source details from a trustworthy backup if the displayed classification is wrong; do not acknowledge the current fallback as original merely because it exists.
+- [ ] Follow the sample reconciliation procedure in `continuous-planner-phase1.md`. Use real original evidence only with owner review; synthetic fixtures do not verify anyone's financial facts.

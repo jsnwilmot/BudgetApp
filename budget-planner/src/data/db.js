@@ -1,3 +1,4 @@
+import { prepareHistoricalEntry } from '../logic/plannerHistory';
 import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
@@ -741,30 +742,27 @@ export async function getAllPlannerEntries() {
   });
 }
 
-export async function savePlannerEntry(entryKey, entry) {
+export async function savePlannerEntry(entryKey, entry, { source, review } = {}) {
   const db = await openDatabase();
-
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORES.plannerEntries, 'readwrite');
     const store = transaction.objectStore(STORES.plannerEntries);
-
-    const record = {
-      ...entry,
-      entryKey,
-      updatedAt: new Date().toISOString(),
+    let record;
+    const request = store.get(entryKey);
+    request.onsuccess = () => {
+      try {
+        record = {
+          ...prepareHistoricalEntry(request.result, entry, source, review),
+          entryKey, updatedAt: new Date().toISOString(),
+        };
+        store.put(record);
+      } catch (error) {
+        transaction.abort();
+        reject(error);
+      }
     };
-
-    const request = store.put(record);
-
-    request.onerror = () => {
-      reject(new Error('Failed to save planner entry.'));
-    };
-
     resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      value: record,
+      transaction, resolve, reject, value: () => record,
       errorMessage: 'Failed to save planner entry.',
     });
   });
@@ -827,13 +825,10 @@ async function mutateScheduledItem(id, record, entrySnapshots) {
           // or overwrite a more recent correction with a stale UI snapshot.
           if (!current) return;
           try {
-            entriesStore.put({
+            entriesStore.put(prepareHistoricalEntry(current, {
               ...current,
               plannedAmount: current.plannedAmount ?? entry.plannedAmount,
-              scheduledItemSnapshot: current.scheduledItemSnapshot || entry.scheduledItemSnapshot,
-              ...(current.historicalAmountNeedsReview === undefined && entry.historicalAmountNeedsReview
-                ? { historicalAmountNeedsReview: true } : {}),
-            });
+            }, entry.scheduledItemSnapshot));
           } catch (error) {
             transaction.abort();
             reject(error);

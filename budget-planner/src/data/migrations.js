@@ -1,3 +1,4 @@
+import { getHistoricalReviewState } from '../logic/plannerHistory';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import {
   isValidDateString,
@@ -1013,6 +1014,7 @@ function checkPlannerEntries(data, issues) {
   let missingScheduledReferences = 0;
   let invalidEntryShapes = 0;
   let missingConfirmedAmounts = 0;
+  let uncertainHistoricalSources = 0;
 
   Object.entries(plannerEntries).forEach(([entryKey, entry]) => {
     if (!entryKey) emptyKeys += 1;
@@ -1021,8 +1023,9 @@ function checkPlannerEntries(data, issues) {
       return;
     }
 
-    if (entry.historicalAmountNeedsReview ||
-        (entry.validated && !entry.useActual && !entry.lineItems?.length && entry.plannedAmount == null)) {
+    const reviewState = getHistoricalReviewState(entry);
+    if (reviewState.source) uncertainHistoricalSources += 1;
+    if (reviewState.amount) {
       missingConfirmedAmounts += 1;
     }
     const [scheduledItemId] = String(entryKey).split('__');
@@ -1053,6 +1056,14 @@ function checkPlannerEntries(data, issues) {
       'Planner entry issues',
       `${emptyKeys + invalidEntryShapes} planner entries have empty keys, invalid values, or invalid line item amounts.`,
       'Review planner edits before relying on pay-period totals.'
+    );
+  }
+
+  if (uncertainHistoricalSources > 0) {
+    addHealthIssue(
+      issues, 'warning', 'Historical source details need review',
+      `${uncertainHistoricalSources} saved entries lack verified original account, type, category or bucket details.`,
+      'Current schedules and inferred snapshots are provisional, not evidence of original classification. Compare an original backup or statement. Reconcile source details explicitly in the cell editor; if they differ, restore the correct source details before confirming.'
     );
   }
 

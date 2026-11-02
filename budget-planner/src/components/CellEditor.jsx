@@ -1,3 +1,4 @@
+import { getHistoricalReviewState } from '../logic/plannerHistory';
 import { Plus, Trash2 } from 'lucide-react';
 import { getLastEntrySaveAction, isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { formatCurrency, getLineItemTotal, sumLineItems } from '../logic/projectionLogic';
@@ -10,11 +11,73 @@ function createLineItem() {
   };
 }
 
+function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categories }) {
+  if (!state.amount && !state.source) return null;
+  const label = (records, id) => records.find((record) => record.id === id)?.name || (id ? 'Missing record' : 'None');
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+      <legend className="font-semibold text-amber-950">Historical accuracy needs review</legend>
+      <p className="text-sm text-amber-950">
+        Notes, validation and marker changes do not verify missing historical facts.
+        Compare an original backup or statement before checking either confirmation.
+        Leave unchecked to keep the warnings.
+      </p>
+      {state.amount ? (
+        <label className="flex items-start gap-2 text-sm">
+          <input name="reviewHistoricalAmount" type="checkbox" className="mt-1" />
+          <span>I verified the saved amount against an original backup or statement.</span>
+        </label>
+      ) : null}
+      {state.source ? (
+        <>
+          <p className="text-sm">
+            Source details are provisional: {source?.name || 'Missing source'};
+            type: {source?.type || 'Unknown'};
+            account: {label(accounts, source?.accountId)};
+            category: {label(categories, source?.categoryId)};
+            bucket: {label(savingsBuckets, source?.bucketId || source?.savingsBucketId)}.
+            If these differ from the original, restore the correct details before confirming.
+          </p>
+          <label className="flex items-start gap-2 text-sm">
+            <input name="reviewHistoricalSource" type="checkbox" className="mt-1" />
+            <span>I verified these original source details against an original backup or statement.</span>
+          </label>
+        </>
+      ) : null}
+      <label className="block text-sm">
+        Backup or statement reference (required for confirmation)
+        <input name="historicalEvidence" type="text" maxLength="500"
+          onInput={(event) => event.currentTarget.setCustomValidity('')}
+          className="mt-1 w-full rounded-lg border border-amber-300 px-3 py-2"
+          placeholder="For example: original backup filename and entry date" />
+      </label>
+    </fieldset>
+  );
+}
+
+function readHistoricalReview(form, formData) {
+  const review = {
+    amount: formData.get('reviewHistoricalAmount') === 'on',
+    source: formData.get('reviewHistoricalSource') === 'on',
+    evidence: String(formData.get('historicalEvidence') || '').trim(),
+  };
+  if ((review.amount || review.source) && !review.evidence) {
+    const input = form.elements.namedItem('historicalEvidence');
+    input.setCustomValidity('Enter the original backup or statement reference before confirming.');
+    input.reportValidity();
+    return null;
+  }
+  return review;
+}
+
 export default function CellEditor({
   selectedCell,
   plannerEntries,
   plannerLastEntryMarker,
   settings,
+  accounts = [],
+  savingsBuckets = [],
+  categories = [],
   onClose,
   onSave,
   onClear,
@@ -24,6 +87,9 @@ export default function CellEditor({
   }
 
   const entry = plannerEntries[selectedCell.entryKey] || {};
+  const reviewState = plannerEntries[selectedCell.entryKey] ? getHistoricalReviewState(entry) : { amount: false, source: false };
+  const reviewFields = <HistoricalReviewFields state={reviewState} source={selectedCell.row.item}
+    accounts={accounts} savingsBuckets={savingsBuckets} categories={categories} />;
   const currency = settings?.currency || 'CAD';
   const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
   const isLastEntryCell = isPlannerCellMarked(
@@ -57,6 +123,8 @@ export default function CellEditor({
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
+    const historicalReview = readHistoricalReview(event.currentTarget, formData);
+    if (!historicalReview) return;
     const useActual = formData.get('useActual') === 'on';
     const validated = formData.get('validated') === 'on';
     const markAsLastEntry = formData.get('lastEntry') === 'on';
@@ -67,7 +135,6 @@ export default function CellEditor({
       selectedCell.entryKey,
       {
         ...entry,
-        historicalAmountNeedsReview: false,
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,
@@ -81,6 +148,7 @@ export default function CellEditor({
         updatedAt: new Date().toISOString(),
       },
       {
+        historicalReview,
         lastEntryAction: getLastEntrySaveAction({
           wasMarked: isLastEntryCell,
           shouldBeMarked: markAsLastEntry,
@@ -93,6 +161,8 @@ export default function CellEditor({
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
+    const historicalReview = readHistoricalReview(event.currentTarget, formData);
+    if (!historicalReview) return;
     const validated = formData.get('validated') === 'on';
     const markAsLastEntry = formData.get('lastEntry') === 'on';
     const notes = String(formData.get('notes') || '');
@@ -114,7 +184,6 @@ export default function CellEditor({
       selectedCell.entryKey,
       {
         ...entry,
-        historicalAmountNeedsReview: false,
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,
@@ -126,6 +195,7 @@ export default function CellEditor({
         updatedAt: new Date().toISOString(),
       },
       {
+        historicalReview,
         lastEntryAction: getLastEntrySaveAction({
           wasMarked: isLastEntryCell,
           shouldBeMarked: markAsLastEntry,
@@ -292,6 +362,8 @@ export default function CellEditor({
             </span>
           </label>
 
+          {reviewFields}
+
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Notes</span>
             <textarea
@@ -371,6 +443,8 @@ export default function CellEditor({
               Mark as last entry
             </span>
           </label>
+
+          {reviewFields}
 
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Notes</span>
