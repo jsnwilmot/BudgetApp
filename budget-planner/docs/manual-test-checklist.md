@@ -234,3 +234,9 @@ Use a separate browser profile with synthetic fixtures. Export first; never repl
 - [ ] Run `npm test` and `npm run test:cli` using only synthetic fixtures. Verify 25/22/2 separation, 22 value-pair candidates/three unmatched in the controlled fixture, ambiguous/conflicting/invalid cases and sibling/malformed snapshot differences.
 - [ ] Confirm no output includes input values or paths and bytes/mtime remain unchanged, including failed analysis. Confirm writes/network fail under test tripwires; review OS/runtime limitations.
 - [ ] Independently check the PowerShell guide on a synthetic local copy only. Windows testing and any private-data run remain separate acceptance/authorization steps. Do not edit JSON to resolve analysis errors or manufacture source records.
+
+
+### Windows M3 CLI preload regression
+
+- [ ] On Windows PowerShell 5.1 / Node 22.23.3, run `npm.cmd run test:cli` against the corrected commit. All eight synthetic CLI tests, including write/network negative controls, must pass; `ERR_UNSUPPORTED_ESM_URL_SCHEME` is a harness failure, not successful guard enforcement.
+- [ ] Run complete `npm.cmd test`, lint and build checks. Verify guarded subprocesses use a file URL for `--import` while the CLI entrypoint/cwd use native paths. Do not run on private backups or weaken assertions to bypass failures.

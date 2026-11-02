@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { reconciliationFixture } from '../fixtures/reconciliation.js';
 const root=fileURLToPath(new URL('../../',import.meta.url));
-const cli=join(root,'tools/reconcile/cli.mjs'); const guard=fileURLToPath(new URL('./guard.mjs',import.meta.url));
+const cli=join(root,'tools/reconcile/cli.mjs'); const guard=new URL('./guard.mjs',import.meta.url).href;
 const args=(path)=>['--input',path,'--orphan-source','PRIVATE_OLD_SENTINEL','--current-source','PRIVATE_CURRENT_SENTINEL'];
 const run=(argv,guarded=true)=>spawnSync(process.execPath,[...(guarded?['--import',guard]:[]),cli,...argv],{cwd:root,encoding:'utf8',timeout:20000,env:{...process.env,NODE_OPTIONS:'',NODE_V8_COVERAGE:'',NODE_COMPILE_CACHE:''},maxBuffer:100000});
 async function setup(body=JSON.stringify(reconciliationFixture())) {
