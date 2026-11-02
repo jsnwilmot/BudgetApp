@@ -1,0 +1,241 @@
+{
+  "appName": "FinPath",
+  "appVersion": "2.0.1-phase1-review",
+  "exportVersion": 1,
+  "schemaVersion": 2,
+  "exportedAt": "2026-11-02T12:00:00.000Z",
+  "source": "web-pwa",
+  "basePath": "/BudgetApp/",
+  "metadata": {
+    "appName": "FinPath",
+    "legacyAppName": "BudgetApp",
+    "appVersion": "2.0.1-phase1-review",
+    "backupVersion": 1,
+    "exportVersion": 1,
+    "appDataVersion": 2,
+    "schemaVersion": 2,
+    "createdAt": "2026-11-02T12:00:00.000Z",
+    "exportedAt": "2026-11-02T12:00:00.000Z",
+    "source": "web-pwa",
+    "basePath": "/BudgetApp/"
+  },
+  "data": {
+    "appVersion": "2.0.1-phase1-review",
+    "appDataVersion": 2,
+    "appMetadata": {
+      "plannerLastEntryMarker": {
+        "plannerItemId": "salary",
+        "occurrenceId": "2026-12-30",
+        "cellKey": "salary__2026-12-30"
+      },
+      "lastBackupAt": "2026-11-02T12:00:00.000Z",
+      "updatedAt": "2026-11-02T12:00:00.000Z"
+    },
+    "settings": {
+      "currency": "CAD",
+      "payPeriodAnchorDate": "2026-06-03",
+      "payFrequencyDays": 14,
+      "projectionMonths": 24,
+      "monthlyBillAssignmentRule": "previous-pay-period"
+    },
+    "accounts": [
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "c",
+        "name": "Chequing",
+        "type": "chequing",
+        "startingBalance": 1000
+      },
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "s",
+        "name": "Savings",
+        "type": "savings",
+        "startingBalance": 500
+      }
+    ],
+    "categories": [],
+    "transactions": [],
+    "scheduledItems": [
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "salary",
+        "name": "Salary",
+        "type": "income",
+        "amount": 1000,
+        "accountId": "c",
+        "active": false,
+        "frequency": "biweekly",
+        "startDate": "2026-06-03"
+      },
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "tax",
+        "name": "Property tax",
+        "type": "transfer",
+        "amount": 100,
+        "bucketId": "tax-bucket",
+        "active": false,
+        "frequency": "biweekly",
+        "startDate": "2026-06-03"
+      },
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "bill",
+        "name": "Monthly bill",
+        "type": "expense",
+        "amount": 200,
+        "accountId": "c",
+        "active": false,
+        "frequency": "biweekly",
+        "startDate": "2026-06-03"
+      }
+    ],
+    "plannerEntries": {
+      "salary__2026-12-30": {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "entryKey": "salary__2026-12-30",
+        "scheduledItemId": "salary",
+        "payPeriodDate": "2026-12-30",
+        "plannedAmount": 1000,
+        "useActual": false,
+        "validated": true,
+        "notes": "Retained note",
+        "lineItems": [],
+        "scheduledItemSnapshot": {
+          "createdAt": "2026-06-03T12:00:00.000Z",
+          "updatedAt": "2026-06-03T12:00:00.000Z",
+          "id": "salary",
+          "name": "Salary",
+          "type": "income",
+          "amount": 1000,
+          "accountId": "c",
+          "active": false,
+          "frequency": "biweekly",
+          "startDate": "2026-06-03"
+        }
+      }
+    },
+    "manualAdjustments": [
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "fee",
+        "accountId": "c",
+        "date": "2026-12-30",
+        "payPeriodDate": "2026-12-30",
+        "amount": -10
+      }
+    ],
+    "savingsBuckets": [
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "tax-bucket",
+        "name": "Tax",
+        "linkedAccountId": "s",
+        "startingAmount": 500
+      }
+    ],
+    "savingsBucketAdjustments": [
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "interest",
+        "bucketId": "tax-bucket",
+        "date": "2026-12-30",
+        "payPeriodDate": "2026-12-30",
+        "amount": 5
+      }
+    ],
+    "transfers": [
+      {
+        "createdAt": "2026-06-03T12:00:00.000Z",
+        "updatedAt": "2026-06-03T12:00:00.000Z",
+        "id": "manual",
+        "fromAccountId": "c",
+        "toAccountId": "s",
+        "bucketId": "tax-bucket",
+        "transferType": "to_savings_bucket",
+        "date": "2026-12-30",
+        "payPeriodDate": "2026-12-30",
+        "amount": 40,
+        "validated": true
+      }
+    ],
+    "budgets": [],
+    "budgetTargets": [],
+    "planner": {
+      "entries": {
+        "salary__2026-12-30": {
+          "createdAt": "2026-06-03T12:00:00.000Z",
+          "updatedAt": "2026-06-03T12:00:00.000Z",
+          "entryKey": "salary__2026-12-30",
+          "scheduledItemId": "salary",
+          "payPeriodDate": "2026-12-30",
+          "plannedAmount": 1000,
+          "useActual": false,
+          "validated": true,
+          "notes": "Retained note",
+          "lineItems": [],
+          "scheduledItemSnapshot": {
+            "createdAt": "2026-06-03T12:00:00.000Z",
+            "updatedAt": "2026-06-03T12:00:00.000Z",
+            "id": "salary",
+            "name": "Salary",
+            "type": "income",
+            "amount": 1000,
+            "accountId": "c",
+            "active": false,
+            "frequency": "biweekly",
+            "startDate": "2026-06-03"
+          }
+        }
+      },
+      "payPeriods": [],
+      "rows": []
+    },
+    "savings": {
+      "buckets": [
+        {
+          "createdAt": "2026-06-03T12:00:00.000Z",
+          "updatedAt": "2026-06-03T12:00:00.000Z",
+          "id": "tax-bucket",
+          "name": "Tax",
+          "linkedAccountId": "s",
+          "startingAmount": 500
+        }
+      ],
+      "transfers": [
+        {
+          "createdAt": "2026-06-03T12:00:00.000Z",
+          "updatedAt": "2026-06-03T12:00:00.000Z",
+          "id": "interest",
+          "bucketId": "tax-bucket",
+          "date": "2026-12-30",
+          "payPeriodDate": "2026-12-30",
+          "amount": 5
+        },
+        {
+          "createdAt": "2026-06-03T12:00:00.000Z",
+          "updatedAt": "2026-06-03T12:00:00.000Z",
+          "id": "manual",
+          "fromAccountId": "c",
+          "toAccountId": "s",
+          "bucketId": "tax-bucket",
+          "transferType": "to_savings_bucket",
+          "date": "2026-12-30",
+          "payPeriodDate": "2026-12-30",
+          "amount": 40,
+          "validated": true
+        }
+      ]
+    }
+  }
+}

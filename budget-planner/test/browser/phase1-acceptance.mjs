@@ -1,0 +1,464 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { chromium } from 'playwright-core';
+import { legacyIntegrityFixture } from '../fixtures/legacy-integrity.js';
+import { historyFixture } from '../fixtures/history-ledger.js';
+import { createBackupSnapshot } from '../../src/services/backupService.js';
+
+const baseURL = process.env.FINPATH_BASE_URL || 'http://127.0.0.1:4173/BudgetApp/';
+const output = await mkdtemp(join(tmpdir(), 'finpath-phase1-browser-'));
+const browser = await chromium.launch({ executablePath: process.env.FINPATH_CHROMIUM_PATH || '/usr/bin/chromium',
+  headless: true, args: ['--no-sandbox'] });
+const evidence = { browser: await browser.version(), baseURL, output, checks: [] };
+const contexts = [];
+const pass = (name) => { evidence.checks.push({ name, status: 'PASS' }); console.log(`PASS ${name}`); };
+async function profile(viewport = { width: 1440, height: 1000 }) {
+  const context = await browser.newContext({ viewport, acceptDownloads: true }); contexts.push(context);
+  await context.addInitScript(() => localStorage.setItem('budgetApp:lastSeenReleaseNotesVersion', '2.0.1-phase1-review'));
+  const page = await context.newPage(); page.setDefaultTimeout(15000);
+  await page.clock.install({ time: new Date('2026-12-30T12:00:00Z') });
+  await page.goto(baseURL);
+  await page.getByRole('button', { name: 'Settings', exact: true }).first().waitFor({ state: 'attached' });
+  return { context, page };
+}
+async function nav(page, name) {
+  if (await page.locator('.app-splash').count()) {
+    await page.clock.fastForward(3000);
+    await page.locator('.app-splash').waitFor({ state: 'hidden', timeout: 30000 });
+  }
+  const target = page.getByRole('button', { name, exact: true });
+  await target.or(page.getByRole('button', { name: 'Open navigation menu' })).filter({ visible: true }).first().waitFor();
+  if (!await target.first().isVisible()) await page.getByRole('button', { name: 'Open navigation menu' }).click();
+  await target.filter({ visible: true }).first().click();
+}
+async function importBackup(page, payload) {
+  await nav(page, 'Settings');
+  await page.locator('input[type=file]').setInputFiles({ name: 'synthetic-backup.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(payload)) });
+  await page.getByText('Importing this file will replace', { exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Import Backup', exact: true }).last().click();
+  await page.waitForFunction(() => !document.body.textContent.includes('Importing this file will replace'));
+  await page.getByRole('button', { name: 'Planner', exact: true }).first().waitFor({ state: 'attached' });
+}
+async function records(page, storeName) {
+  return page.evaluate((storeName) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('budget-planner-db');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result; const tx = db.transaction(storeName, 'readonly');
+      const get = tx.objectStore(storeName).getAll();
+      get.onsuccess = () => resolve(get.result); get.onerror = () => reject(get.error);
+      tx.oncomplete = () => db.close();
+    };
+  }), storeName);
+}
+async function databaseState(page) {
+  const state = {};
+  for (const store of ['plannerEntries', 'scheduledItems', 'accounts', 'categories', 'savingsBuckets',
+    'transfers', 'manualAdjustments', 'savingsBucketAdjustments', 'appMetadata', 'appSettings', 'budgetTargets']) {
+    state[store] = await records(page, store);
+  }
+  return state;
+}
+async function entry(page, key = 'salary__2026-12-30') {
+  return (await records(page, 'plannerEntries')).find((value) => value.entryKey === key);
+}
+async function openCell(page, name) {
+  await nav(page, 'Planner');
+  await page.getByRole('button', { name: new RegExp(`^${name}, .*2026-12-30,`) }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).waitFor();
+}
+async function saveCell(page, line = false) {
+  await page.getByRole('button', { name: line ? 'Save Line Items' : 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+}
+async function exportBackup(page) {
+  await nav(page, 'Settings');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Backup', exact: true }).click();
+  const file = join(output, `backup-${Date.now()}.json`); await (await download).saveAs(file);
+  return JSON.parse(await readFile(file, 'utf8'));
+}
+function fixture() {
+  const data = historyFixture();
+  data.settings.payPeriodAnchorDate = '2026-12-30'; data.settings.projectionMonths = 3;
+  data.appMetadata.onboardingCompletedAt = '2026-12-30T12:00:00Z';
+  for (const item of data.scheduledItems) {
+    item.active = true; item.endDate = '2026-12-30';
+    if (item.id === 'bill') item.allowLineItems = true;
+  }
+  for (const value of Object.values(data.plannerEntries)) delete value.scheduledItemSnapshot;
+  delete data.plannerEntries['salary__2026-12-30'].plannedAmount;
+  data.plannerEntries['salary__2026-12-30'].historicalAmountNeedsReview = true;
+  data.plannerEntries['bill__2026-12-30'].historicalAmountNeedsReview = true;
+  return data;
+}
+try {
+  const { page, context } = await profile();
+  await importBackup(page, createBackupSnapshot(fixture()));
+  await nav(page, 'Planner');
+  for (const [name, expected] of [['Projected Chequing', '1,620.00'], ['Validated Chequing', '1,620.00'], ['Projected Savings', '645.00']]) {
+    const row = page.locator('tbody tr').filter({ has: page.locator('th').filter({ hasText: new RegExp(`^${name}$`) }) });
+    assert.match(await row.locator('td').first().innerText(), new RegExp(expected.replace('.', '\\.')));
+  }
+  pass('Planner reference ledger spot check: chequing projected/validated 1620, savings 645');
+  await nav(page, 'Dashboard');
+  assert.match(await page.getByText('Chequing After Next Period', { exact: true }).locator('..').innerText(), /1,620\.00/);
+  assert.match(await page.getByText('Savings After Next Period', { exact: true }).locator('..').innerText(), /645\.00/);
+  await nav(page, 'Manage'); await page.getByRole('button', { name: /Savings Buckets/ }).last().click();
+  assert.match(await page.getByText('Current Projected Buckets', { exact: true }).locator('..').innerText(), /645\.00/);
+  assert.match(await page.getByText('Current Validated Buckets', { exact: true }).locator('..').innerText(), /645\.00/);
+  pass('Dashboard and current Savings Buckets match the December ledger');
+  await nav(page, 'Reports'); await page.getByRole('button', { name: 'Pay Period', exact: true }).click();
+  await page.locator('select').first().selectOption('2026-12-30');
+  assert.match(await page.getByText('Income', { exact: true }).first().locator('..').innerText(), /1,000\.00/);
+  assert.match(await page.getByText('Expenses', { exact: true }).first().locator('..').innerText(), /240\.00/);
+  pass('Reports December income 1000 and expenses 240 (230 bill + 10 fee) match the shared fixture');
+  for (const [name, key, line] of [['Salary', 'salary__2026-12-30', false], ['Monthly bill', 'bill__2026-12-30', true]]) {
+    await openCell(page, name);
+    await page.locator('[name=notes]').fill(`Synthetic note only: ${name}`);
+    await page.locator('[name=lastEntry]').check();
+    await saveCell(page, line);
+    assert.equal((await entry(page, key)).historicalAmountNeedsReview, true);
+    assert.equal((await entry(page, key)).historicalSourceNeedsReview, true);
+    pass(`F1 ${line ? 'line-item' : 'standard'} note/marker-only save preserves both warnings`);
+  }
+  await nav(page, 'Settings');
+  await page.getByText('Historical confirmed amounts need review', { exact: true }).waitFor();
+  await page.getByText('Historical source details need review', { exact: true }).waitFor();
+  pass('Data Health exposes amount and source uncertainty');
+  await openCell(page, 'Salary');
+  await page.locator('[name=reviewHistoricalAmount]').check();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  assert.equal(await page.locator('[name=historicalEvidence]').evaluate((input) => input.validity.valid), false);
+  assert.equal((await entry(page)).historicalAmountNeedsReview, true);
+  pass('explicit confirmation without evidence is blocked');
+  await page.locator('[name=historicalEvidence]').fill('Synthetic statement: salary 2026-12-30, CAD 1000');
+  await saveCell(page);
+  assert.equal((await entry(page)).historicalAmountNeedsReview, false);
+  assert.equal((await entry(page)).historicalSourceNeedsReview, true);
+  pass('explicit amount confirmation with evidence leaves source warning unresolved');
+  const saved = await exportBackup(page);
+  const fresh = await profile(); await importBackup(fresh.page, saved);
+  assert.deepEqual((await entry(fresh.page)).historicalReview, saved.data.plannerEntries['salary__2026-12-30'].historicalReview);
+  assert.equal((await entry(fresh.page)).historicalSourceNeedsReview, true);
+  assert.deepEqual((await records(fresh.page, 'appMetadata'))[0].plannerLastEntryMarker, saved.data.appMetadata.plannerLastEntryMarker);
+  assert.equal((await entry(fresh.page, 'bill__2026-12-30')).historicalAmountNeedsReview, true);
+  pass('real browser JSON download/import into fresh profile preserves warnings and evidence');
+  await openCell(fresh.page, 'Monthly bill');
+  await fresh.page.locator('[name=reviewHistoricalAmount]').check();
+  await fresh.page.locator('[name=historicalEvidence]').fill('Synthetic invoice: saved line item CAD 230, 2026-12-30');
+  await saveCell(fresh.page, true);
+  assert.equal((await entry(fresh.page, 'bill__2026-12-30')).historicalAmountNeedsReview, false);
+  assert.equal((await entry(fresh.page, 'bill__2026-12-30')).historicalSourceNeedsReview, true);
+  pass('line-item explicit amount reconciliation preserves independent source warning');
+  const before = await records(fresh.page, 'plannerEntries');
+  for (const name of ['Planner', 'Dashboard', 'Reports', 'Transactions', 'Settings']) await nav(fresh.page, name);
+  await fresh.page.reload(); await nav(fresh.page, 'Planner');
+  assert.deepEqual(await records(fresh.page, 'plannerEntries'), before);
+  pass('navigation and refresh make no planner-entry writes');
+  // Offline web/PWA runtime is supported; OS-installed app launch is not implied.
+  await fresh.page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  await fresh.page.reload();
+  await fresh.page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await fresh.context.setOffline(true); await fresh.page.reload(); await nav(fresh.page, 'Planner');
+  assert.deepEqual(await records(fresh.page, 'plannerEntries'), before);
+  const reopened = await fresh.context.newPage(); await reopened.goto(baseURL); await nav(reopened, 'Planner');
+  assert.deepEqual(await records(reopened, 'plannerEntries'), before);
+  await fresh.context.setOffline(false);
+  pass('service-worker controlled offline reload and new-page reopen retain history');
+  // Distinguish a current reassignment from historical evidence.
+  const reassigned = fixture(); reassigned.scheduledItems[0].accountId = 's';
+  await importBackup(page, createBackupSnapshot(reassigned)); await openCell(page, 'Salary');
+  await page.getByText(/Source details are provisional: Salary/).waitFor();
+  assert.match(await page.locator('fieldset').innerText(), /Savings/);
+  await page.locator('[name=notes]').fill('Reassigned current source is not original evidence'); await saveCell(page);
+  assert.equal((await entry(page)).scheduledItemSnapshot.accountId, 's');
+  assert.equal((await entry(page)).scheduledItemSnapshotProvenance, 'unverified-current-source');
+  assert.equal((await entry(page)).historicalSourceNeedsReview, true);
+  pass('F2 reassigned current account remains provisional after note save');
+  // Repair one historical cell directly: no backup restore and no live-schedule edit.
+  const entriesBeforeCorrection = await records(page, 'plannerEntries');
+  const schedulesBeforeCorrection = await records(page, 'scheduledItems');
+  const metadataBeforeCorrection = await records(page, 'appMetadata');
+  await openCell(page, 'Salary');
+  await page.locator('[name=actualAmount]').fill('9999');
+  await page.locator('[name=useActual]').check();
+  await page.locator('[name=validated]').uncheck();
+  await page.locator('[name=notes]').fill('Unsaved amount-form edits must not be included');
+  await page.getByText('Correct source for this saved entry', { exact: true }).click();
+  await page.locator('[name=historicalAccount]').selectOption('c');
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  assert.equal((await entry(page)).scheduledItemSnapshot.accountId, 's');
+  await page.locator('[name=sourceCorrectionEvidence]').fill('Synthetic original-backup salary__2026-12-30: original account c, income');
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  assert.equal(await page.locator('[name=confirmSourceCorrection]').evaluate((input) => input.validity.valid), false);
+  await page.locator('[name=confirmSourceCorrection]').check();
+  await page.locator('[name=historicalAccount]').evaluate((select) => {
+    const option = document.createElement('option'); option.value = 'missing-account'; option.text = 'Removed account';
+    select.append(option); select.value = option.value;
+  });
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: /historical account could not be found/ }).waitFor();
+  assert.deepEqual(await records(page, 'plannerEntries'), entriesBeforeCorrection);
+  pass('F4 missing confirmation/evidence and unknown account cannot change historical entries');
+  await page.locator('[name=historicalAccount]').selectOption('c');
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+  const correctedEntry = await entry(page);
+  assert.equal(correctedEntry.scheduledItemSnapshot.accountId, 'c');
+  assert.equal(correctedEntry.scheduledItemSnapshotProvenance, 'user-reconciled');
+  assert.equal(correctedEntry.historicalSourceNeedsReview, false);
+  assert.equal(correctedEntry.historicalAmountNeedsReview, true);
+  assert.equal(correctedEntry.historicalSourceCorrections.length, 1);
+  const previousEntry = entriesBeforeCorrection.find((value) => value.entryKey === correctedEntry.entryKey);
+  for (const field of ['plannedAmount', 'actualAmount', 'validated', 'useActual', 'notes', 'lineItems', 'entryKey', 'scheduledItemId', 'payPeriodDate']) {
+    assert.deepEqual(correctedEntry[field], previousEntry[field]);
+  }
+  assert.deepEqual(await records(page, 'scheduledItems'), schedulesBeforeCorrection);
+  assert.deepEqual(await records(page, 'appMetadata'), metadataBeforeCorrection);
+  const allCorrected = await records(page, 'plannerEntries');
+  for (const other of entriesBeforeCorrection.filter((value) => value.entryKey !== correctedEntry.entryKey)) {
+    assert.deepEqual(allCorrected.find((value) => value.entryKey === other.entryKey), other);
+  }
+  pass('F4 provisional B -> historical A correction preserves amounts, validation, other entries, marker and current B schedule');
+  await nav(page, 'Planner');
+  const correctedChequing = page.locator('tbody tr').filter({ has: page.locator('th').filter({ hasText: /^Validated Chequing$/ }) });
+  assert.match(await correctedChequing.locator('td').first().innerText(), /1,620\.00/);
+  assert.match(await correctedChequing.locator('td').nth(1).innerText(), /1,290\.00/);
+  pass('F4 corrected historical account carries forward while the later B occurrence remains in B');
+  const correctionBackup = await exportBackup(page);
+  const correctedProfile = await profile(); await importBackup(correctedProfile.page, correctionBackup);
+  assert.deepEqual((await entry(correctedProfile.page)).historicalSourceCorrections, correctedEntry.historicalSourceCorrections);
+  assert.deepEqual((await entry(correctedProfile.page)).historicalReview, correctedEntry.historicalReview);
+  assert.equal((await entry(correctedProfile.page)).historicalAmountNeedsReview, true);
+  pass('F4 correction audit, evidence and unresolved amount warning survive real browser export and fresh-profile restore');
+  await context.setOffline(false);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openCell(page, 'Salary');
+  assert.ok(await page.locator('[name=historicalEvidence]').isVisible());
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByText('Correct source for this saved entry', { exact: true }).click();
+  assert.ok(await page.locator('[name=historicalAccount]').isVisible());
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: join(output, 'mobile-history-review.png') });
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  pass('375px mobile editor exposes warnings and evidence control without page overflow');
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await importBackup(page, createBackupSnapshot(fixture()));
+  const retained = await records(page, 'plannerEntries');
+  await nav(page, 'Manage'); await page.getByRole('button', { name: /Scheduled Items/ }).last().click();
+  const salaryRow = () => page.locator('tbody tr').filter({ has: page.getByText('Salary', { exact: true }) });
+  await salaryRow().getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Salary revised');
+  await page.getByLabel('Amount', { exact: true }).fill('9000');
+  await page.getByRole('button', { name: 'Save Scheduled Item', exact: true }).click();
+  const revised = () => page.locator('tbody tr').filter({ has: page.getByText('Salary revised', { exact: true }) });
+  await revised().getByRole('button', { name: 'Deactivate', exact: true }).click();
+  await page.locator('select').filter({ has: page.locator('option[value=inactive]') }).selectOption('all');
+  page.once('dialog', (dialog) => dialog.accept());
+  await revised().getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.waitForFunction(async () => {
+    const request = indexedDB.open('budget-planner-db');
+    return await new Promise((resolve) => { request.onsuccess = () => {
+      const db = request.result; const tx = db.transaction('scheduledItems', 'readonly');
+      const read = tx.objectStore('scheduledItems').get('salary'); read.onsuccess = () => resolve(!read.result);
+      tx.oncomplete = () => db.close();
+    }; });
+  });
+  const afterDelete = await records(page, 'plannerEntries');
+  assert.deepEqual(afterDelete.map((value) => value.entryKey).sort(), retained.map((value) => value.entryKey).sort());
+  assert.equal((await entry(page)).scheduledItemSnapshot.name, 'Salary');
+  assert.equal((await entry(page)).historicalAmountNeedsReview, true);
+  assert.equal((await entry(page)).historicalSourceNeedsReview, true);
+  await openCell(page, 'Salary');
+  assert.equal(await page.locator('[name=notes]').inputValue(), 'Retained note');
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  pass('UI schedule edit/deactivate/delete preserves saved IDs, notes, original snapshot and unresolved warnings');
+  const legacyProfile = await profile();
+  await importBackup(legacyProfile.page, JSON.parse(await readFile(new URL('../fixtures/legacy-backup.json', import.meta.url), 'utf8')));
+  await nav(legacyProfile.page, 'Settings');
+  await legacyProfile.page.getByText('Historical source details need review', { exact: true }).waitFor();
+  assert.equal((await entry(legacyProfile.page)).plannedAmount, 1000);
+  assert.equal((await entry(legacyProfile.page)).scheduledItemSnapshot, undefined);
+  pass('legacy JSON imports in a fresh real browser and warns without silently snapshotting source');
+  // Increment A: inspect all raw history, not merely rendered/visible Planner cells.
+  const integrityProfile = await profile(); const ip = integrityProfile.page;
+  const integrityData = legacyIntegrityFixture(); integrityData.appMetadata.onboardingCompletedAt = '2026-12-30T12:00:00Z';
+  await importBackup(ip, createBackupSnapshot(integrityData)); await nav(ip, 'Settings');
+  const summary = ip.getByRole('region', { name: 'Read-only legacy reconciliation' });
+  await summary.waitFor(); const beforeInspect = await databaseState(ip);
+  await ip.getByText('Historical reference or identity issues', { exact: true }).waitFor();
+  await summary.getByRole('table', { name: 'Historical integrity exceptions' }).getByText(/Historical account reference is missing or invalid/).waitFor();
+  assert.match(await summary.innerText(), /orphan__2025-01-03/);
+  assert.equal(await summary.getByRole('button', { name: /verify|confirm|correct/i }).count(), 0);
+  await summary.getByLabel('Historical source ID').selectOption('salary__stable');
+  await summary.getByLabel('Saved pay-period date from').fill('2026-01-01');
+  await summary.getByLabel('Saved pay-period date to').fill('2026-12-31');
+  assert.match(await summary.innerText(), /Showing 1 of 11/);
+  await summary.getByText(/Observed source cohorts/).click();
+  await summary.getByRole('table', { name: 'Historical source cohorts' }).waitFor();
+  await ip.getByRole('button', { name: 'Run Health Check', exact: true }).click();
+  assert.deepEqual(await databaseState(ip), beforeInspect);
+  await nav(ip, 'Planner'); await ip.getByRole('complementary', { name: 'Historical balance limitations' }).waitFor();
+  await ip.reload(); await nav(ip, 'Settings'); assert.deepEqual(await databaseState(ip), beforeInspect);
+  pass('Increment A exceptions include attested broken references and orphans; filtering, recheck and refresh preserve every stored record');
+  await ip.setViewportSize({ width: 375, height: 812 });
+  await summary.getByText(/Observed source cohorts/).click();
+  const layout = await ip.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth,
+    overflowing: [...document.querySelectorAll('section, main, details, input, select')]
+      .filter((element) => element.getBoundingClientRect().right > innerWidth)
+      .slice(0, 8).map((element) => ({ tag: element.tagName, className: element.className, right: element.getBoundingClientRect().right })) }));
+  assert.ok(layout.scroll <= layout.viewport, JSON.stringify(layout));
+  await ip.screenshot({ path: join(output, 'mobile-legacy-reconciliation.png') });
+  pass('Increment A read-only cohort/exception reporting remains usable at 375px');
+  const integrityBackup = await exportBackup(ip); const ir = await profile(); await importBackup(ir.page, integrityBackup);
+  assert.deepEqual(await records(ir.page, 'plannerEntries'), beforeInspect.plannerEntries);
+  pass('Increment A diagnostic reads and JSON restore preserve original validation, IDs, marker and F4 audit');
+  // A large metadata-only cohort is informational and paginated, never batch verified.
+  const metadataData = legacyIntegrityFixture(); const baseEntry = metadataData.plannerEntries['salary__stable__2025-01-03'];
+  metadataData.plannerEntries = {};
+  for (let year = 2016; year <= 2025; year++) for (let month = 1; month <= 12; month++) {
+    const date = `${year}-${String(month).padStart(2, '0')}-02`; const key = `salary__stable__${date}`;
+    metadataData.plannerEntries[key] = { ...baseEntry, entryKey: key, payPeriodDate: date };
+  }
+  metadataData.appMetadata = { onboardingCompletedAt: '2026-12-30T12:00:00Z' };
+  const mp = await profile(); await importBackup(mp.page, createBackupSnapshot(metadataData)); await nav(mp.page, 'Settings');
+  const msummary = mp.page.getByRole('region', { name: 'Read-only legacy reconciliation' });
+  await msummary.waitFor(); const mBefore = await databaseState(mp.page);
+  assert.equal(await mp.page.getByText('Historical reference or identity issues', { exact: true }).count(), 0);
+  await msummary.getByText(/Metadata-only source review entries/).click();
+  const reviewTable = msummary.getByRole('table', { name: 'Historical metadata review entries' });
+  assert.equal(await reviewTable.locator('tbody tr').count(), 20);
+  await msummary.getByRole('button', { name: 'Next rows', exact: true }).click();
+  assert.equal(await reviewTable.locator('tbody tr').count(), 20);
+  assert.deepEqual(await databaseState(mp.page), mBefore);
+  pass('Increment A decade metadata-only cohort stays informational, bounded to 20 rows, with zero verification writes');
+  // True same-origin stale tab: another tab enriches/changes the live source while confirmation is open.
+  const stale = await profile(); const sp = stale.page;
+  await importBackup(sp, createBackupSnapshot(fixture())); await openCell(sp, 'Salary');
+  await sp.locator('[name=reviewHistoricalSource]').check();
+  await sp.locator('[name=historicalEvidence]').fill('Synthetic original evidence for source before concurrent change');
+  await sp.locator('[name=notes]').fill('Must not save on stale confirmation');
+  const actor = await stale.context.newPage(); await actor.goto(baseURL); await nav(actor, 'Manage');
+  await actor.getByRole('button', { name: /Scheduled Items/ }).last().click();
+  const actorRow = actor.locator('tbody tr').filter({ has: actor.getByText('Salary', { exact: true }) });
+  await actorRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await actor.getByLabel(/^Deposited to account/).selectOption('s');
+  await actor.getByRole('button', { name: 'Save Scheduled Item', exact: true }).click();
+  await actor.getByRole('button', { name: 'Save Scheduled Item', exact: true }).waitFor({ state: 'hidden' });
+  const afterActor = await databaseState(sp);
+  await sp.getByRole('button', { name: 'Save', exact: true }).click();
+  await sp.getByText(/Historical source changed since this entry was opened/).waitFor();
+  assert.deepEqual(await databaseState(sp), afterActor);
+  pass('Increment A same-origin concurrent source edit rejects stale single-entry confirmation without partial note, marker or audit writes');
+  // A test-only deletion in a separate isolated tab simulates a linked record removed after the editor opened.
+  await sp.getByRole('button', { name: 'Close', exact: true }).click();
+  await importBackup(sp, createBackupSnapshot(fixture())); await openCell(sp, 'Salary');
+  await sp.locator('[name=reviewHistoricalSource]').check();
+  await sp.locator('[name=historicalEvidence]').fill('Synthetic original account reference');
+  await actor.evaluate(() => new Promise((resolve, reject) => {
+    const open = indexedDB.open('budget-planner-db'); open.onsuccess = () => {
+      const db = open.result; const tx = db.transaction('accounts', 'readwrite');
+      tx.objectStore('accounts').delete('c'); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
+    };
+  }));
+  const afterReferenceDelete = await databaseState(sp);
+  await sp.getByRole('button', { name: 'Save', exact: true }).click();
+  await sp.getByText(/Historical source cannot be confirmed:/).waitFor();
+  assert.deepEqual(await databaseState(sp), afterReferenceDelete);
+  await sp.reload(); await nav(sp, 'Settings');
+  await sp.getByText('Historical reference or identity issues', { exact: true }).waitFor();
+  pass('Increment A removed account after preview blocks new confirmation, preserves records and surfaces a genuine integrity problem');
+
+  // Issue 11: preventative configuration only, using custom IDs and isolated profiles.
+  async function bucketPage(page) {
+    await nav(page, 'Manage'); await page.getByRole('button', { name: /Savings Buckets/ }).last().click();
+  }
+  const config = fixture();
+  config.accounts = [{ id: 'custom-reserve', name: 'Personal Reserve', type: 'savings', active: true, startingBalance: 0 },
+    { id: 'custom-second', name: 'Other Savings', type: 'savings', active: true, startingBalance: 0 },
+    { id: 'old-reserve', name: 'Archived Reserve', type: 'savings', active: false, startingBalance: 0 }];
+  config.savingsBuckets[0].linkedAccountId = 'acct-savings';
+  const cp = await profile(); await importBackup(cp.page, createBackupSnapshot(config)); await bucketPage(cp.page);
+  const configBefore = await databaseState(cp.page);
+  await cp.page.getByText('Missing account (acct-savings) — needs review', { exact: true }).waitFor();
+  const legacyRow = cp.page.locator('tbody tr').filter({ has: cp.page.getByText('Tax', { exact: true }) }).first();
+  await legacyRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await cp.page.getByText('Linked savings account', { exact: true }).waitFor();
+  assert.equal(await cp.page.getByRole('combobox', { name: 'Savings account', exact: true }).count(), 0);
+  await cp.page.getByRole('button', { name: 'Close', exact: true }).click();
+  assert.deepEqual(await databaseState(cp.page), configBefore);
+  pass('Issue 11 existing broken bucket association is visible and read-only; opening and closing makes no financial writes');
+  await cp.page.getByRole('button', { name: 'Add Bucket', exact: true }).click();
+  const accountSelect = cp.page.getByRole('combobox', { name: 'Savings account', exact: true });
+  assert.equal(await accountSelect.inputValue(), '');
+  assert.equal(await accountSelect.locator('option').count(), 3);
+  await cp.page.getByLabel('Bucket name', { exact: true }).fill('New Custom Bucket');
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  assert.equal(await accountSelect.evaluate((element) => element.validity.valid), false);
+  await accountSelect.selectOption('custom-second');
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await cp.page.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+  const configAfter = await databaseState(cp.page);
+  assert.equal(configAfter.savingsBuckets.find((value) => value.name === 'New Custom Bucket').linkedAccountId, 'custom-second');
+  for (const store of Object.keys(configBefore).filter((store) => store !== 'savingsBuckets')) assert.deepEqual(configAfter[store], configBefore[store]);
+  assert.deepEqual(configAfter.savingsBuckets.find((value) => value.id === 'tax-bucket'), configBefore.savingsBuckets[0]);
+  pass('Issue 11 multiple custom savings accounts require explicit choice; archived accounts excluded and history, schedules, markers and audits unchanged');
+  const configBackup = await exportBackup(cp.page); const cr = await profile(); await importBackup(cr.page, configBackup);
+  assert.deepEqual(await records(cr.page, 'savingsBuckets'), configAfter.savingsBuckets);
+  assert.deepEqual(await records(cr.page, 'plannerEntries'), configBefore.plannerEntries);
+  pass('Issue 11 configuration and existing legacy financial records round-trip through real JSON backup');
+  await bucketPage(cp.page);
+  await cp.page.getByRole('button', { name: 'Add Bucket', exact: true }).click();
+  await accountSelect.selectOption('custom-reserve');
+  await cp.page.getByLabel('Bucket name', { exact: true }).fill('Deleted Account Draft');
+  const configActor = await cp.context.newPage(); await configActor.goto(baseURL);
+  await configActor.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('budget-planner-db'); request.onsuccess = () => {
+      const db = request.result; const tx = db.transaction('accounts', 'readwrite');
+      tx.objectStore('accounts').delete('custom-reserve'); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
+    };
+  }));
+  const afterRemoval = await databaseState(cp.page);
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await cp.page.getByRole('alert').getByText(/Choose an existing active savings account/).waitFor();
+  assert.deepEqual(await databaseState(cp.page), afterRemoval);
+  await cp.page.getByRole('button', { name: 'Close', exact: true }).click();
+  pass('Issue 11 account deleted in another tab after selection rejects new bucket with zero partial writes');
+  // Concurrent ordinary edit of an existing bucket must not overwrite another tab.
+  const newBucketRow = cp.page.locator('tbody tr').filter({ has: cp.page.getByText('New Custom Bucket', { exact: true }) }).first();
+  await newBucketRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await cp.page.getByLabel('Notes', { exact: true }).fill('Stale tab notes');
+  await bucketPage(configActor);
+  await configActor.locator('tbody tr').filter({ has: configActor.getByText('New Custom Bucket', { exact: true }) }).first().getByRole('button', { name: 'Edit', exact: true }).click();
+  await configActor.getByLabel('Notes', { exact: true }).fill('Latest notes');
+  await configActor.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await configActor.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+  const actorSaved = await databaseState(cp.page);
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await cp.page.getByRole('alert').getByText(/changed since the editor opened/).waitFor();
+  assert.deepEqual(await databaseState(cp.page), actorSaved);
+  pass('Issue 11 concurrent bucket edit rejects stale notes without overwriting current configuration');
+  for (const [choices, expected] of [[[], ''], [[config.accounts[0]], 'custom-reserve']]) {
+    const only = fixture(); only.accounts = choices; const p = await profile();
+    await importBackup(p.page, createBackupSnapshot(only)); await bucketPage(p.page);
+    await p.page.getByRole('button', { name: 'Add Bucket', exact: true }).click();
+    const select = p.page.getByRole('combobox', { name: 'Savings account', exact: true });
+    assert.equal(await select.inputValue(), expected);
+    if (!choices.length) await p.page.getByText('Create an active savings account in Accounts before saving a bucket.', { exact: true }).waitFor();
+    await p.page.setViewportSize({ width: 375, height: 812 });
+    assert.ok(await p.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  }
+  pass('Issue 11 zero accounts requires account creation; sole custom savings account defaults correctly and editor fits mobile');
+  evidence.limitations = ['Headless Chromium tests service-worker offline behavior, not OS installation/standalone app launch.',
+    'Synthetic evidence only; the owner must verify real financial facts.', 'Broader multi-tab source edits and F3 Transactions historical ledger remain review limitations.'];
+} catch (error) {
+  evidence.error = error.stack; console.error(error); process.exitCode = 1;
+} finally {
+  await writeFile(join(output, 'results.json'), JSON.stringify(evidence, null, 2));
+  for (const context of contexts) await context.close(); await browser.close();
+  console.log(`Evidence: ${output}/results.json`);
+}

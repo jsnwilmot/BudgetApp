@@ -1,3 +1,4 @@
+import { defaultScheduledAccountId } from '../logic/accountConfiguration';
 import { useMemo, useState } from 'react';
 import {
   Copy,
@@ -107,15 +108,6 @@ function getDueDisplay(item) {
   return formatDueDate(item.startDate);
 }
 
-function getDefaultAccountId(accounts = []) {
-  return (
-    accounts.find(
-      (account) =>
-        account.active !== false &&
-        String(account.name || '').trim().toLowerCase() === 'main chequing'
-    )?.id || ''
-  );
-}
 
 function createNewScheduledItem(settings, accounts = []) {
   const startDate =
@@ -134,7 +126,7 @@ function createNewScheduledItem(settings, accounts = []) {
     dueDay: Number(startDate.slice(8, 10)),
     dueMonth: Number(startDate.slice(5, 7)),
     categoryId: null,
-    accountId: getDefaultAccountId(accounts) || null,
+    accountId: defaultScheduledAccountId(accounts) || null,
     savingsBucketId: null,
     active: true,
     allowLineItems: false,
@@ -250,7 +242,7 @@ function ScheduledItemForm({
   onSave,
 }) {
   const normalizedItem = normalizeScheduledItem(item);
-  const defaultAccountId = getDefaultAccountId(accounts);
+  const defaultAccountId = defaultScheduledAccountId(accounts);
   const [formState, setFormState] = useState({
     ...normalizedItem,
     amount: String(normalizedItem.amount ?? 0),
@@ -259,7 +251,7 @@ function ScheduledItemForm({
     endDate: normalizedItem.endDate ?? '',
     notes: normalizedItem.notes ?? '',
     categoryId: normalizedItem.categoryId ?? '',
-    accountId: normalizedItem.accountId || defaultAccountId,
+    accountId: normalizedItem.accountId ?? '',
     savingsBucketId:
       normalizedItem.savingsBucketId || normalizedItem.bucketId || '',
     active: normalizedItem.active ?? true,
@@ -793,7 +785,7 @@ export default function ScheduledItems({
 
   async function handleDelete(item) {
     const confirmed = window.confirm(
-      'Delete this scheduled item? Deactivating is safer if you may need it later.'
+      'Delete this scheduled item? Saved planner entries and their source snapshots will be retained. Deactivating is safer if you may need the schedule later.'
     );
 
     if (!confirmed) {
@@ -823,7 +815,7 @@ export default function ScheduledItems({
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
             Manage the planned items that generate the pay period planner.
-            Inactive items stay saved but do not affect projections.
+            Inactive items stop future recurrence. Saved planner entries remain in historical balances.
           </p>
         </div>
 

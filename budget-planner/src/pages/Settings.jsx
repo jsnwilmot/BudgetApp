@@ -74,13 +74,13 @@ function buildProjectionChangeWarnings(formState, settings) {
 
   if (formState.payPeriodAnchorDate !== settings.payPeriodAnchorDate) {
     warnings.push(
-      "Changing the anchor date may move planner entries to different pay periods."
+      "Anchor changes are blocked while dated records exist, to protect saved history."
     );
   }
 
   if (Number(formState.payFrequencyDays) !== Number(settings.payFrequencyDays)) {
     warnings.push(
-      "Changing pay frequency rebuilds the spacing and number of visible pay periods."
+      "Pay frequency changes are blocked while dated records exist."
     );
   }
 
@@ -140,7 +140,7 @@ export default function Settings({
       setErrorMessage("");
     } catch (error) {
       console.error(error);
-      setErrorMessage("Could not save settings.");
+      setErrorMessage(error.message || "Could not save settings.");
       setMessage("");
     }
   }
@@ -155,7 +155,7 @@ export default function Settings({
     try {
       const defaultSettings = await onResetSettings();
       setFormState(settingsToForm(defaultSettings));
-      setMessage("Settings reset to defaults.");
+      setMessage("Settings reset to defaults. Anchor and pay frequency were preserved.");
       setErrorMessage("");
     } catch (error) {
       console.error(error);

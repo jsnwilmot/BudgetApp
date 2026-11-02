@@ -1,0 +1,102 @@
+{
+  "settings": {
+    "currency": "CAD",
+    "payPeriodAnchorDate": "2026-06-03",
+    "payFrequencyDays": 14,
+    "projectionMonths": 24,
+    "monthlyBillAssignmentRule": "previous-pay-period"
+  },
+  "accounts": [
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "c",
+      "name": "Chequing",
+      "type": "chequing",
+      "startingBalance": 1000
+    },
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "s",
+      "name": "Savings",
+      "type": "savings",
+      "startingBalance": 500
+    }
+  ],
+  "savingsBuckets": [
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "tax-bucket",
+      "name": "Tax",
+      "linkedAccountId": "s",
+      "startingAmount": 500
+    }
+  ],
+  "scheduledItems": [
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "salary",
+      "name": "Salary",
+      "type": "income",
+      "amount": 1000,
+      "accountId": "c",
+      "active": false,
+      "frequency": "biweekly",
+      "startDate": "2026-06-03"
+    },
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "tax",
+      "name": "Property tax",
+      "type": "transfer",
+      "amount": 100,
+      "bucketId": "tax-bucket",
+      "active": false,
+      "frequency": "biweekly",
+      "startDate": "2026-06-03"
+    },
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "bill",
+      "name": "Monthly bill",
+      "type": "expense",
+      "amount": 200,
+      "accountId": "c",
+      "active": false,
+      "frequency": "biweekly",
+      "startDate": "2026-06-03"
+    }
+  ],
+  "plannerEntries": {
+    "salary__2026-12-30": {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "entryKey": "salary__2026-12-30",
+      "scheduledItemId": "salary",
+      "payPeriodDate": "2026-12-30",
+      "plannedAmount": 1000,
+      "useActual": false,
+      "validated": true,
+      "notes": "Retained note",
+      "lineItems": []
+    }
+  },
+  "manualAdjustments": [
+    {
+      "createdAt": "2026-06-03T12:00:00.000Z",
+      "updatedAt": "2026-06-03T12:00:00.000Z",
+      "id": "fee",
+      "accountId": "c",
+      "date": "2026-12-30",
+      "payPeriodDate": "2026-12-30",
+      "amount": -10
+    }
+  ],
+  "categories": [],
+  "appDataVersion": 1
+}

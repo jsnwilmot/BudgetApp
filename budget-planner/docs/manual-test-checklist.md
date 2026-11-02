@@ -170,3 +170,80 @@ npm.cmd run build
 cd ..
 git diff --check
 ```
+
+## Continuous Planner Phase 1 — pending manual review
+
+Use a separate browser profile with synthetic fixtures. Export first; never replace a real dataset for testing. The automated fixture evidence is in `continuous-planner-phase1.md`; the checks below have not been manually marked PASS.
+
+- [ ] Import `test/fixtures/current-backup.json`; verify saved salary value, original source, IDs, notes and marker.
+- [ ] Confirm a planned amount with actual override unchecked. Change schedule amount, frequency, name, account and end date. Reopen the saved cell: original amount/classification remain; untouched cells follow the new schedule.
+- [ ] Repeat with actual override and line items. Deactivate and then delete the schedule; saved cells still contribute to balances and remain editable.
+- [ ] Set a saved cell as Last Entry, shorten projection range, refresh, export and restore. The off-screen marker remains in metadata. Clearing that cell explicitly clears its marker.
+- [ ] Compare December/January and leap-day account and bucket totals with the reference ledger. Correct an old amount and confirm later balances change by exactly that difference.
+- [ ] Add transfers within chequing, within savings and between types. Check aggregate conservation, separate planner/manual identities, read-only derived activity and matching duplicate warnings.
+- [ ] Try changing anchor/frequency with dated records: save is blocked with a plain error and original settings remain. Reset settings: cadence remains. In an empty planner, initial cadence setup is allowed.
+- [ ] Import `test/fixtures/legacy-backup.json`. Preserve IDs and values on export/restore. For legacy entries without original amount/source details, Data Health reports uncertainty; compare a statement before correcting.
+- [ ] Check Planner, Dashboard, Reports, CSV/print, account comparisons and buckets under their documented finite scopes. No year controls or rolling forecast should appear.
+- [ ] Check desktop, 375px mobile, offline PWA refresh and a second tab. Record review findings before accepting Phase 1.
+
+### F1/F2 historical warning remediation
+
+- [ ] With a legacy saved cell missing its amount/snapshot provenance, edit only notes, marker or validation in each standard/line-item editor. Amber/Data Health warnings must remain after save, refresh and backup restore.
+- [ ] Checking a reconciliation confirmation without a backup/statement reference must block save. Providing text alone without a checkbox must not resolve a warning.
+- [ ] Confirm only the amount against the original evidence: source warning remains. Confirm only the source: unresolved amount warning remains. Restore the downloaded backup in a fresh isolated profile and verify flags and evidence references.
+- [ ] Reassign a legacy source from Chequing to Savings before a snapshot exists. Its current classification must remain provisional, including after source edits/deletion and automatic snapshot enrichment.
+- [ ] Treat older snapshots with no provenance as uncertain. Use the per-entry source correction form with a trustworthy original evidence reference if the displayed classification is wrong; do not acknowledge the current fallback as original merely because it exists.
+- [ ] Follow the sample reconciliation procedure in `continuous-planner-phase1.md`. Use real original evidence only with owner review; synthetic fixtures do not verify anyone's financial facts.
+
+
+### F4 per-entry source correction
+
+- [ ] With a validated 2026 cell provisionally assigned to B and current/later salary still B, correct only the old cell to A using the separate form. Require the entry-only confirmation and reference.
+- [ ] Change unsaved amount/notes/validation in the normal editor, then submit only the source form. None of those unsaved changes may be applied. Stored amounts, validated state, line-item IDs, key/date, marker and other entries remain intact.
+- [ ] Test historical type/account/category/bucket corrections, including archived reference IDs. Unknown/deleted IDs, missing required accounts, stale revisions and blank references must block writes with an error.
+- [ ] Check current recurring schedules remain B. Confirm the correction affects only the selected occurrence and subsequent cumulative balances, with no extra transfer/adjustment records.
+- [ ] Export and restore into a fresh isolated profile: corrected snapshot, source evidence, append-only audit and independent amount warning survive. Test a second correction, routine note save and source edit: prior correction audit remains.
+- [ ] On mobile, expand the correction details and check controls, confirmation and error text remain usable. Check offline reopen of the corrected entry where supported. OS-installed PWA acceptance remains separate.
+
+
+### Increment A — historical integrity and read-only summaries
+
+- [ ] Import the synthetic `legacy-integrity.js` fixture through the browser harness. A previously attested snapshot with missing account/category/bucket must appear as a genuine exception, separate from legacy source metadata notices.
+- [ ] Check required blank income/expense accounts, optional null category/bucket, archived references, and deleted source with/without a usable snapshot. A valid retained snapshot must not become an orphan error simply because its schedule was removed.
+- [ ] Filter by stable source ID (including IDs containing `__`) and inclusive saved dates. View exceptions, observed source cohorts and paginated metadata-only rows. Compare every financial store before/after viewing, recheck, filtering and refresh: no writes.
+- [ ] Verify source changes across years remain distinct observed classifications; no cohort/date filter verifies anything. All validated flags and original values remain intact.
+- [ ] Try source confirmation from a tab opened before another tab changes its source or removes its account reference. Entire save must reject, including pending notes/marker changes. Reopen/refresh to inspect the current issue.
+- [ ] Correct a broken classification using F4 with evidence; existing audit and independent amount warning remain. Conflicting keys/dates/IDs or malformed prior audits are reported, never implicitly normalized by confirmation/correction.
+- [ ] Export/restore in a clean synthetic profile and compare IDs, values, validation, marker and F4 audit. Check mobile layout, keyboard controls, bounded tables and existing offline reopen behavior.
+- [ ] Private M3 real-data reconciliation and independent Architect/owner acceptance remain separate; never attach private backups/statements/screenshots to GitHub.
+
+
+### Issue #11 preventative account configuration
+
+- [ ] In a fresh synthetic profile, create buckets with zero, one and several savings accounts. Zero requires creating an account, one selects its actual ID, multiple require a choice; inactive/non-savings accounts are excluded.
+- [ ] Import a legacy bucket with a missing link. Projection/editor show the exact missing link read-only; open/cancel changes nothing and ordinary notes edits preserve the link. Inactive links remain visible.
+- [ ] Delete/deactivate/change the selected savings account in another synthetic tab before saving a new bucket. Save must fail without creating a bucket or changing any financial store.
+- [ ] Open the same bucket in two tabs; save a note in one, then save in the stale tab. Expect rejection and retained latest record. Deleted bucket and repeated create submissions must also reject.
+- [ ] New scheduled defaults use a sole active chequing account regardless of name; multiple/none require a choice. Existing blank/missing IDs do not change on open. Invalid new/changed account references must reject atomically with history untouched.
+- [ ] Export/import into a clean profile; compare existing buckets, entries, amounts, validations, IDs, Last Entry and audits. Check mobile selector and all previous offline/ledger tests.
+- [ ] Review `issue11-account-reconciliation.md` before proposing any private repair. No real backup changes, mapping execution or grouped historical correction is authorized here.
+
+### Issue #12 offline utility — synthetic review only
+
+- [ ] Run `node tools/reconcile/cli.mjs --help`; inspect the CLI/analysis dependency graph and no-write/no-network contract. Do not supply private input before independent review and separate owner authorization.
+- [ ] Run `npm test` and `npm run test:cli` using only synthetic fixtures. Verify 25/22/2 separation, 22 value-pair candidates/three unmatched in the controlled fixture, ambiguous/conflicting/invalid cases and sibling/malformed snapshot differences.
+- [ ] Confirm no output includes input values or paths and bytes/mtime remain unchanged, including failed analysis. Confirm writes/network fail under test tripwires; review OS/runtime limitations.
+- [ ] Independently check the PowerShell guide on a synthetic local copy only. Windows testing and any private-data run remain separate acceptance/authorization steps. Do not edit JSON to resolve analysis errors or manufacture source records.
+
+
+### Windows M3 CLI preload regression
+
+- [ ] On Windows PowerShell 5.1 / Node 22.23.3, run `npm.cmd run test:cli` against the corrected commit. All runnable synthetic CLI tests, including write/network negative controls, must pass; `ERR_UNSUPPORTED_ESM_URL_SCHEME` is a harness failure, not successful guard enforcement.
+- [ ] Run complete `npm.cmd test`, lint and build checks. Verify guarded subprocesses use a file URL for `--import` while the CLI entrypoint/cwd use native paths. Do not run on private backups or weaken assertions to bypass failures.
+
+
+### Windows symlink fixture permission handling
+
+- [ ] Run `npm.cmd run test:cli`: report all 10 tests with separate pass/fail/skipped counts. Directory and oversized-file tests must execute even if symlink creation is denied.
+- [ ] On capable Windows and Linux hosts, verify actual symlink rejection (exit 3, empty stdout and fixed safe stderr). Only Windows `EPERM`/`EACCES` during fixture creation may skip that one test, with an explicit diagnostic; unexpected errors, CLI/assertion or cleanup failures must fail.
+- [ ] Keep guard and negative-control checks unchanged. Use synthetic files only; owner-local retesting is distinct from CI results.

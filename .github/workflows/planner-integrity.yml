@@ -1,0 +1,54 @@
+name: Planner integrity checks
+
+on:
+  pull_request:
+    paths:
+      - 'budget-planner/**'
+      - '.github/workflows/planner-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Node 22.23.3 / ${{ matrix.os }} / ${{ matrix.shell }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            shell: bash
+            npm: npm
+          - os: windows-latest
+            shell: powershell
+            npm: npm.cmd
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.3
+          cache: npm
+          cache-dependency-path: budget-planner/package-lock.json
+      - name: Confirm Windows PowerShell 5.1 and Node version
+        if: runner.os == 'Windows'
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1) {
+            throw 'Windows PowerShell 5.1 is required for this compatibility check.'
+          }
+          $PSVersionTable.PSVersion
+          node --version
+      - run: ${{ matrix.npm }} ci
+        working-directory: budget-planner
+      - run: ${{ matrix.npm }} test
+        working-directory: budget-planner
+      - run: ${{ matrix.npm }} run test:cli
+        working-directory: budget-planner
+      - run: ${{ matrix.npm }} run lint
+        working-directory: budget-planner
+      - run: ${{ matrix.npm }} run build
+        working-directory: budget-planner
+      - run: git diff --check

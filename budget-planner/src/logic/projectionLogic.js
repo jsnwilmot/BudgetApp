@@ -12,6 +12,7 @@ import {
   getScheduledItemOccurrences,
   normalizeScheduledItem,
 } from './scheduledItemLogic';
+import { getCalculationPeriods, getHistoricalItems, getPeriodRow } from './plannerHistory';
 import { getTransferAccountEffects } from './transferLogic';
 import { formatCurrency } from '../utils/currency';
 
@@ -175,7 +176,7 @@ function buildScheduledItemPlacements(item, payPeriods, settings) {
   return placements;
 }
 
-function getEffectiveAmount(item, periodDate, plannedAmount, plannerEntries) {
+export function getEffectiveAmount(item, periodDate, plannedAmount, plannerEntries) {
   const entryKey = getEntryKey(item.id, periodDate);
   const entry = plannerEntries[entryKey];
 
@@ -183,18 +184,20 @@ function getEffectiveAmount(item, periodDate, plannedAmount, plannerEntries) {
     return plannedAmount;
   }
 
-  if (item.allowLineItems) {
-    return getLineItemTotal(entry, plannedAmount);
+  const savedPlan = entry.plannedAmount != null && Number.isFinite(Number(entry.plannedAmount))
+    ? Number(entry.plannedAmount) : plannedAmount;
+  if (entry.lineItems?.length || item.allowLineItems) {
+    return getLineItemTotal(entry, savedPlan);
   }
 
   if (!entry.useActual) {
-    return plannedAmount;
+    return savedPlan;
   }
 
   const actualAmount = Number(entry.actualAmount);
 
   if (Number.isNaN(actualAmount)) {
-    return plannedAmount;
+    return savedPlan;
   }
 
   return actualAmount;
@@ -202,9 +205,9 @@ function getEffectiveAmount(item, periodDate, plannedAmount, plannerEntries) {
 
 export function buildPlannerRows({
   settings,
-  accounts,
-  scheduledItems,
-  manualAdjustments,
+  accounts = [],
+  scheduledItems = [],
+  manualAdjustments = [],
   savingsBucketAdjustments = [],
   transfers = [],
   plannerEntries = {},
@@ -216,9 +219,15 @@ export function buildPlannerRows({
     normalizedSettings.projectionMonths
   );
 
-  const rows = scheduledItems
+  const calculationPeriods = getCalculationPeriods(payPeriods, [], [
+    ...Object.entries(plannerEntries).map(([key, entry]) => ({
+      payPeriodDate: entry.payPeriodDate || key.slice(key.lastIndexOf('__') + 2),
+    })),
+    ...manualAdjustments, ...savingsBucketAdjustments, ...transfers,
+  ]);
+  const rows = getHistoricalItems(scheduledItems, plannerEntries)
     .map((item) => normalizeScheduledItem(item))
-    .filter((item) => item.active)
+    .filter((item) => item.active || Object.keys(plannerEntries).some((key) => key.startsWith(`${item.id}__`)))
     .map((item) => {
       const placements = buildScheduledItemPlacements(
         item,
@@ -227,15 +236,20 @@ export function buildPlannerRows({
       );
       const plannedByPeriod = {};
       const amountsByPeriod = {};
+      const itemsByPeriod = {};
 
-      payPeriods.forEach((period) => {
-        const plannedAmount = (placements.get(period.date) || 0) * item.amount;
+      calculationPeriods.forEach((period) => {
+        const entry = plannerEntries[getEntryKey(item.id, period.date)];
+        const periodItem = entry?.scheduledItemSnapshot || item;
+        const recurringAmount = item.active && period.date >= normalizedSettings.payPeriodAnchorDate ? (placements.get(period.date) || 0) * item.amount : 0;
+        const plannedAmount = entry?.plannedAmount ?? recurringAmount;
+        itemsByPeriod[period.date] = periodItem;
 
         plannedByPeriod[period.date] = plannedAmount;
         amountsByPeriod[period.date] = getEffectiveAmount(
-          item,
+          periodItem,
           period.date,
-          plannedAmount,
+          recurringAmount,
           plannerEntries
         );
       });
@@ -250,11 +264,12 @@ export function buildPlannerRows({
         item,
         plannedByPeriod,
         amountsByPeriod,
+        itemsByPeriod,
       };
     });
 
   const projectionRows = calculateProjectionRows({
-    payPeriods,
+    payPeriods: calculationPeriods,
     rows,
     accounts,
     manualAdjustments,
@@ -265,21 +280,23 @@ export function buildPlannerRows({
 
   return {
     payPeriods,
+    calculationPeriods,
     rows,
     projectionRows,
   };
 }
 
 export function calculatePeriodTotals(rows, periodDate) {
-  const income = rows
+  const periodRows = rows.map((row) => getPeriodRow(row, periodDate));
+  const income = periodRows
     .filter((row) => row.type === 'income')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
-  const expensesOnly = rows
+  const expensesOnly = periodRows
     .filter((row) => row.type === 'expense')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
-  const transfers = rows
+  const transfers = periodRows
     .filter((row) => row.type === 'transfer')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
@@ -333,7 +350,7 @@ function calculateScheduledAccountEffects(
   accountTypeById,
   plannerEntries = null
 ) {
-  return rows.reduce(
+  return rows.map((row) => getPeriodRow(row, periodDate)).reduce(
     (effects, row) => {
       const amount = plannerEntries
         ? getValidatedRowAmount(row, periodDate, plannerEntries)
@@ -363,15 +380,15 @@ function calculateScheduledAccountEffects(
   );
 }
 
-  function calculateProjectionRows({
-    payPeriods,
-    rows,
-    accounts,
-    manualAdjustments,
-    savingsBucketAdjustments,
-    transfers = [],
-    plannerEntries = {},
-  }) {
+function calculateProjectionRows({
+  payPeriods,
+  rows,
+  accounts,
+  manualAdjustments,
+  savingsBucketAdjustments,
+  transfers = [],
+  plannerEntries = {},
+}) {
   const startingChequingBalance = accounts
     .filter((account) => account.type === 'chequing')
     .reduce(
@@ -388,6 +405,7 @@ function calculateScheduledAccountEffects(
       (total, account) => total + (Number(account.startingBalance) || 0),
       0
     );
+  let validatedSavingsBalance = savingsBalance;
   const accountTypeById = new Map(
     accounts.map((account) => [account.id, account.type])
   );
@@ -395,6 +413,7 @@ function calculateScheduledAccountEffects(
   const projectedChequing = {};
   const validatedChequing = {};
   const projectedSavings = {};
+  const validatedSavings = {};
   const totalIncome = {};
   const totalExpenses = {};
   const totalTransfers = {};
@@ -415,8 +434,8 @@ function calculateScheduledAccountEffects(
     );
 
     const chequingAccountIds = accounts
-  .filter((account) => account.type === 'chequing')
-  .map((account) => account.id);
+      .filter((account) => account.type === 'chequing')
+      .map((account) => account.id);
 
     const savingsAccountIds = accounts
       .filter((account) => account.type === 'savings')
@@ -460,15 +479,9 @@ function calculateScheduledAccountEffects(
 
     const chequingTransferEffect = transferEffectsForPeriod.reduce(
       (total, effect) => {
-        if (chequingAccountIds.includes(effect.fromAccountId)) {
-          return total + effect.fromAmount;
-        }
-
-        if (chequingAccountIds.includes(effect.toAccountId)) {
-          return total + effect.toAmount;
-        }
-
-        return total;
+        return total +
+          (chequingAccountIds.includes(effect.fromAccountId) ? effect.fromAmount : 0) +
+          (chequingAccountIds.includes(effect.toAccountId) ? effect.toAmount : 0);
       },
       0
     );
@@ -476,31 +489,28 @@ function calculateScheduledAccountEffects(
       .filter((transfer) => transfer.validated)
       .map((transfer) => getTransferAccountEffects(transfer))
       .reduce((total, effect) => {
-        if (chequingAccountIds.includes(effect.fromAccountId)) {
-          return total + effect.fromAmount;
-        }
-
-        if (chequingAccountIds.includes(effect.toAccountId)) {
-          return total + effect.toAmount;
-        }
-
-        return total;
+        return total +
+          (chequingAccountIds.includes(effect.fromAccountId) ? effect.fromAmount : 0) +
+          (chequingAccountIds.includes(effect.toAccountId) ? effect.toAmount : 0);
       }, 0);
     const savingsTransferEffect = transferEffectsForPeriod.reduce(
       (total, effect) => {
-        if (savingsAccountIds.includes(effect.fromAccountId)) {
-          return total + effect.fromAmount;
-        }
-
-        if (savingsAccountIds.includes(effect.toAccountId)) {
-          return total + effect.toAmount;
-        }
-
-        return total;
+        return total +
+          (savingsAccountIds.includes(effect.fromAccountId) ? effect.fromAmount : 0) +
+          (savingsAccountIds.includes(effect.toAccountId) ? effect.toAmount : 0);
       },
       0
     );
 
+    const validatedSavingsTransferEffect = transferRecordsForPeriod
+      .filter((transfer) => transfer.validated)
+      .map(getTransferAccountEffects)
+      .reduce((total, effect) => total +
+        (savingsAccountIds.includes(effect.fromAccountId) ? effect.fromAmount : 0) +
+        (savingsAccountIds.includes(effect.toAccountId) ? effect.toAmount : 0), 0);
+
+    validatedSavingsBalance += validatedScheduledAccountEffects.savings +
+      savingsAdjustments + savingsBucketAdjustmentsForPeriod + validatedSavingsTransferEffect;
     chequingBalance +=
       scheduledAccountEffects.chequing +
       chequingAdjustments +
@@ -528,6 +538,7 @@ function calculateScheduledAccountEffects(
     projectedChequing[period.date] = chequingBalance;
     validatedChequing[period.date] = validatedChequingBalance;
     projectedSavings[period.date] = savingsBalance;
+    validatedSavings[period.date] = validatedSavingsBalance;
   });
 
   return [
@@ -568,6 +579,12 @@ function calculateScheduledAccountEffects(
       amountsByPeriod: validatedChequing,
     },
     {
+      id: 'validated-savings',
+      name: 'Validated Savings',
+      type: 'balance',
+      amountsByPeriod: validatedSavings,
+    },
+    {
       id: 'projected-savings',
       name: 'Projected Savings',
       type: 'balance',
@@ -605,7 +622,7 @@ export function getDashboardSummary(plannerData) {
   const finalPeriod = payPeriods[payPeriods.length - 1];
   const finalPeriodDate = finalPeriod?.date || nextPeriod.date;
 
-  const chequingValues = Object.values(chequingRow?.amountsByPeriod || {});
+  const chequingValues = payPeriods.map((period) => chequingRow?.amountsByPeriod?.[period.date] || 0);
   const lowestChequing = Math.min(...chequingValues);
 
   return {
@@ -630,9 +647,7 @@ export function getCurrentPayPeriod(payPeriods = [], today = formatDateKey(new D
   }
 
   return (
-    [...payPeriods].reverse().find((period) => period.date <= today) ||
-    payPeriods[0] ||
-    null
+    [...payPeriods].reverse().find((period) => period.date <= today) || null
   );
 }
 
@@ -656,11 +671,13 @@ export function buildValidatedPlannerBucketActivities({
   rows = [],
   plannerEntries = {},
 }) {
+  const calculationPeriods = getCalculationPeriods(payPeriods, rows);
   return rows
-    .filter((row) => row.type === 'transfer' && row.item?.bucketId)
-    .flatMap((row) => {
-      return payPeriods
+    .flatMap((sourceRow) => {
+      return calculationPeriods
         .map((period) => {
+          const row = getPeriodRow(sourceRow, period.date);
+          if (row.type !== 'transfer' || !row.item?.bucketId) return null;
           const entryKey = getEntryKey(row.id, period.date);
           const entry = plannerEntries[entryKey];
           const amount = Number(row.amountsByPeriod?.[period.date]) || 0;
@@ -696,9 +713,8 @@ export function buildSavingsBucketProjection({
   savingsBucketAdjustments = [],
   transfers = [],
   plannerEntries = {},
+  today = formatDateKey(new Date()),
 }) {
-  const currentPayPeriod = getCurrentPayPeriod(payPeriods);
-  const currentPayPeriodDate = currentPayPeriod?.date || '';
   const finalPeriodDate = payPeriods[payPeriods.length - 1]?.date || '';
 
   return savingsBuckets.map((bucket) => {
@@ -724,14 +740,15 @@ export function buildSavingsBucketProjection({
     const balanceByPeriod = {};
     const validatedBalanceByPeriod = {};
 
-    payPeriods.forEach((period) => {
-      const transferIn = rows
+    getCalculationPeriods(payPeriods, rows, [...savingsBucketAdjustments, ...transfers]).forEach((period) => {
+      const periodRows = rows.map((row) => getPeriodRow(row, period.date));
+      const transferIn = periodRows
         .filter((row) => row.type === 'transfer')
         .filter((row) => row.item?.bucketId === bucket.id)
         .reduce((total, row) => {
           return total + (Number(row.amountsByPeriod[period.date]) || 0);
         }, 0);
-      const validatedTransferIn = rows
+      const validatedTransferIn = periodRows
         .filter((row) => row.type === 'transfer')
         .filter((row) => row.item?.bucketId === bucket.id)
         .reduce((total, row) => {
@@ -804,7 +821,7 @@ export function buildSavingsBucketProjection({
       balanceByPeriod[period.date] = balance;
       validatedBalanceByPeriod[period.date] = validatedBalance;
 
-      if (isPeriodThroughCurrent(period.date, currentPayPeriodDate)) {
+      if (isPeriodThroughCurrent(period.date, today)) {
         plannedTransfersToDate += transferIn;
         validatedPlannerTransfersToDate += validatedTransferIn;
         transferRecordsInToDate += transferRecordTotals.in;

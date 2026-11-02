@@ -5,18 +5,17 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-web-final`
+Current branch: `2.0.1-phase1-review` (draft review candidate)
+Latest approved release: `2.0.0-web-final`
 Data version: `2`
 
 ## Current Status
 
-This is the stable FinPath web/PWA release. It runs in the browser, can be
+The approved FinPath web/PWA release is stable; this branch adds Phase 1 changes pending review. It runs in the browser, can be
 installed as a PWA in supported browsers, stores user data locally, and does not
 require login, cloud sync, bank connections, or a server.
 
-Current phase status: FinPath is stable for web/PWA daily use. Phase 2W
-finalizes release labeling, documentation, backup safety reminders, deployment
-notes, and post-deploy testing while keeping `/BudgetApp/` unchanged.
+Current branch phase: Continuous Planner Phase 1, historical data and balance integrity. Review and acceptance are pending. No merge or deployment is authorized. `/BudgetApp/` remains unchanged.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -825,3 +824,57 @@ regularly and before any browser cleanup or deployment change.
 - Direct standalone transaction entry.
 - Budget rollover math and custom budget alerts.
 - Optional local import templates for common setup data.
+
+## Continuous Planner Phase 1 review build
+
+This branch implements historical data and balance integrity for [Issue #4](https://github.com/jsnwilmot/BudgetApp/issues/4), under [Epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3). It is a review candidate, not an accepted release. Year navigation and rolling forecasts remain separate phases.
+
+Saved cells retain their planned amount, actual override, validation, notes, line items and original source details. Editing/deactivating/deleting a schedule preserves those cells. Untouched forecasts still recalculate. Explicit corrections to past cells or adjustments update later cumulative balances. Saved historical markers remain eligible outside the visible forecast.
+
+Anchor and pay frequency cannot change while dated source records exist. Settings reset preserves both; export a backup before setting up another cadence in an empty planner. Account and bucket starting balances each apply once. Current account/bucket comparisons include retained activity through today within the configured horizon, including imported dates outside the generated cadence. Projected and validated totals stay separate. Planner transfers remain derived; manual records are separate movements, with the existing duplicate warning available for matching validated planner transfers.
+
+Backup `exportVersion: 1`, data/schema version `2`, and IndexedDB version `9` stay unchanged. Optional per-entry `scheduledItemSnapshot` and `historicalAmountNeedsReview` fields use the existing extensible record shape. They are saved during explicit cell/source changes, not by viewing a forecast. Legacy entries missing a confirmed amount, or already missing their source without a snapshot, require review against an original backup or statement; Data Health warns rather than inventing an exact history.
+
+Run `npm test`, `npm run lint`, `npm run build`, and `git diff --check`. Tests use synthetic fixtures and isolated fake IndexedDB, never an existing browser database. See [Phase 1 evidence and design](docs/continuous-planner-phase1.md) for the ledger, consumer inventory, compatibility, manual steps and remaining risks.
+
+
+### Phase 1 architecture corrections F1/F2
+
+Routine cell saves, notes, markers, validation toggles and source edits cannot clear historical uncertainty warnings. Amount and source provenance are reconciled separately in the cell editor with an explicit confirmation and a backup/statement reference. An amber cell indicator and Data Health warn when a legacy saved cell has no verified source provenance, including when the current schedule still exists or an older build captured an inferred snapshot. An inferred snapshot preserves a fallback; it does not prove the original account/type/category/bucket.
+
+Additional optional entry fields are `historicalSourceNeedsReview`, `scheduledItemSnapshotProvenance` and `historicalReview` (amount/source reference and acknowledgement timestamp). No store, required field, exportVersion or schemaVersion change is introduced. New cells can record source capture at their first explicit save. Existing snapshots without provenance are conservatively uncertain until reconciled. Restoring a backup retains flags, provenance and acknowledgement references. The app records a user's acknowledgement; it cannot authenticate a statement or reconstruct missing facts.
+
+For isolated production-browser checks: `npm run build`, start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `npm run test:browser`. This uses the dev-only `playwright-core` with a separately installed Chromium at `/usr/bin/chromium`; override `FINPATH_CHROMIUM_PATH` or `FINPATH_BASE_URL` if needed. The harness creates fresh browser contexts, imports synthetic data via the UI, and writes results/downloads/screenshots to a new temporary directory. It never attaches to a user's browser profile. Headless service-worker offline checks do not constitute OS-installed PWA acceptance. See the F1/F2 revision section of the Phase 1 evidence document for results and a concrete reconciliation example.
+
+
+### Per-entry historical source correction (F4)
+
+Open a saved Planner cell and expand **Correct source for this saved entry**. Choose its historical type, account, category and bucket using original evidence, enter a reference, check the entry-only confirmation, and save. Only that saved cell's classification and correction metadata change; its amounts, validation, notes, line items, dates/key, marker and current recurring schedule remain intact. Unsaved changes in the other editor form are not submitted. Later balances recalculate from the corrected classification. No backup import or application reset is required to perform the correction.
+
+The command rejects unknown IDs, missing income/expense accounts, stale edits and changes to protected fields. Existing inactive/archived reference records are allowed. It does not create or regenerate missing account/category/bucket IDs. Leave unresolved warnings when original evidence or required reference records are unavailable. Transfers retain existing aggregate chequing-to-savings semantics.
+
+Optional `historicalSourceCorrections` records previous/corrected type/account/category/bucket, previous provenance, reference and time. Correction, source evidence and provenance commit together in one transaction; ordinary saves/source edits cannot remove the audit or overwrite the corrected snapshot. Amount review remains independent. ExportVersion 1, schema/data version 2 and IndexedDB version 9 are unchanged. See the F4 revision in `docs/continuous-planner-phase1.md` for regression/browser results and the non-destructive reconciliation procedure.
+
+
+### Increment A — historical integrity and read-only legacy reconciliation
+
+Settings → Data Management now inventories every saved Planner entry by stable source ID and saved date window. Read-only cohorts retain distinct observed classifications and list reference/identity exceptions before metadata-only source reviews. Tables paginate at 20 rows; unknown dates remain visible for integrity review. No selection, grouped verification or bulk correction action exists.
+
+Historical snapshot account/category/bucket IDs, required income/expense accounts, bucket-linked accounts, identity/key/date consistency and audit shape are checked independently of prior provenance. Existing inactive/archived references and removed schedules with usable snapshots are legitimate history. Missing metadata is informational, not revoked validation. Missing/invalid confirmed values are reported separately. An acknowledged source with a broken link is not presented as verified with valid links.
+
+Single-entry source confirmation uses a frozen entry revision and displayed classification, re-reading source/reference stores in the write transaction. A changed source, deleted link, invalid identity or malformed audit rejects the whole save. F4 source correction remains evidence-backed and preserves financial fields/audits; it cannot silently rewrite a conflicting snapshot/source ID. Ordinary saves cannot rewrite existing IDs/dates to hide an identity conflict. No read-only diagnostic changes any stored flag, amount, validation, marker, audit or calculation.
+
+Planner, Dashboard, Reports and Savings Buckets show balance limitations when historical classifications/amounts are unresolved. They do not silently drop records or change financial formulas. Orphan/identity cases and missing reference records can remain unresolved; use existing entry-only correction where a saved Planner cell is available. No identity repair, new record creation, data migration or Phase 2 navigation is added. ExportVersion 1, schema/data version 2 and IndexedDB version 9 remain unchanged. See the Increment A evidence section in `docs/continuous-planner-phase1.md`.
+
+
+### Savings account configuration (Issue #11 review)
+
+New buckets select actual active savings accounts: a sole account defaults, several require a choice, and none require account creation first. Existing linked-account status is visible and read-only; missing/inactive links are retained, never auto-repaired. Save-time account validation and stale bucket checks prevent invalid new links and overwriting concurrent edits. Scheduled defaults use a sole active chequing account, never a display-name assumption; existing references are not replaced on open.
+
+See [account configuration findings and historical reconciliation proposal](docs/issue11-account-reconciliation.md). Historical mappings and financial-impacting repairs require separate review; no historical group correction or real-data changes are included.
+
+### Offline reconciliation utility — code review only
+
+`tools/reconcile/cli.mjs` is a standalone Node 22+ local, read-only backup analyzer with explicit cohort selectors. It prints only aggregate counts/fixed risks, separates bill expenses from contributions, compares exact saved validated money, traces current representation and flags possible manual/withdrawal/adjustment overlap. It offers no repair, dump, output-file or network mode and does not start the app or database. Existing application behavior is unchanged.
+
+See the [operator/security guide](tools/reconcile/README.md) for assumptions, limits, CLI/exit codes and Windows PowerShell steps. **Do not run on private financial data until independent Architect/security review and separate owner run approval.** Tests use synthetic data exclusively: `npm test` and `npm run test:cli`. Original backups must remain untouched and outside repository/Codex access.

@@ -354,6 +354,73 @@ export default function Help() {
         </p>
       </HelpCard>
 
+      <HelpCard title="Historical planner entries">
+        <p>
+          Saved planned amounts, actual amounts, line items and notes stay attached
+          to their original dates. Editing, deactivating or deleting a recurring
+          item keeps saved entries and their original account and bucket details.
+          Unsaved forecasts can still change. Validation remains a separate confirmation.
+        </p>
+        <p>
+          Correcting a past entry updates later balances. Opening a forecast does
+          not save or delete history. A marker on a saved entry remains eligible
+          outside the visible forecast. Anchor and pay frequency changes are blocked
+          while dated records exist; resetting settings preserves both.
+        </p>
+        <p>
+          Account and bucket starting balances are each applied once. Current
+          bucket values include dated activity through today within the configured
+          forecast; validated values include confirmed planner entries, validated
+          manual transfers and adjustments. Manual transfers are separate movements;
+          recording the same movement manually as well as in Planner counts both.
+        </p>
+        <p>
+          Older backups still import. Missing confirmed amounts or source provenance
+          remain uncertain, even if a current schedule or an inferred snapshot exists.
+          Amber cell warnings and Data Health identify these entries. Notes, markers,
+          validation changes and ordinary amount edits do not clear the warnings.
+          In the cell editor, compare an original backup or statement, then explicitly
+          confirm the amount and source details separately with a reference. If source
+          details differ, open Correct source for this saved entry. Edit its historical
+          type, account, category and bucket, then confirm with an evidence reference.
+          This separate form keeps amounts, validation, notes, markers and the recurring
+          schedule unchanged, and records a correction audit. Existing IDs are required;
+          inactive records are allowed. Source correction does not clear an amount warning.
+          Keep the original backup; acknowledgement is not proof of financial facts.
+          This review build does not add year navigation.
+        </p>
+      </HelpCard>
+
+      <HelpCard title="Legacy reconciliation and historical links">
+        <p>
+          Settings → Data Management includes a read-only inventory of all saved
+          planner entries, including dates outside the visible forecast. Filter by
+          stable source ID and saved pay-period dates. Cohorts show observed details,
+          not evidence that the source stayed unchanged over time.
+        </p>
+        <p>
+          Saved validation is unchanged. Missing legacy verification metadata appears
+          as source details not reviewed, separate from reference/identity exceptions
+          and unresolved amount evidence. Previously acknowledged history still needs
+          attention if its account, category or bucket is missing. Inactive references
+          remain valid. A removed schedule with a usable snapshot is retained history;
+          an orphan without a usable source is listed as unresolved.
+        </p>
+        <p>
+          Source confirmation rechecks identity, current classification and linked
+          records when saved. A stale view or invalid reference blocks the entire save.
+          Use the existing entry-only source correction for classification links.
+          Identity conflicts or malformed audits require separate review; they are
+          not silently repaired. Amount review remains independent.
+        </p>
+        <p>
+          Balance notices explain unresolved history without changing calculations.
+          Viewing, filtering, pagination and health rechecks do not alter data or
+          warnings. There is no grouped verification or bulk correction in this build.
+          Keep unresolved records flagged until original evidence is available.
+        </p>
+      </HelpCard>
+
       <HelpCard title="Planner Total Rows">
         <div className="grid gap-3 md:grid-cols-2">
           {plannerTotals.map(([title, description]) => (
@@ -366,6 +433,9 @@ export default function Help() {
       </HelpCard>
 
       <HelpCard title="Savings Bucket Balances">
+        <p>New buckets require an existing active savings account. One account is preselected; with several, choose explicitly. With none, create a savings account in Accounts first.</p>
+        <p>Each bucket shows its linked account. Existing associations are read-only, including missing or inactive references. Opening or editing notes does not repair them. Keep original backups and request an evidence-backed repair review before changing existing associations or historical classifications.</p>
+        <p>If a bucket changes in another tab, reopen its editor before saving. Scheduled Items default only to a sole active chequing account; otherwise choose an account explicitly.</p>
         <p>
           Savings Buckets separates what is current from what is still a future
           forecast.

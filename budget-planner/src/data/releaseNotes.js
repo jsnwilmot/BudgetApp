@@ -1,21 +1,21 @@
-export const APP_VERSION = '2.0.0-web-final';
+export const APP_VERSION = '2.0.1-phase1-review';
 
 export const RELEASE_NOTES = {
   version: APP_VERSION,
-  title: "What's New",
-  date: '2026-05-24',
+  title: 'Phase 1 review build',
+  date: '2026-11-02',
   highlights: [
-    'Finalized FinPath web/PWA release.',
-    'Confirmed local-first backup, import preview, and Data Health tools.',
-    'Confirmed Reports, transfers, savings movement, budgets, and planner QA coverage.',
-    'Improved Savings Buckets with current projected balances, validated bucket balances, and read-only validated planner transfer activity.',
-    'Fixed Reports bucket balances so they use current bucket projection data instead of only starting balances.',
-    'Fixed Reports transfer summaries so planned, validated, manual, and adjustment-based savings movement are clearly separated.',
-    'Improved missing-account alerts with clearer copy and deduplication.',
-    'Added account assignment to scheduled income, expenses, and debts, with missing-account alerts opening the source scheduled item.',
-    'Kept non-danger alert dismissals after refresh and prevented update notices from covering status messages.',
-    'Hardened IndexedDB replacement writes and removed stale full-app localStorage diagnostics.',
-    'Confirmed mobile and PWA release readiness.',
-    'Prepared the app for stable daily use before future desktop migration.',
+    'Replaced demo bucket account links with actual savings-account selection and save-time validation; existing associations remain visible and unchanged.',
+    'Added stale bucket-edit protection and safer scheduled-account defaults; historical reconciliation remains a separately reviewed proposal.',
+    'Preserved saved planner amounts, notes, line items and source snapshots when recurring items change or are deleted.',
+    'Added historical account, category and bucket integrity checks; broken links cannot be newly confirmed.',
+    'Added read-only legacy cohorts and exception reporting, separate from missing verification metadata.',
+    'Kept historical markers eligible outside the visible forecast; routine edits now retain historical uncertainty warnings.',
+    'Added entry-only historical type, account, category and bucket correction with evidence and an audit; saved amounts and recurring schedules stay unchanged.',
+    'Added separate amount and source reconciliation confirmations with an original backup or statement reference.',
+    'Protected anchor and pay frequency while dated records exist; resetting settings retains the cadence.',
+    'Reconciled retained dated activity with account and savings bucket opening balances.',
+    'Corrected transfers between accounts of the same type and report movement identity handling.',
+    'Added regression, ledger, backup and IndexedDB rollback tests. Year navigation and rolling forecasts are reserved for later phases.',
   ],
 };

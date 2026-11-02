@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { historicalSourceSignature, inspectHistoricalEntry } from '../logic/historicalIntegrity';
+import HistoricalSourceCorrection from './HistoricalSourceCorrection';
+import { getHistoricalReviewState, getHistoricalSourceRevision } from '../logic/plannerHistory';
 import { Plus, Trash2 } from 'lucide-react';
 import { getLastEntrySaveAction, isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { formatCurrency, getLineItemTotal, sumLineItems } from '../logic/projectionLogic';
@@ -10,20 +14,96 @@ function createLineItem() {
   };
 }
 
+function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categories, blocked }) {
+  if (!state.amount && !state.source) return null;
+  const label = (records, id) => records.find((record) => record.id === id)?.name || (id ? 'Missing record' : 'None');
+  return (
+    <fieldset className={`space-y-3 rounded-xl border p-3 ${state.amount ? 'border-amber-300 bg-amber-50' : 'border-slate-300 bg-slate-50'}`}>
+      <legend className="font-semibold text-amber-950">Saved amount and source review</legend>
+      <p className="text-sm text-amber-950">
+        Saved validation is unchanged. Missing source metadata is separate from missing links or amount problems.
+        Notes, validation and marker changes do not verify missing historical facts.
+        Compare an original backup or statement before checking either confirmation.
+        Leave unchecked to keep the warnings.
+      </p>
+      {state.amount ? (
+        <label className="flex items-start gap-2 text-sm">
+          <input name="reviewHistoricalAmount" type="checkbox" className="mt-1" />
+          <span>I verified the saved amount against an original backup or statement.</span>
+        </label>
+      ) : null}
+      {state.source ? (
+        <>
+          <p className="text-sm">
+            Source details are provisional: {source?.name || 'Missing source'};
+            type: {source?.type || 'Unknown'};
+            account: {label(accounts, source?.accountId)};
+            category: {label(categories, source?.categoryId)};
+            bucket: {label(savingsBuckets, source?.bucketId || source?.savingsBucketId)}.
+            If these differ from the original, use “Correct source for this saved entry” before confirming.
+          </p>
+          <label className="flex items-start gap-2 text-sm">
+            <input name="reviewHistoricalSource" type="checkbox" disabled={blocked} className="mt-1" />
+            <span>I verified these original source details against an original backup or statement.</span>
+          </label>
+        </>
+      ) : null}
+      <label className="block text-sm">
+        Backup or statement reference (required for confirmation)
+        <input name="historicalEvidence" type="text" maxLength="500"
+          onInput={(event) => event.currentTarget.setCustomValidity('')}
+          className="mt-1 w-full rounded-lg border border-amber-300 px-3 py-2"
+          placeholder="For example: original backup filename and entry date" />
+      </label>
+    </fieldset>
+  );
+}
+
+function readHistoricalReview(form, formData, expected) {
+  const review = {
+    ...expected,
+    amount: formData.get('reviewHistoricalAmount') === 'on',
+    source: formData.get('reviewHistoricalSource') === 'on',
+    evidence: String(formData.get('historicalEvidence') || '').trim(),
+  };
+  if ((review.amount || review.source) && !review.evidence) {
+    const input = form.elements.namedItem('historicalEvidence');
+    input.setCustomValidity('Enter the original backup or statement reference before confirming.');
+    input.reportValidity();
+    return null;
+  }
+  return review;
+}
+
 export default function CellEditor({
   selectedCell,
   plannerEntries,
   plannerLastEntryMarker,
   settings,
+  accounts = [],
+  savingsBuckets = [],
+  categories = [],
   onClose,
   onSave,
   onClear,
+  onCorrectHistoricalSource,
 }) {
+  const [expectedSourceReview] = useState(() => ({
+    expectedRevision: getHistoricalSourceRevision(plannerEntries?.[selectedCell?.entryKey] || {}),
+    expectedSource: historicalSourceSignature(selectedCell?.row.item),
+  }));
   if (!selectedCell) {
     return null;
   }
 
   const entry = plannerEntries[selectedCell.entryKey] || {};
+  const reviewState = plannerEntries[selectedCell.entryKey] ? getHistoricalReviewState(entry) : { amount: false, source: false };
+  const integrity = inspectHistoricalEntry(selectedCell.entryKey, entry, {
+    accounts, categories, savingsBuckets,
+    scheduledItems: selectedCell.row.item ? [selectedCell.row.item] : [],
+  });
+  const reviewFields = <HistoricalReviewFields state={reviewState} source={selectedCell.row.item}
+    accounts={accounts} savingsBuckets={savingsBuckets} categories={categories} blocked={integrity.integrityIssues.length > 0} />;
   const currency = settings?.currency || 'CAD';
   const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
   const isLastEntryCell = isPlannerCellMarked(
@@ -57,6 +137,8 @@ export default function CellEditor({
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
+    const historicalReview = readHistoricalReview(event.currentTarget, formData, expectedSourceReview);
+    if (!historicalReview) return;
     const useActual = formData.get('useActual') === 'on';
     const validated = formData.get('validated') === 'on';
     const markAsLastEntry = formData.get('lastEntry') === 'on';
@@ -66,6 +148,7 @@ export default function CellEditor({
     onSave(
       selectedCell.entryKey,
       {
+        ...entry,
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,
@@ -79,6 +162,7 @@ export default function CellEditor({
         updatedAt: new Date().toISOString(),
       },
       {
+        historicalReview,
         lastEntryAction: getLastEntrySaveAction({
           wasMarked: isLastEntryCell,
           shouldBeMarked: markAsLastEntry,
@@ -91,6 +175,8 @@ export default function CellEditor({
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
+    const historicalReview = readHistoricalReview(event.currentTarget, formData, expectedSourceReview);
+    if (!historicalReview) return;
     const validated = formData.get('validated') === 'on';
     const markAsLastEntry = formData.get('lastEntry') === 'on';
     const notes = String(formData.get('notes') || '');
@@ -111,6 +197,7 @@ export default function CellEditor({
     onSave(
       selectedCell.entryKey,
       {
+        ...entry,
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,
@@ -122,6 +209,7 @@ export default function CellEditor({
         updatedAt: new Date().toISOString(),
       },
       {
+        historicalReview,
         lastEntryAction: getLastEntrySaveAction({
           wasMarked: isLastEntryCell,
           shouldBeMarked: markAsLastEntry,
@@ -206,6 +294,20 @@ export default function CellEditor({
         </p>
       </div>
 
+      {entry.entryKey && integrity.integrityIssues.length > 0 ? (
+        <div role="status" className="mb-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+          <p className="font-semibold">Historical source links or identity need attention</p>
+          <ul className="mt-2 list-disc pl-5">{integrity.integrityIssues.map((issue) => <li key={issue.code}>{issue.message}</li>)}</ul>
+          <p className="mt-2">Source confirmation is blocked. Use the entry-only correction for classification links. Identity conflicts remain unresolved; no keys are rewritten.</p>
+        </div>
+      ) : null}
+
+      {entry.entryKey && onCorrectHistoricalSource ? (
+        <HistoricalSourceCorrection entry={entry} source={selectedCell.row.item}
+          accounts={accounts} categories={categories} savingsBuckets={savingsBuckets}
+          onCorrect={onCorrectHistoricalSource} />
+      ) : null}
+
       {isLineItemCell ? (
         <form onSubmit={handleLineItemSubmit} className="space-y-4">
           <div>
@@ -288,6 +390,8 @@ export default function CellEditor({
             </span>
           </label>
 
+          {reviewFields}
+
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Notes</span>
             <textarea
@@ -367,6 +471,8 @@ export default function CellEditor({
               Mark as last entry
             </span>
           </label>
+
+          {reviewFields}
 
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Notes</span>
