@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "node --import ./test/register.mjs --test test/*.test.js",
     "preview": "vite preview",
-    "test:browser": "node --import ./test/register.mjs test/browser/phase1-acceptance.mjs"
+    "test:browser": "node --import ./test/register.mjs test/browser/phase1-acceptance.mjs",
+    "test:cli": "node --test test/cli/*.test.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",

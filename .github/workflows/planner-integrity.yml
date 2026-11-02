@@ -23,6 +23,8 @@ jobs:
         working-directory: budget-planner
       - run: npm test
         working-directory: budget-planner
+      - run: npm run test:cli
+        working-directory: budget-planner
       - run: npm run lint
         working-directory: budget-planner
       - run: npm run build

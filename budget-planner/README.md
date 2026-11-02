@@ -872,3 +872,9 @@ Planner, Dashboard, Reports and Savings Buckets show balance limitations when hi
 New buckets select actual active savings accounts: a sole account defaults, several require a choice, and none require account creation first. Existing linked-account status is visible and read-only; missing/inactive links are retained, never auto-repaired. Save-time account validation and stale bucket checks prevent invalid new links and overwriting concurrent edits. Scheduled defaults use a sole active chequing account, never a display-name assumption; existing references are not replaced on open.
 
 See [account configuration findings and historical reconciliation proposal](docs/issue11-account-reconciliation.md). Historical mappings and financial-impacting repairs require separate review; no historical group correction or real-data changes are included.
+
+### Offline reconciliation utility — code review only
+
+`tools/reconcile/cli.mjs` is a standalone Node 22+ local, read-only backup analyzer with explicit cohort selectors. It prints only aggregate counts/fixed risks, separates bill expenses from contributions, compares exact saved validated money, traces current representation and flags possible manual/withdrawal/adjustment overlap. It offers no repair, dump, output-file or network mode and does not start the app or database. Existing application behavior is unchanged.
+
+See the [operator/security guide](tools/reconcile/README.md) for assumptions, limits, CLI/exit codes and Windows PowerShell steps. **Do not run on private financial data until independent Architect/security review and separate owner run approval.** Tests use synthetic data exclusively: `npm test` and `npm run test:cli`. Original backups must remain untouched and outside repository/Codex access.
