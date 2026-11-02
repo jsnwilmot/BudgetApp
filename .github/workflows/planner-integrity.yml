@@ -1,0 +1,30 @@
+name: Planner integrity checks
+
+on:
+  pull_request:
+    paths:
+      - 'budget-planner/**'
+      - '.github/workflows/planner-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: budget-planner/package-lock.json
+      - run: npm ci
+        working-directory: budget-planner
+      - run: npm test
+        working-directory: budget-planner
+      - run: npm run lint
+        working-directory: budget-planner
+      - run: npm run build
+        working-directory: budget-planner
+      - run: git diff --check

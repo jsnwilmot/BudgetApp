@@ -793,7 +793,7 @@ export default function ScheduledItems({
 
   async function handleDelete(item) {
     const confirmed = window.confirm(
-      'Delete this scheduled item? Deactivating is safer if you may need it later.'
+      'Delete this scheduled item? Saved planner entries and their source snapshots will be retained. Deactivating is safer if you may need the schedule later.'
     );
 
     if (!confirmed) {
@@ -823,7 +823,7 @@ export default function ScheduledItems({
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
             Manage the planned items that generate the pay period planner.
-            Inactive items stay saved but do not affect projections.
+            Inactive items stop future recurrence. Saved planner entries remain in historical balances.
           </p>
         </div>
 

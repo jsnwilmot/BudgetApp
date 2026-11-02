@@ -811,32 +811,51 @@ export async function getAllScheduledItems() {
   });
 }
 
-export async function saveScheduledItem(item) {
+// Source edits/deletion and history snapshots share one transaction, including clone failures.
+async function mutateScheduledItem(id, record, entrySnapshots) {
   const db = await openDatabase();
-
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.scheduledItems, 'readwrite');
-    const store = transaction.objectStore(STORES.scheduledItems);
-
-    const record = {
-      ...normalizeScheduledItem(item),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const request = store.put(record);
-
-    request.onerror = () => {
-      reject(new Error('Failed to save scheduled item.'));
-    };
-
-    resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      value: record,
-      errorMessage: 'Failed to save scheduled item.',
-    });
+    const transaction = db.transaction([STORES.scheduledItems, STORES.plannerEntries], 'readwrite');
+    try {
+      const store = transaction.objectStore(STORES.scheduledItems);
+      const entriesStore = transaction.objectStore(STORES.plannerEntries);
+      Object.entries(entrySnapshots).forEach(([entryKey, entry]) => {
+        const request = entriesStore.get(entryKey);
+        request.onsuccess = () => {
+          const current = request.result;
+          // Never resurrect a cell cleared since the source editor was opened,
+          // or overwrite a more recent correction with a stale UI snapshot.
+          if (!current) return;
+          try {
+            entriesStore.put({
+              ...current,
+              plannedAmount: current.plannedAmount ?? entry.plannedAmount,
+              scheduledItemSnapshot: current.scheduledItemSnapshot || entry.scheduledItemSnapshot,
+              ...(current.historicalAmountNeedsReview === undefined && entry.historicalAmountNeedsReview
+                ? { historicalAmountNeedsReview: true } : {}),
+            });
+          } catch (error) {
+            transaction.abort();
+            reject(error);
+          }
+        };
+      });
+      if (record) store.put(record);
+      else store.delete(id);
+      resolveOnTransactionComplete({
+        transaction, resolve, reject, value: record,
+        errorMessage: 'Could not update scheduled item and preserve its history.',
+      });
+    } catch (error) {
+      transaction.abort();
+      reject(error);
+    }
   });
+}
+
+export async function saveScheduledItem(item, entrySnapshots = {}) {
+  const record = { ...normalizeScheduledItem(item), updatedAt: new Date().toISOString() };
+  return mutateScheduledItem(record.id, record, entrySnapshots);
 }
 
 export async function getAllAccounts() {
@@ -1138,25 +1157,8 @@ export async function deleteTransfer(id) {
   });
 }
 
-export async function deleteScheduledItem(id) {
-  const db = await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.scheduledItems, 'readwrite');
-    const store = transaction.objectStore(STORES.scheduledItems);
-    const request = store.delete(id);
-
-    request.onerror = () => {
-      reject(new Error('Failed to delete scheduled item.'));
-    };
-
-    resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      errorMessage: 'Failed to delete scheduled item.',
-    });
-  });
+export async function deleteScheduledItem(id, entrySnapshots = {}) {
+  return mutateScheduledItem(id, null, entrySnapshots);
 }
 
 export async function repairLocalData() {

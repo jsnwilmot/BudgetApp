@@ -170,3 +170,18 @@ npm.cmd run build
 cd ..
 git diff --check
 ```
+
+## Continuous Planner Phase 1 — pending manual review
+
+Use a separate browser profile with synthetic fixtures. Export first; never replace a real dataset for testing. The automated fixture evidence is in `continuous-planner-phase1.md`; the checks below have not been manually marked PASS.
+
+- [ ] Import `test/fixtures/current-backup.json`; verify saved salary value, original source, IDs, notes and marker.
+- [ ] Confirm a planned amount with actual override unchecked. Change schedule amount, frequency, name, account and end date. Reopen the saved cell: original amount/classification remain; untouched cells follow the new schedule.
+- [ ] Repeat with actual override and line items. Deactivate and then delete the schedule; saved cells still contribute to balances and remain editable.
+- [ ] Set a saved cell as Last Entry, shorten projection range, refresh, export and restore. The off-screen marker remains in metadata. Clearing that cell explicitly clears its marker.
+- [ ] Compare December/January and leap-day account and bucket totals with the reference ledger. Correct an old amount and confirm later balances change by exactly that difference.
+- [ ] Add transfers within chequing, within savings and between types. Check aggregate conservation, separate planner/manual identities, read-only derived activity and matching duplicate warnings.
+- [ ] Try changing anchor/frequency with dated records: save is blocked with a plain error and original settings remain. Reset settings: cadence remains. In an empty planner, initial cadence setup is allowed.
+- [ ] Import `test/fixtures/legacy-backup.json`. Preserve IDs and values on export/restore. For legacy entries without original amount/source details, Data Health reports uncertainty; compare a statement before correcting.
+- [ ] Check Planner, Dashboard, Reports, CSV/print, account comparisons and buckets under their documented finite scopes. No year controls or rolling forecast should appear.
+- [ ] Check desktop, 375px mobile, offline PWA refresh and a second tab. Record review findings before accepting Phase 1.

@@ -1,3 +1,5 @@
+import { parseLocalDate } from './dateLogic';
+
 const EDITABLE_PLANNER_TYPES = new Set(['income', 'expense', 'transfer']);
 
 function getPlannerEntryKey(plannerItemId, occurrenceId) {
@@ -103,9 +105,13 @@ export function applyPlannerLastEntrySaveAction({
 export function isPlannerLastEntryMarkerValid(marker, plannerData = {}) {
   const normalizedMarker = normalizePlannerLastEntryMarker(marker);
 
-  if (!normalizedMarker) {
+  if (!normalizedMarker || !/^\d{4}-\d{2}-\d{2}$/.test(normalizedMarker.occurrenceId) ||
+      Number.isNaN(parseLocalDate(normalizedMarker.occurrenceId).getTime())) {
     return false;
   }
+
+  if (normalizedMarker.cellKey !== getPlannerEntryKey(normalizedMarker.plannerItemId, normalizedMarker.occurrenceId)) return false;
+  if (plannerData.plannerEntries?.[normalizedMarker.cellKey]) return true;
 
   const periodExists = (plannerData.payPeriods || []).some(
     (period) => period?.date === normalizedMarker.occurrenceId

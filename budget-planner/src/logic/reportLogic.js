@@ -1,3 +1,4 @@
+import { getPeriodRow } from './plannerHistory';
 import { getEntryKey } from "./projectionLogic";
 import { getTransferBucketEffect } from "./transferLogic";
 import { normalizeNumber } from "../utils/numbers";
@@ -426,6 +427,7 @@ export function buildReportTransferSummary({
 
   selectedPeriods.forEach((period) => {
     plannerRows
+      .map((row) => getPeriodRow(row, period.date))
       .filter((row) => isSavingsPlannerTransfer(row, accounts))
       .forEach((row) => {
         const amount = getPlannerAmount(row, period.date);
@@ -579,14 +581,15 @@ export function buildReportRowsFromPlannerData(plannerData) {
   );
 
   return payPeriods.map((period) => {
-    const income = plannerRows
+    const periodRows = plannerRows.map((row) => getPeriodRow(row, period.date));
+    const income = periodRows
       .filter((row) => row.type === "income")
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
-    const expenses = plannerRows
+    const expenses = periodRows
       .filter((row) => row.type === "expense")
       .filter((row) => !isMiscExpenseRow(row) && !isMiscPaymentRow(row))
       .reduce(
@@ -594,21 +597,21 @@ export function buildReportRowsFromPlannerData(plannerData) {
         0
       );
 
-    const miscPayments = plannerRows
+    const miscPayments = periodRows
       .filter(isMiscPaymentRow)
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
-    const miscExpenses = plannerRows
+    const miscExpenses = periodRows
       .filter(isMiscExpenseRow)
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
-    const transfersIn = plannerRows
+    const transfersIn = periodRows
       .filter((row) => row.type === "transfer")
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
@@ -1324,36 +1327,12 @@ export function calculateBucketTransferTotals(bucketId, transfers = []) {
 
 export function dedupeSavingsMovements(movements = []) {
   const seen = new Set();
-
   return movements.filter((movement) => {
-    const dateValue = getSavingsTransferDateValue(movement);
-    const directBucketId =
-      movement.bucketId ||
-      movement.savingsBucketId ||
-      movement.toBucketId ||
-      movement.fromBucketId ||
-      movement.destinationBucketId ||
-      movement.sourceBucketId ||
-      "";
-    const amounts = getSavingsTransferAmounts(movement);
-    const direction =
-      amounts.transfersOut > 0
-        ? "out"
-        : amounts.transfersIn > 0
-          ? "in"
-          : "none";
-    const amount = Math.max(amounts.transfersIn, amounts.transfersOut);
-    const key = [
-      dateValue,
-      directBucketId,
-      direction,
-      normalizeNumber(amount).toFixed(2)
-    ].join("|");
-
-    if (seen.has(key)) {
-      return false;
-    }
-
+    // Equal amounts/dates can be distinct real movements. Only dedupe source identity.
+    if (!movement.id) return true;
+    const source = movement.source || (movement.transferType ? 'transfer' : 'adjustment');
+    const key = `${source}:${movement.id}`;
+    if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });

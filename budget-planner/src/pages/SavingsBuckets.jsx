@@ -499,7 +499,7 @@ export default function SavingsBuckets({
     });
   }, [plannerActivities, transfers]);
 
-  const currentPayPeriod = getCurrentPayPeriod(plannerData.payPeriods);
+  const currentPayPeriod = getCurrentPayPeriod(plannerData.calculationPeriods || plannerData.payPeriods);
   const currentPayPeriodDate = currentPayPeriod?.date || '';
 
   const finalPeriod = plannerData.payPeriods[plannerData.payPeriods.length - 1];
@@ -514,7 +514,6 @@ export default function SavingsBuckets({
 
   const savingsStartingBalance = accounts
     .filter((account) => account.type === 'savings')
-    .filter((account) => account.active !== false)
     .reduce((total, account) => total + (Number(account.startingBalance) || 0), 0);
 
   const currentSavingsAccountBalance =

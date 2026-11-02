@@ -5,18 +5,17 @@ bills, savings transfers, category budgets, transactions, alerts, and reports.
 
 Tagline: Track smarter. Save better.
 
-Current release: `2.0.0-web-final`
+Current branch: `2.0.1-phase1-review` (draft review candidate)
+Latest approved release: `2.0.0-web-final`
 Data version: `2`
 
 ## Current Status
 
-This is the stable FinPath web/PWA release. It runs in the browser, can be
+The approved FinPath web/PWA release is stable; this branch adds Phase 1 changes pending review. It runs in the browser, can be
 installed as a PWA in supported browsers, stores user data locally, and does not
 require login, cloud sync, bank connections, or a server.
 
-Current phase status: FinPath is stable for web/PWA daily use. Phase 2W
-finalizes release labeling, documentation, backup safety reminders, deployment
-notes, and post-deploy testing while keeping `/BudgetApp/` unchanged.
+Current branch phase: Continuous Planner Phase 1, historical data and balance integrity. Review and acceptance are pending. No merge or deployment is authorized. `/BudgetApp/` remains unchanged.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -825,3 +824,15 @@ regularly and before any browser cleanup or deployment change.
 - Direct standalone transaction entry.
 - Budget rollover math and custom budget alerts.
 - Optional local import templates for common setup data.
+
+## Continuous Planner Phase 1 review build
+
+This branch implements historical data and balance integrity for [Issue #4](https://github.com/jsnwilmot/BudgetApp/issues/4), under [Epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3). It is a review candidate, not an accepted release. Year navigation and rolling forecasts remain separate phases.
+
+Saved cells retain their planned amount, actual override, validation, notes, line items and original source details. Editing/deactivating/deleting a schedule preserves those cells. Untouched forecasts still recalculate. Explicit corrections to past cells or adjustments update later cumulative balances. Saved historical markers remain eligible outside the visible forecast.
+
+Anchor and pay frequency cannot change while dated source records exist. Settings reset preserves both; export a backup before setting up another cadence in an empty planner. Account and bucket starting balances each apply once. Current account/bucket comparisons include retained activity through today within the configured horizon, including imported dates outside the generated cadence. Projected and validated totals stay separate. Planner transfers remain derived; manual records are separate movements, with the existing duplicate warning available for matching validated planner transfers.
+
+Backup `exportVersion: 1`, data/schema version `2`, and IndexedDB version `9` stay unchanged. Optional per-entry `scheduledItemSnapshot` and `historicalAmountNeedsReview` fields use the existing extensible record shape. They are saved during explicit cell/source changes, not by viewing a forecast. Legacy entries missing a confirmed amount, or already missing their source without a snapshot, require review against an original backup or statement; Data Health warns rather than inventing an exact history.
+
+Run `npm test`, `npm run lint`, `npm run build`, and `git diff --check`. Tests use synthetic fixtures and isolated fake IndexedDB, never an existing browser database. See [Phase 1 evidence and design](docs/continuous-planner-phase1.md) for the ledger, consumer inventory, compatibility, manual steps and remaining risks.

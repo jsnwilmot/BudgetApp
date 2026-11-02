@@ -10,7 +10,7 @@ import {
 } from './seedData';
 
 export const APP_DATA_VERSION = 2;
-export const APP_VERSION = '2.0.0-web-final';
+export const APP_VERSION = '2.0.1-phase1-review';
 export const BACKUP_APP_NAME = 'BudgetApp';
 export const EXPORT_APP_NAME = 'FinPath';
 export const BACKUP_REMINDER_DAYS = 30;
@@ -1012,6 +1012,7 @@ function checkPlannerEntries(data, issues) {
   let emptyKeys = 0;
   let missingScheduledReferences = 0;
   let invalidEntryShapes = 0;
+  let missingConfirmedAmounts = 0;
 
   Object.entries(plannerEntries).forEach(([entryKey, entry]) => {
     if (!entryKey) emptyKeys += 1;
@@ -1020,8 +1021,13 @@ function checkPlannerEntries(data, issues) {
       return;
     }
 
+    if (entry.historicalAmountNeedsReview ||
+        (entry.validated && !entry.useActual && !entry.lineItems?.length && entry.plannedAmount == null)) {
+      missingConfirmedAmounts += 1;
+    }
     const [scheduledItemId] = String(entryKey).split('__');
-    if (scheduledItemId && !scheduledIds.has(scheduledItemId)) {
+    if (scheduledItemId && !scheduledIds.has(scheduledItemId) &&
+        entry.scheduledItemSnapshot?.id !== scheduledItemId) {
       missingScheduledReferences += 1;
     }
 
@@ -1047,6 +1053,14 @@ function checkPlannerEntries(data, issues) {
       'Planner entry issues',
       `${emptyKeys + invalidEntryShapes} planner entries have empty keys, invalid values, or invalid line item amounts.`,
       'Review planner edits before relying on pay-period totals.'
+    );
+  }
+
+  if (missingConfirmedAmounts > 0) {
+    addHealthIssue(
+      issues, 'warning', 'Historical confirmed amounts need review',
+      `${missingConfirmedAmounts} confirmed entries lack an original planned amount snapshot.`,
+      'The original confirmed amount cannot be recovered reliably. Compare your original backup or statement and explicitly correct the entry before relying on historical totals.'
     );
   }
 

@@ -3,6 +3,7 @@ import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-reac
 import AlertList from '../components/AlertList';
 import { isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
+import { getPeriodRow } from '../logic/plannerHistory';
 import { getLocalToday } from '../logic/dateLogic';
 
 function getRowClass(type) {
@@ -127,6 +128,7 @@ function PlannerRow({
       </th>
 
       {payPeriods.map((period) => {
+        const cellRow = getPeriodRow(row, period.date);
         const amount = row.amountsByPeriod[period.date] || 0;
         const plannedAmount = row.plannedByPeriod?.[period.date] || 0;
         const entryKey = getEntryKey(row.id, period.date);
@@ -157,7 +159,7 @@ function PlannerRow({
                 type="button"
                 onClick={() =>
                   onCellClick({
-                    row,
+                    row: cellRow,
                     period,
                     entryKey,
                     plannedAmount,
@@ -165,12 +167,8 @@ function PlannerRow({
                   })
                 }
                 className="group flex w-full items-center justify-end gap-2 rounded-lg px-2 py-1 hover:bg-white"
-                title={hasNote ? entry.notes : 'Edit planned amount'}
-                aria-label={
-                  lastEntrySelected
-                    ? `${row.name}, ${period.label}, ${amountLabel}. Marked as Last Entry.`
-                    : undefined
-                }
+                title={`${cellRow.name} (${getTypeLabel(cellRow.type)})${hasNote ? `: ${entry.notes}` : ': Edit planned amount'}`}
+                aria-label={`${cellRow.name}, ${getTypeLabel(cellRow.type)}, ${period.date}, ${amountLabel}. ${validated ? 'Validated.' : 'Projected.'}${lastEntrySelected ? ' Marked as Last Entry.' : ''}`}
               >
                 <span>
                   {amount === 0 ? '—' : formatCurrency(amount, currency)}

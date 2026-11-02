@@ -66,6 +66,8 @@ export default function CellEditor({
     onSave(
       selectedCell.entryKey,
       {
+        ...entry,
+        historicalAmountNeedsReview: false,
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,
@@ -111,6 +113,8 @@ export default function CellEditor({
     onSave(
       selectedCell.entryKey,
       {
+        ...entry,
+        historicalAmountNeedsReview: false,
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,

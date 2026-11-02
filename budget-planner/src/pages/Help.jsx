@@ -354,6 +354,33 @@ export default function Help() {
         </p>
       </HelpCard>
 
+      <HelpCard title="Historical planner entries">
+        <p>
+          Saved planned amounts, actual amounts, line items and notes stay attached
+          to their original dates. Editing, deactivating or deleting a recurring
+          item keeps saved entries and their original account and bucket details.
+          Unsaved forecasts can still change. Validation remains a separate confirmation.
+        </p>
+        <p>
+          Correcting a past entry updates later balances. Opening a forecast does
+          not save or delete history. A marker on a saved entry remains eligible
+          outside the visible forecast. Anchor and pay frequency changes are blocked
+          while dated records exist; resetting settings preserves both.
+        </p>
+        <p>
+          Account and bucket starting balances are each applied once. Current
+          bucket values include dated activity through today within the configured
+          forecast; validated values include confirmed planner entries, validated
+          manual transfers and adjustments. Manual transfers are separate movements;
+          recording the same movement manually as well as in Planner counts both.
+        </p>
+        <p>
+          Older backups still import. Missing historical source details or missing
+          confirmed amounts cannot be reconstructed reliably; review Data Health
+          and keep your original backup. This review build does not add year navigation.
+        </p>
+      </HelpCard>
+
       <HelpCard title="Planner Total Rows">
         <div className="grid gap-3 md:grid-cols-2">
           {plannerTotals.map(([title, description]) => (

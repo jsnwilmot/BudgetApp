@@ -57,7 +57,6 @@ import {
   repairLocalData,
   resetAppToDemoData,
   resetAppToEmptyState,
-  resetAppSettings,
   resetBudgetTargets,
   resetCategoriesToDefaults,
   saveAccount,
@@ -89,6 +88,7 @@ import {
   normalizePlannerLastEntryMarker,
 } from './logic/plannerLastEntryMarker';
 import { buildExportPlannerRows, buildPlannerRows } from './logic/projectionLogic';
+import { assertSafeCadenceChange, snapshotScheduledEntries } from './logic/plannerHistory';
 import { getCurrentMonthKey } from './logic/dateLogic';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
 import { buildTransactionsFromAppData } from './logic/transactionLogic';
@@ -557,7 +557,7 @@ export default function App() {
     if (
       loading ||
       !plannerLastEntryMarker ||
-      isPlannerLastEntryMarkerValid(plannerLastEntryMarker, plannerData)
+      isPlannerLastEntryMarkerValid(plannerLastEntryMarker, { ...plannerData, plannerEntries })
     ) {
       return;
     }
@@ -575,7 +575,7 @@ export default function App() {
     }
 
     clearInvalidPlannerLastEntryMarker();
-  }, [appMetadata, loading, plannerData, plannerLastEntryMarker]);
+  }, [appMetadata, loading, plannerData, plannerEntries, plannerLastEntryMarker]);
 
   const budgetAlerts = useMemo(
     () => visibleAlerts.filter((alert) => alert.source === 'budgets'),
@@ -662,7 +662,11 @@ export default function App() {
 
   const handleSaveCell = useCallback(async (entryKey, entry, options = {}) => {
     try {
-      const savedEntry = await savePlannerEntry(entryKey, entry);
+      const source = scheduledItems.find((item) => item.id === entry.scheduledItemId) || selectedCell?.row.item;
+      const savedEntry = await savePlannerEntry(entryKey, {
+        ...plannerEntries[entryKey], ...entry,
+        scheduledItemSnapshot: plannerEntries[entryKey]?.scheduledItemSnapshot || source,
+      });
       const nextMarker = applyPlannerLastEntrySaveAction({
         currentMarker: appMetadata.plannerLastEntryMarker,
         rowId: entry.scheduledItemId,
@@ -694,7 +698,7 @@ export default function App() {
       console.error(error);
       setStatusMessage('Could not save planner entry.');
     }
-  }, [appMetadata]);
+  }, [appMetadata, plannerEntries, scheduledItems, selectedCell]);
 
   const handleClearCell = useCallback(async (entryKey) => {
     try {
@@ -733,7 +737,11 @@ export default function App() {
 
   const handleSaveScheduledItem = useCallback(async (updatedItem) => {
     try {
-      const savedItem = await saveScheduledItem(updatedItem);
+      const previous = scheduledItems.find((item) => item.id === updatedItem.id);
+      const snapshots = previous ? snapshotScheduledEntries(previous, plannerEntries,
+        plannerData.rows.find((row) => row.id === previous.id)) : {};
+      const savedItem = await saveScheduledItem(updatedItem, snapshots);
+      setPlannerEntries(await getAllPlannerEntries());
 
       setScheduledItems((currentItems) => {
         const itemExists = currentItems.some((item) => item.id === savedItem.id);
@@ -755,7 +763,7 @@ export default function App() {
       throw error;
     }
 
-  }, []);
+  }, [scheduledItems, plannerEntries, plannerData.rows]);
 
   const handleDuplicateScheduledItem = useCallback(async (item) => {
     const timestamp = new Date().toISOString();
@@ -773,13 +781,18 @@ export default function App() {
 
   const handleDeleteScheduledItem = useCallback(async (id) => {
     try {
-      await deleteScheduledItem(id);
+      const previous = scheduledItems.find((item) => item.id === id);
+      const snapshots = previous ? snapshotScheduledEntries(previous, plannerEntries,
+        plannerData.rows.find((row) => row.id === id)) : {};
+      await deleteScheduledItem(id, snapshots);
+      setPlannerEntries(await getAllPlannerEntries());
 
       setScheduledItems((currentItems) =>
         currentItems.filter((item) => item.id !== id)
       );
 
-      if (appMetadata.plannerLastEntryMarker?.plannerItemId === id) {
+      if (appMetadata.plannerLastEntryMarker?.plannerItemId === id &&
+          !plannerEntries[appMetadata.plannerLastEntryMarker.cellKey]) {
         const savedMetadata = await saveAppMetadata({
           ...appMetadata,
           plannerLastEntryMarker: null,
@@ -794,7 +807,7 @@ export default function App() {
       throw error;
     }
 
-  }, [appMetadata]);
+  }, [appMetadata, scheduledItems, plannerEntries, plannerData.rows]);
 
   const handleSaveAccount = useCallback(async (updatedAccount) => {
     try {
@@ -1161,19 +1174,22 @@ export default function App() {
       throw new Error(validation.errors.join(' '));
     }
 
+    assertSafeCadenceChange(settings, updatedSettings, appData);
     const savedSettings = await saveAppSettings(updatedSettings);
     setSettings(savedSettings);
     setStatusMessage('Settings saved. Planner projections updated.');
     return savedSettings;
 
-  }, []);
+  }, [settings, appData]);
 
   const handleResetSettings = useCallback(async () => {
-    const defaultSettings = await resetAppSettings();
+    const resetSettings = { ...appSettings, payPeriodAnchorDate: settings.payPeriodAnchorDate,
+      payFrequencyDays: settings.payFrequencyDays };
+    const defaultSettings = await saveAppSettings(resetSettings);
     setSettings(defaultSettings);
-    setStatusMessage('Settings reset to defaults.');
+    setStatusMessage('Settings reset. Anchor and pay frequency were preserved.');
     return defaultSettings;
-  }, []);
+  }, [settings]);
 
   const handleBackupExported = useCallback(async (timestamp) => {
     const savedMetadata = await saveLastBackupAt(timestamp);
