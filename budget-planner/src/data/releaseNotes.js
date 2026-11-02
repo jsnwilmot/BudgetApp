@@ -6,6 +6,8 @@ export const RELEASE_NOTES = {
   date: '2026-11-02',
   highlights: [
     'Preserved saved planner amounts, notes, line items and source snapshots when recurring items change or are deleted.',
+    'Added historical account, category and bucket integrity checks; broken links cannot be newly confirmed.',
+    'Added read-only legacy cohorts and exception reporting, separate from missing verification metadata.',
     'Kept historical markers eligible outside the visible forecast; routine edits now retain historical uncertainty warnings.',
     'Added entry-only historical type, account, category and bucket correction with evidence and an audit; saved amounts and recurring schedules stay unchanged.',
     'Added separate amount and source reconciliation confirmations with an original backup or statement reference.',

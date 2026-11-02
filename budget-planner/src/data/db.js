@@ -1,4 +1,5 @@
-import { buildHistoricalSourceCorrection, prepareHistoricalEntry } from '../logic/plannerHistory';
+import { assertHistoricalIntegrity, historicalSourceSignature } from '../logic/historicalIntegrity';
+import { buildHistoricalSourceCorrection, getHistoricalSourceRevision, prepareHistoricalEntry } from '../logic/plannerHistory';
 import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
@@ -745,26 +746,60 @@ export async function getAllPlannerEntries() {
 export async function savePlannerEntry(entryKey, entry, { source, review } = {}) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.plannerEntries, 'readwrite');
-    const store = transaction.objectStore(STORES.plannerEntries);
+    const verifying = review?.source === true;
+    const names = verifying ? [STORES.plannerEntries, STORES.scheduledItems, STORES.accounts,
+      STORES.categories, STORES.savingsBuckets] : [STORES.plannerEntries];
+    const transaction = db.transaction(names, 'readwrite');
+    const data = {};
+    let pending = names.length;
     let record;
-    const request = store.get(entryKey);
-    request.onsuccess = () => {
-      try {
-        record = {
-          ...prepareHistoricalEntry(request.result, entry, source, review),
-          entryKey, updatedAt: new Date().toISOString(),
-        };
-        store.put(record);
-      } catch (error) {
-        transaction.abort();
-        reject(error);
-      }
-    };
-    resolveOnTransactionComplete({
-      transaction, resolve, reject, value: () => record,
-      errorMessage: 'Failed to save planner entry.',
+    names.forEach((name) => {
+      const store = transaction.objectStore(name);
+      const request = name === STORES.plannerEntries ? store.get(entryKey) : store.getAll();
+      request.onsuccess = () => {
+        data[name] = request.result;
+        pending -= 1;
+        if (pending) return;
+        try {
+          const current = data[STORES.plannerEntries];
+          for (const field of ['id', 'scheduledItemId', 'payPeriodDate']) {
+            if (current?.[field] != null && current[field] !== '' && entry[field] !== undefined && entry[field] !== current[field]) {
+              throw new Error('Saved identity or date cannot be rewritten by a cell save. Review the historical identity exception.');
+            }
+          }
+          let actualSource = source;
+          if (verifying) {
+            if (typeof review.evidence !== 'string' || !review.evidence.trim()) {
+              throw new Error('Enter the original backup or statement reference before confirming historical source.');
+            }
+            actualSource = current?.scheduledItemSnapshot || data[STORES.scheduledItems]
+              .find((item) => item.id === (current?.scheduledItemId || entryKey.slice(0, entryKey.lastIndexOf('__'))));
+            if (!current || review.expectedRevision !== getHistoricalSourceRevision(current) ||
+                review.expectedSource !== historicalSourceSignature(actualSource)) {
+              throw new Error('Historical source changed since this entry was opened. Reopen it before confirming.');
+            }
+          }
+          if (verifying) assertHistoricalIntegrity(entryKey, current, {
+            scheduledItems: data[STORES.scheduledItems], accounts: data[STORES.accounts],
+            categories: data[STORES.categories], savingsBuckets: data[STORES.savingsBuckets],
+          });
+          record = {
+            ...prepareHistoricalEntry(current, verifying ? { ...entry, scheduledItemSnapshot: actualSource } : entry,
+              actualSource, review), entryKey, updatedAt: new Date().toISOString(),
+          };
+          if (verifying) assertHistoricalIntegrity(entryKey, record, {
+            scheduledItems: data[STORES.scheduledItems], accounts: data[STORES.accounts],
+            categories: data[STORES.categories], savingsBuckets: data[STORES.savingsBuckets],
+          });
+          transaction.objectStore(STORES.plannerEntries).put(record);
+        } catch (error) {
+          transaction.abort();
+          reject(error);
+        }
+      };
     });
+    resolveOnTransactionComplete({ transaction, resolve, reject, value: () => record,
+      errorMessage: 'Failed to save planner entry.' });
   });
 }
 

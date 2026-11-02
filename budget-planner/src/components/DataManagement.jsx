@@ -1,3 +1,4 @@
+import LegacyReconciliationSummary from './LegacyReconciliationSummary';
 import { useRef, useState } from "react";
 import {
   createBackupSnapshot,
@@ -646,7 +647,7 @@ export default function DataManagement({
           ) : null}
         </div>
 
-        <div className="rounded-xl border border-slate-200 p-4">
+        <div className="min-w-0 rounded-xl border border-slate-200 p-4">
           <h4 className="text-lg font-semibold text-slate-950">
             Data health
           </h4>
@@ -771,6 +772,7 @@ export default function DataManagement({
             </button>
           </div>
 
+          <LegacyReconciliationSummary data={appData} />
           <div className="mt-4 space-y-3">
             {dataHealth.healthDetails?.errors?.length ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-3">
@@ -815,6 +817,12 @@ export default function DataManagement({
                 No serious data health warnings found in the loaded records.
               </div>
             ) : null}
+
+            {dataHealth.healthDetails?.info?.filter((issue) => issue.id !== 'info-backup-first').map((issue) => (
+              <div key={issue.id} className="rounded-xl border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">
+                <p className="font-semibold">{issue.title}</p><p>{issue.message}</p><p>{issue.guidance}</p>
+              </div>
+            ))}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-950">

@@ -204,3 +204,15 @@ Use a separate browser profile with synthetic fixtures. Export first; never repl
 - [ ] Check current recurring schedules remain B. Confirm the correction affects only the selected occurrence and subsequent cumulative balances, with no extra transfer/adjustment records.
 - [ ] Export and restore into a fresh isolated profile: corrected snapshot, source evidence, append-only audit and independent amount warning survive. Test a second correction, routine note save and source edit: prior correction audit remains.
 - [ ] On mobile, expand the correction details and check controls, confirmation and error text remain usable. Check offline reopen of the corrected entry where supported. OS-installed PWA acceptance remains separate.
+
+
+### Increment A — historical integrity and read-only summaries
+
+- [ ] Import the synthetic `legacy-integrity.js` fixture through the browser harness. A previously attested snapshot with missing account/category/bucket must appear as a genuine exception, separate from legacy source metadata notices.
+- [ ] Check required blank income/expense accounts, optional null category/bucket, archived references, and deleted source with/without a usable snapshot. A valid retained snapshot must not become an orphan error simply because its schedule was removed.
+- [ ] Filter by stable source ID (including IDs containing `__`) and inclusive saved dates. View exceptions, observed source cohorts and paginated metadata-only rows. Compare every financial store before/after viewing, recheck, filtering and refresh: no writes.
+- [ ] Verify source changes across years remain distinct observed classifications; no cohort/date filter verifies anything. All validated flags and original values remain intact.
+- [ ] Try source confirmation from a tab opened before another tab changes its source or removes its account reference. Entire save must reject, including pending notes/marker changes. Reopen/refresh to inspect the current issue.
+- [ ] Correct a broken classification using F4 with evidence; existing audit and independent amount warning remain. Conflicting keys/dates/IDs or malformed prior audits are reported, never implicitly normalized by confirmation/correction.
+- [ ] Export/restore in a clean synthetic profile and compare IDs, values, validation, marker and F4 audit. Check mobile layout, keyboard controls, bounded tables and existing offline reopen behavior.
+- [ ] Private M3 real-data reconciliation and independent Architect/owner acceptance remain separate; never attach private backups/statements/screenshots to GitHub.

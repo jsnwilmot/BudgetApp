@@ -176,3 +176,51 @@ Compatibility: no required field, store or envelope changes. ExportVersion **1**
 Remaining limits: a user's reference/confirmation is not authenticated financial evidence; real legacy reconciliation and missing original reference records still require owner review. OS-installed standalone PWA launch, wider multi-tab/device acceptance and comprehensive cross-screen acceptance remain pending. F3 historical Transactions integration is unchanged and remains a Phase 4 decision. No Phase 2, merge, deployment or acceptance is included.
 
 Revision files: new `HistoricalSourceCorrection.jsx`, `plannerHistory.js`, transactional `db.js`, `App.jsx`/`CellEditor.jsx` wiring, Data Health guidance, targeted source-correction unit/storage tests and the expanded browser harness; README, Help, review release notes, manual checklist and this evidence report.
+
+## Increment A — approved integrity diagnostics and read-only reconciliation
+
+Authorization: Issue #10, **Increment A only**, and Architect conditions in issue comment `6579324821`. Baseline `0fd93b8f0c7b9ae7ecc03a52704c6233c250077a`. Increment B grouped attestation and Increment C batch correction remain excluded. This revision does not accept Phase 1 or authorize merge/deployment/Phase 2.
+
+### Shared read-only integrity model
+
+`historicalIntegrity.js` separates four independent facts: original saved validation, provenance metadata, current reference/identity integrity, and missing/invalid/unresolved amount evidence. The existing `getHistoricalReviewState` API remains available through `plannerHistory.js` for provenance/amount flags; it is not a complete reference-integrity assertion. `inspectHistoricalEntry` and `summarizeHistoricalEntries` provide the composite state. A source acknowledgement can remain recorded while its current references are broken; `sourceVerified` is false for those entries. Diagnostics do not rewrite stored provenance/flags.
+
+Checks include required income/expense/debt/general account links; known optional category/bucket links; bucket alias conflicts and provided linked-account references; snapshot type/source identity; canonical key/date/source consistency; malformed audit containers; missing or invalid saved amounts in the active actual/planned/line-item mode. Optional null metadata/links are absence, not automatically corruption. Finite saved zero/correction values remain values, not missing data. Existing inactive/archived IDs are valid. A deleted schedule with a usable snapshot remains history. An orphan/unusable source is surfaced as unresolved classification/representation; no source/period is fabricated and no existing calculation is changed.
+
+Canonical identity is parsed at the final `__`, preserving source IDs that themselves contain delimiters. Missing redundant legacy fields can be read from the key without writing them; conflicting stored fields are exceptions. Ordinary cell saves cannot rewrite existing IDs/dates to hide those conflicts. F4 may repair classification but cannot rewrite a conflicting snapshot source ID or discard malformed prior audit containers. Such records remain unresolved for separate owner review.
+
+### Single-entry verification guard
+
+Source confirmation now captures the entry revision and displayed source signature when the editor opens. The database re-reads the saved entry, live source and account/category/bucket stores in one readwrite transaction. Changed/deleted entries or source classification reject stale confirmation. Current and proposed integrity are both checked: invalid links, key/date/source conflicts and malformed audit containers cannot be normalized away by the submitted payload. Missing references introduced after the editor opened also block the save. No partial amount/note/marker update or new evidence is persisted on failure. The actual resolved stored source takes precedence over an untrusted incoming snapshot payload.
+
+F4 shares the same final integrity assertion, while still allowing evidence-backed account/category/bucket/type corrections for valid identities. Amount review remains independent, and the latest correction audit/snapshot stays protected during ordinary saves and source enrichment. There is no verification on import, view, filter, refresh or date change.
+
+### Read-only UX
+
+Settings → Data Management contains a **Legacy reconciliation — read-only** inventory over canonical saved entries, not only rendered Planner rows. It shows total/confirmed entries, unique reference/identity problem entries and issue counts, unresolved amount entries, source metadata pending, acknowledgements with valid links, and orphan/unusable sources. Counts may overlap.
+
+Exception rows precede collapsible observed cohorts and metadata-only rows. Cohorts are keyed by stable source ID, observed classification and snapshot/fallback origin, with min/max saved dates and counts. A source ID/inclusive saved date filter changes only the view; unknown dates remain visible for integrity review. Reversed date windows show an error and do not apply date filtering. Tables are paginated at 20 rows. No selection or verification/correction command exists in this summary.
+
+Pure legacy provenance uncertainty is an informational Data Health notice, not a financial error or loss of original validation. Genuine historical reference/identity problems are actionable errors; amount evidence remains separate. Existing validated labels and stored values are retained. A balance notice on Dashboard, Planner, Reports and Savings Buckets explains unresolved classifications or potentially unrepresented activity without altering totals. Known limitations must be reconciled before relying on affected balances.
+
+### Tests and evidence
+
+Synthetic `legacy-integrity.js` contains an account-reassigned source across 2025/2026, source IDs with `__`, duplicate display labels, a removed source with a retained reliable snapshot, an orphan without a snapshot, an already-attested missing account, missing category/bucket, required null account, valid archived references, saved overrides/line-item IDs, amount and date conflicts, Last Entry and prior F4 history. No private financial data is used.
+
+New regression cases exercise:
+
+- Historical reference failures independent of prior capture/attestation; valid archived references and optional null links.
+- Key/date/source consistency, delimiter-bearing IDs, orphans and previously removed legitimate sources.
+- Pure summaries without input, audit or financial-calculation mutation; independent amount/provenance status and decade-long retained history.
+- Atomic rejection of invalid/stale acknowledgement, including removed reference and changed live fallback, with no financial/identity/audit/marker changes.
+- Valid single-entry acknowledgement and JSON round trip; original marker, IDs, saved financial values and audits retained. Optional undefined fields follow existing JSON omission semantics.
+- Malformed non-null audits and identity conflicts cannot be overwritten by a confirmation/correction payload; missing optional null metadata remains a legacy review case.
+- Existing F4 correction can repair links with evidence and retain prior audit while identity conflicts remain unresolved.
+
+The expanded browser harness retains all prior ledger/F1/F2/F4/offline assertions and adds raw-history exceptions, read-only source/date filters/recheck/refresh with full financial-store comparisons, mobile summary layout, JSON restore, a paginated ten-year metadata-only cohort, and same-origin concurrent source edit/reference deletion rejection. Test-only synthetic reference deletion simulates a linked record removed after a form opened; no real profile is accessed. Final exact SHA, counts, local commands and CI/browser results are recorded in PR #9.
+
+### Safety and limits
+
+No financial formula, source cadence, period generation, storage migration, required field, audit format, export envelope, or version is changed. ExportVersion 1, schema/data version 2, IndexedDB version 9 and review app version remain unchanged. Existing provenance, validated state, financial field values, source/record/line IDs, notes, markers, corrections and export aliases are preserved by diagnostic reads. Acknowledgement/correction remain explicit single-entry operations with evidence.
+
+The inventory does not recover missing original facts, create missing reference IDs, repair conflicting identities/audits, or expose a new history navigation engine. Use existing F4 correction where the saved cell is available; inaccessible orphan/identity/reference cases remain listed and unresolved. Previously imported malformed values or schema normalization are not silently repaired. Existing financial fallback calculations remain visible with limitations rather than being changed to conceal uncertainty. Owner-private M3 reconciliation and independent final review remain required. Owner-reported earlier M1/M2 acceptance does not independently verify these new changes. Grouped attestation, bulk correction, F3 Transactions history completeness and Continuous Planner Phase 2 are not implemented.

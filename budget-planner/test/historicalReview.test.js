@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getHistoricalReviewState, snapshotScheduledEntries } from '../src/logic/plannerHistory.js';
+import { getHistoricalReviewState, getHistoricalSourceRevision, snapshotScheduledEntries } from '../src/logic/plannerHistory.js';
+import { historicalSourceSignature } from '../src/logic/historicalIntegrity.js';
 import { getDataHealthDetails } from '../src/data/migrations.js';
 import { savePlannerEntry, replacePlannerEntries, getAllPlannerEntries,
-  replaceScheduledItems, saveScheduledItem, deleteScheduledItem } from '../src/data/db.js';
+  replaceScheduledItems, replaceAccounts, replaceCategories, replaceSavingsBuckets, saveScheduledItem, deleteScheduledItem } from '../src/data/db.js';
 import { createBackupSnapshot, validateBackupFile } from '../src/services/backupService.js';
 import { historyFixture } from './fixtures/history-ledger.js';
 
@@ -19,6 +20,8 @@ async function legacy({ amountMissing = false, lineItems = false } = {}) {
     entry.useActual = true;
     entry.lineItems = [{ id: 'original-line', description: 'Saved invoice', amount: 1000 }];
   }
+  await replaceAccounts(fixture.accounts); await replaceCategories(fixture.categories);
+  await replaceSavingsBuckets(fixture.savingsBuckets);
   await replaceScheduledItems(fixture.scheduledItems);
   await replacePlannerEntries(fixture.plannerEntries);
   return fixture;
@@ -67,7 +70,7 @@ test('F1/F2 explicit reconciliation requires evidence and resolves only the sele
     review: { amount: true, evidence: 'Synthetic original-statement.csv, salary 2026-12-30 = 1000 CAD' } });
   assert.deepEqual(getHistoricalReviewState(amount), { amount: false, source: true });
   assert.ok(amount.historicalReview.amount.reviewedAt);
-  const source = await savePlannerEntry(key, amount, { review: { source: true,
+  const source = await savePlannerEntry(key, amount, { review: { source: true, expectedRevision: getHistoricalSourceRevision(amount), expectedSource: historicalSourceSignature(amount.scheduledItemSnapshot),
     evidence: 'Synthetic original-backup.json salary account c, income, no category/bucket' } });
   assert.deepEqual(getHistoricalReviewState(source), { amount: false, source: false });
   assert.equal(source.scheduledItemSnapshotProvenance, 'user-reconciled');

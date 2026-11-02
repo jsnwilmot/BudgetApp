@@ -1,3 +1,5 @@
+import HistoricalBalanceNotice from './components/HistoricalBalanceNotice';
+import { summarizeHistoricalEntries } from './logic/historicalIntegrity';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import AppShell from './components/AppShell';
@@ -362,6 +364,10 @@ export default function App() {
     return () => window.clearTimeout(statusTimer);
   }, [statusMessage]);
 
+  const historicalSummary = useMemo(() => summarizeHistoricalEntries({
+    plannerEntries, scheduledItems, accounts, categories, savingsBuckets,
+  }), [plannerEntries, scheduledItems, accounts, categories, savingsBuckets]);
+
   const plannerData = useMemo(() => {
     return buildPlannerRows({
       settings,
@@ -696,7 +702,7 @@ export default function App() {
       setStatusMessage('Planner entry saved.');
     } catch (error) {
       console.error(error);
-      setStatusMessage('Could not save planner entry.');
+      setStatusMessage(error.message || 'Could not save planner entry.');
     }
   }, [appMetadata, scheduledItems, selectedCell]);
 
@@ -1367,6 +1373,8 @@ export default function App() {
       ) : null}
 
       <AppShell currentPage={currentPage} onPageChange={handlePageChange}>
+        {['dashboard', 'planner', 'reports', 'savings-buckets'].includes(currentPage)
+          ? <HistoricalBalanceNotice summary={historicalSummary} /> : null}
 
         <Suspense fallback={<PageLoadingFallback />}>
           {currentPage === 'dashboard' ? (

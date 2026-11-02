@@ -391,6 +391,36 @@ export default function Help() {
         </p>
       </HelpCard>
 
+      <HelpCard title="Legacy reconciliation and historical links">
+        <p>
+          Settings → Data Management includes a read-only inventory of all saved
+          planner entries, including dates outside the visible forecast. Filter by
+          stable source ID and saved pay-period dates. Cohorts show observed details,
+          not evidence that the source stayed unchanged over time.
+        </p>
+        <p>
+          Saved validation is unchanged. Missing legacy verification metadata appears
+          as source details not reviewed, separate from reference/identity exceptions
+          and unresolved amount evidence. Previously acknowledged history still needs
+          attention if its account, category or bucket is missing. Inactive references
+          remain valid. A removed schedule with a usable snapshot is retained history;
+          an orphan without a usable source is listed as unresolved.
+        </p>
+        <p>
+          Source confirmation rechecks identity, current classification and linked
+          records when saved. A stale view or invalid reference blocks the entire save.
+          Use the existing entry-only source correction for classification links.
+          Identity conflicts or malformed audits require separate review; they are
+          not silently repaired. Amount review remains independent.
+        </p>
+        <p>
+          Balance notices explain unresolved history without changing calculations.
+          Viewing, filtering, pagination and health rechecks do not alter data or
+          warnings. There is no grouped verification or bulk correction in this build.
+          Keep unresolved records flagged until original evidence is available.
+        </p>
+      </HelpCard>
+
       <HelpCard title="Planner Total Rows">
         <div className="grid gap-3 md:grid-cols-2">
           {plannerTotals.map(([title, description]) => (

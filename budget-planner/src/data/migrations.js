@@ -1,4 +1,4 @@
-import { getHistoricalReviewState } from '../logic/plannerHistory';
+import { summarizeHistoricalEntries } from '../logic/historicalIntegrity';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import {
   isValidDateString,
@@ -776,7 +776,8 @@ function checkDateFields(data, issues) {
     ? data.plannerEntries
     : data.planner?.entries || {};
   Object.keys(isPlainObject(plannerEntries) ? plannerEntries : {}).forEach((entryKey) => {
-    const [, payPeriodDate] = String(entryKey).split('__');
+    const boundary = String(entryKey).lastIndexOf('__');
+    const payPeriodDate = boundary >= 0 ? entryKey.slice(boundary + 2) : '';
 
     if (payPeriodDate && !isValidDateString(payPeriodDate)) {
       invalidDates += 1;
@@ -1009,81 +1010,23 @@ function checkPlannerEntries(data, issues) {
     return;
   }
 
-  const scheduledIds = new Set(safeArray(data.scheduledItems).map((item) => item.id));
-  let emptyKeys = 0;
-  let missingScheduledReferences = 0;
-  let invalidEntryShapes = 0;
-  let missingConfirmedAmounts = 0;
-  let uncertainHistoricalSources = 0;
-
-  Object.entries(plannerEntries).forEach(([entryKey, entry]) => {
-    if (!entryKey) emptyKeys += 1;
-    if (!isPlainObject(entry)) {
-      invalidEntryShapes += 1;
-      return;
-    }
-
-    const reviewState = getHistoricalReviewState(entry);
-    if (reviewState.source) uncertainHistoricalSources += 1;
-    if (reviewState.amount) {
-      missingConfirmedAmounts += 1;
-    }
-    const [scheduledItemId] = String(entryKey).split('__');
-    if (scheduledItemId && !scheduledIds.has(scheduledItemId) &&
-        entry.scheduledItemSnapshot?.id !== scheduledItemId) {
-      missingScheduledReferences += 1;
-    }
-
-    if (
-      entry.actualAmount !== undefined &&
-      entry.actualAmount !== '' &&
-      !Number.isFinite(Number(entry.actualAmount))
-    ) {
-      invalidEntryShapes += 1;
-    }
-
-    safeArray(entry.lineItems).forEach((lineItem) => {
-      if (!hasFiniteNumber(lineItem?.amount)) {
-        invalidEntryShapes += 1;
-      }
-    });
-  });
-
-  if (emptyKeys > 0 || invalidEntryShapes > 0) {
-    addHealthIssue(
-      issues,
-      'warning',
-      'Planner entry issues',
-      `${emptyKeys + invalidEntryShapes} planner entries have empty keys, invalid values, or invalid line item amounts.`,
-      'Review planner edits before relying on pay-period totals.'
-    );
+  const historical = summarizeHistoricalEntries(data);
+  if (historical.integrityCount) {
+    addHealthIssue(issues, 'error', 'Historical reference or identity issues',
+      `${historical.integrityCount} saved entries have ${historical.integrityFieldCount} reference, identity or audit issues.`,
+      'Review the read-only exception list. Prior source acknowledgements cannot hide missing links. Use an evidence-backed entry-only correction for classification; do not rewrite keys or trust affected balances before reconciliation.');
   }
-
-  if (uncertainHistoricalSources > 0) {
-    addHealthIssue(
-      issues, 'warning', 'Historical source details need review',
-      `${uncertainHistoricalSources} saved entries lack verified original account, type, category or bucket details.`,
-      'Current schedules and inferred snapshots are provisional, not evidence of original classification. Compare an original backup or statement. Reconcile source details explicitly in the cell editor. Use the per-entry source correction form if they differ; current schedules and other records are preserved.'
-    );
+  if (historical.amountCount) {
+    addHealthIssue(issues, 'warning', 'Historical confirmed amounts need review',
+      `${historical.amountCount} saved entries have missing, invalid or unresolved amount evidence.`,
+      'Keep validation and stored values intact. Compare original evidence; a current forecast fallback is not a recovered confirmed amount.');
   }
-
-  if (missingConfirmedAmounts > 0) {
-    addHealthIssue(
-      issues, 'warning', 'Historical confirmed amounts need review',
-      `${missingConfirmedAmounts} confirmed entries lack an original planned amount snapshot.`,
-      'The original confirmed amount cannot be recovered reliably. Compare your original backup or statement and explicitly correct the entry before relying on historical totals.'
-    );
+  if (historical.sourcePendingCount) {
+    addHealthIssue(issues, 'info', 'Historical source details need review',
+      `${historical.sourcePendingCount} saved entries have source details not reviewed. Saved validation is unchanged.`,
+      'Missing legacy verification metadata is separate from broken links and amount problems. Review original classification when evidence is available; viewing this summary does not confirm entries.');
   }
-
-  if (missingScheduledReferences > 0) {
-    addHealthIssue(
-      issues,
-      'warning',
-      'Planner entries reference missing scheduled items',
-      `${missingScheduledReferences} planner entries reference scheduled items that are not currently saved.`,
-      'This can happen after old imports or deleted scheduled items. Do not rewrite keys unless you are intentionally cleaning data.'
-    );
-  }
+  return historical;
 }
 
 function checkBudgetTargets(data, issues) {
@@ -1182,7 +1125,7 @@ export function getDataHealthDetails(data = {}) {
   checkDateFields(sourceData, issues);
   checkAmountFields(sourceData, issues);
   checkReferenceHealth(sourceData, issues);
-  checkPlannerEntries(sourceData, issues);
+  const historical = checkPlannerEntries(sourceData, issues);
   checkBudgetTargets(sourceData, issues);
   checkSavingsMovementRisks(sourceData, issues);
 
@@ -1192,7 +1135,9 @@ export function getDataHealthDetails(data = {}) {
   return {
     errors,
     warnings,
+    historical,
     info: [
+      ...issues.filter((issue) => issue.severity === 'info'),
       {
         id: 'info-backup-first',
         severity: 'info',

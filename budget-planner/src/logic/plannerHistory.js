@@ -1,3 +1,5 @@
+import { assertHistoricalIntegrity, getHistoricalReviewState, inspectHistoricalEntry } from './historicalIntegrity';
+export { getHistoricalReviewState } from './historicalIntegrity';
 import { formatShortDate, parseLocalDate } from './dateLogic';
 import { getProjectionType } from './scheduledItemLogic';
 
@@ -62,22 +64,6 @@ export function assertSafeCadenceChange(previous, next, data = {}) {
   }
 }
 
-// Presence of a snapshot alone is not evidence: older builds also inferred it
-// from the current (possibly reassigned) schedule during routine edits.
-export function getHistoricalReviewState(entry = {}) {
-  const snapshot = entry.scheduledItemSnapshot;
-  const provenance = entry.scheduledItemSnapshotProvenance;
-  const sourceEvidence = entry.historicalReview?.source?.evidence;
-  const verifiedSource = snapshot?.id && snapshot.id === entry.scheduledItemId &&
-    (provenance === 'captured-at-entry-save' ||
-      (provenance === 'user-reconciled' && typeof sourceEvidence === 'string' && sourceEvidence.trim()));
-  return {
-    amount: Boolean(entry.historicalAmountNeedsReview ||
-      (entry.validated && !entry.useActual && !entry.lineItems?.length && entry.plannedAmount == null)),
-    source: Boolean(entry.historicalSourceNeedsReview || !verifiedSource),
-  };
-}
-
 // Shared by storage and source enrichment. Ordinary saves cannot certify legacy
 // facts, even when they fill a missing amount or capture a fallback source.
 export function prepareHistoricalEntry(previous, next, source, review = {}) {
@@ -133,6 +119,10 @@ export function buildHistoricalSourceCorrection(entry, liveSource, changes, refe
   if (approval.expectedRevision !== getHistoricalSourceRevision(entry)) {
     throw new Error('This entry changed since it was opened. Reopen it before correcting its source.');
   }
+  const auditIssues = inspectHistoricalEntry(entry.entryKey, entry, {
+    ...references, scheduledItems: liveSource ? [liveSource] : [],
+  }).integrityIssues.filter((issue) => issue.code === 'audit_invalid');
+  if (auditIssues.length) throw new Error('Existing historical audit needs review. No correction was saved.');
   const allowed = ['type', 'accountId', 'categoryId', 'bucketId'];
   if (!changes || allowed.some((key) => !Object.hasOwn(changes, key)) ||
       Object.keys(changes).some((key) => !allowed.includes(key)) ||
@@ -156,7 +146,11 @@ export function buildHistoricalSourceCorrection(entry, liveSource, changes, refe
   if (!id || (entry.scheduledItemId && entry.scheduledItemId !== id)) {
     throw new Error('The saved entry identity is inconsistent. No correction was saved.');
   }
-  if (entry.historicalSourceCorrections !== undefined && !Array.isArray(entry.historicalSourceCorrections)) {
+  const priorSnapshotId = entry.scheduledItemSnapshot?.id;
+  if (priorSnapshotId != null && priorSnapshotId !== '' && priorSnapshotId !== id) {
+    throw new Error('Historical snapshot identity conflicts with the saved key. No IDs were rewritten.');
+  }
+  if (entry.historicalSourceCorrections != null && !Array.isArray(entry.historicalSourceCorrections)) {
     throw new Error('The existing source correction audit needs review. No correction was saved.');
   }
   const original = entry.scheduledItemSnapshot || liveSource || { id, name: 'Historical entry' };
@@ -164,7 +158,7 @@ export function buildHistoricalSourceCorrection(entry, liveSource, changes, refe
     field === 'bucketId' ? original.bucketId || original.savingsBucketId || null : original[field] ?? null]));
   const evidence = approval.evidence.trim();
   const correctedAt = new Date().toISOString();
-  return {
+  const result = {
     ...entry,
     scheduledItemId: entry.scheduledItemId || id,
     scheduledItemSnapshot: { ...original, id, ...corrected, savingsBucketId: corrected.bucketId },
@@ -178,4 +172,6 @@ export function buildHistoricalSourceCorrection(entry, liveSource, changes, refe
     }],
     updatedAt: correctedAt,
   };
+  assertHistoricalIntegrity(entry.entryKey, result, { ...references, scheduledItems: liveSource ? [liveSource] : [] });
+  return result;
 }

@@ -1,5 +1,7 @@
+import { useState } from 'react';
+import { historicalSourceSignature, inspectHistoricalEntry } from '../logic/historicalIntegrity';
 import HistoricalSourceCorrection from './HistoricalSourceCorrection';
-import { getHistoricalReviewState } from '../logic/plannerHistory';
+import { getHistoricalReviewState, getHistoricalSourceRevision } from '../logic/plannerHistory';
 import { Plus, Trash2 } from 'lucide-react';
 import { getLastEntrySaveAction, isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { formatCurrency, getLineItemTotal, sumLineItems } from '../logic/projectionLogic';
@@ -12,13 +14,14 @@ function createLineItem() {
   };
 }
 
-function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categories }) {
+function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categories, blocked }) {
   if (!state.amount && !state.source) return null;
   const label = (records, id) => records.find((record) => record.id === id)?.name || (id ? 'Missing record' : 'None');
   return (
-    <fieldset className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
-      <legend className="font-semibold text-amber-950">Historical accuracy needs review</legend>
+    <fieldset className={`space-y-3 rounded-xl border p-3 ${state.amount ? 'border-amber-300 bg-amber-50' : 'border-slate-300 bg-slate-50'}`}>
+      <legend className="font-semibold text-amber-950">Saved amount and source review</legend>
       <p className="text-sm text-amber-950">
+        Saved validation is unchanged. Missing source metadata is separate from missing links or amount problems.
         Notes, validation and marker changes do not verify missing historical facts.
         Compare an original backup or statement before checking either confirmation.
         Leave unchecked to keep the warnings.
@@ -40,7 +43,7 @@ function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categ
             If these differ from the original, use “Correct source for this saved entry” before confirming.
           </p>
           <label className="flex items-start gap-2 text-sm">
-            <input name="reviewHistoricalSource" type="checkbox" className="mt-1" />
+            <input name="reviewHistoricalSource" type="checkbox" disabled={blocked} className="mt-1" />
             <span>I verified these original source details against an original backup or statement.</span>
           </label>
         </>
@@ -56,8 +59,9 @@ function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categ
   );
 }
 
-function readHistoricalReview(form, formData) {
+function readHistoricalReview(form, formData, expected) {
   const review = {
+    ...expected,
     amount: formData.get('reviewHistoricalAmount') === 'on',
     source: formData.get('reviewHistoricalSource') === 'on',
     evidence: String(formData.get('historicalEvidence') || '').trim(),
@@ -84,14 +88,22 @@ export default function CellEditor({
   onClear,
   onCorrectHistoricalSource,
 }) {
+  const [expectedSourceReview] = useState(() => ({
+    expectedRevision: getHistoricalSourceRevision(plannerEntries?.[selectedCell?.entryKey] || {}),
+    expectedSource: historicalSourceSignature(selectedCell?.row.item),
+  }));
   if (!selectedCell) {
     return null;
   }
 
   const entry = plannerEntries[selectedCell.entryKey] || {};
   const reviewState = plannerEntries[selectedCell.entryKey] ? getHistoricalReviewState(entry) : { amount: false, source: false };
+  const integrity = inspectHistoricalEntry(selectedCell.entryKey, entry, {
+    accounts, categories, savingsBuckets,
+    scheduledItems: selectedCell.row.item ? [selectedCell.row.item] : [],
+  });
   const reviewFields = <HistoricalReviewFields state={reviewState} source={selectedCell.row.item}
-    accounts={accounts} savingsBuckets={savingsBuckets} categories={categories} />;
+    accounts={accounts} savingsBuckets={savingsBuckets} categories={categories} blocked={integrity.integrityIssues.length > 0} />;
   const currency = settings?.currency || 'CAD';
   const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
   const isLastEntryCell = isPlannerCellMarked(
@@ -125,7 +137,7 @@ export default function CellEditor({
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const historicalReview = readHistoricalReview(event.currentTarget, formData);
+    const historicalReview = readHistoricalReview(event.currentTarget, formData, expectedSourceReview);
     if (!historicalReview) return;
     const useActual = formData.get('useActual') === 'on';
     const validated = formData.get('validated') === 'on';
@@ -163,7 +175,7 @@ export default function CellEditor({
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const historicalReview = readHistoricalReview(event.currentTarget, formData);
+    const historicalReview = readHistoricalReview(event.currentTarget, formData, expectedSourceReview);
     if (!historicalReview) return;
     const validated = formData.get('validated') === 'on';
     const markAsLastEntry = formData.get('lastEntry') === 'on';
@@ -281,6 +293,14 @@ export default function CellEditor({
           )}
         </p>
       </div>
+
+      {entry.entryKey && integrity.integrityIssues.length > 0 ? (
+        <div role="status" className="mb-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+          <p className="font-semibold">Historical source links or identity need attention</p>
+          <ul className="mt-2 list-disc pl-5">{integrity.integrityIssues.map((issue) => <li key={issue.code}>{issue.message}</li>)}</ul>
+          <p className="mt-2">Source confirmation is blocked. Use the entry-only correction for classification links. Identity conflicts remain unresolved; no keys are rewritten.</p>
+        </div>
+      ) : null}
 
       {entry.entryKey && onCorrectHistoricalSource ? (
         <HistoricalSourceCorrection entry={entry} source={selectedCell.row.item}

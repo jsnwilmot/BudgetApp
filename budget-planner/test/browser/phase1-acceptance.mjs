@@ -3,6 +3,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
+import { legacyIntegrityFixture } from '../fixtures/legacy-integrity.js';
 import { historyFixture } from '../fixtures/history-ledger.js';
 import { createBackupSnapshot } from '../../src/services/backupService.js';
 
@@ -48,6 +49,14 @@ async function records(page, storeName) {
       tx.oncomplete = () => db.close();
     };
   }), storeName);
+}
+async function databaseState(page) {
+  const state = {};
+  for (const store of ['plannerEntries', 'scheduledItems', 'accounts', 'categories', 'savingsBuckets',
+    'transfers', 'manualAdjustments', 'savingsBucketAdjustments', 'appMetadata', 'appSettings', 'budgetTargets']) {
+    state[store] = await records(page, store);
+  }
+  return state;
 }
 async function entry(page, key = 'salary__2026-12-30') {
   return (await records(page, 'plannerEntries')).find((value) => value.entryKey === key);
@@ -271,6 +280,94 @@ try {
   assert.equal((await entry(legacyProfile.page)).plannedAmount, 1000);
   assert.equal((await entry(legacyProfile.page)).scheduledItemSnapshot, undefined);
   pass('legacy JSON imports in a fresh real browser and warns without silently snapshotting source');
+  // Increment A: inspect all raw history, not merely rendered/visible Planner cells.
+  const integrityProfile = await profile(); const ip = integrityProfile.page;
+  const integrityData = legacyIntegrityFixture(); integrityData.appMetadata.onboardingCompletedAt = '2026-12-30T12:00:00Z';
+  await importBackup(ip, createBackupSnapshot(integrityData)); await nav(ip, 'Settings');
+  const summary = ip.getByRole('region', { name: 'Read-only legacy reconciliation' });
+  await summary.waitFor(); const beforeInspect = await databaseState(ip);
+  await ip.getByText('Historical reference or identity issues', { exact: true }).waitFor();
+  await summary.getByRole('table', { name: 'Historical integrity exceptions' }).getByText(/Historical account reference is missing or invalid/).waitFor();
+  assert.match(await summary.innerText(), /orphan__2025-01-03/);
+  assert.equal(await summary.getByRole('button', { name: /verify|confirm|correct/i }).count(), 0);
+  await summary.getByLabel('Historical source ID').selectOption('salary__stable');
+  await summary.getByLabel('Saved pay-period date from').fill('2026-01-01');
+  await summary.getByLabel('Saved pay-period date to').fill('2026-12-31');
+  assert.match(await summary.innerText(), /Showing 1 of 11/);
+  await summary.getByText(/Observed source cohorts/).click();
+  await summary.getByRole('table', { name: 'Historical source cohorts' }).waitFor();
+  await ip.getByRole('button', { name: 'Run Health Check', exact: true }).click();
+  assert.deepEqual(await databaseState(ip), beforeInspect);
+  await nav(ip, 'Planner'); await ip.getByRole('complementary', { name: 'Historical balance limitations' }).waitFor();
+  await ip.reload(); await nav(ip, 'Settings'); assert.deepEqual(await databaseState(ip), beforeInspect);
+  pass('Increment A exceptions include attested broken references and orphans; filtering, recheck and refresh preserve every stored record');
+  await ip.setViewportSize({ width: 375, height: 812 });
+  await summary.getByText(/Observed source cohorts/).click();
+  const layout = await ip.evaluate(() => ({ viewport: innerWidth, scroll: document.documentElement.scrollWidth,
+    overflowing: [...document.querySelectorAll('section, main, details, input, select')]
+      .filter((element) => element.getBoundingClientRect().right > innerWidth)
+      .slice(0, 8).map((element) => ({ tag: element.tagName, className: element.className, right: element.getBoundingClientRect().right })) }));
+  assert.ok(layout.scroll <= layout.viewport, JSON.stringify(layout));
+  await ip.screenshot({ path: join(output, 'mobile-legacy-reconciliation.png') });
+  pass('Increment A read-only cohort/exception reporting remains usable at 375px');
+  const integrityBackup = await exportBackup(ip); const ir = await profile(); await importBackup(ir.page, integrityBackup);
+  assert.deepEqual(await records(ir.page, 'plannerEntries'), beforeInspect.plannerEntries);
+  pass('Increment A diagnostic reads and JSON restore preserve original validation, IDs, marker and F4 audit');
+  // A large metadata-only cohort is informational and paginated, never batch verified.
+  const metadataData = legacyIntegrityFixture(); const baseEntry = metadataData.plannerEntries['salary__stable__2025-01-03'];
+  metadataData.plannerEntries = {};
+  for (let year = 2016; year <= 2025; year++) for (let month = 1; month <= 12; month++) {
+    const date = `${year}-${String(month).padStart(2, '0')}-02`; const key = `salary__stable__${date}`;
+    metadataData.plannerEntries[key] = { ...baseEntry, entryKey: key, payPeriodDate: date };
+  }
+  metadataData.appMetadata = { onboardingCompletedAt: '2026-12-30T12:00:00Z' };
+  const mp = await profile(); await importBackup(mp.page, createBackupSnapshot(metadataData)); await nav(mp.page, 'Settings');
+  const msummary = mp.page.getByRole('region', { name: 'Read-only legacy reconciliation' });
+  await msummary.waitFor(); const mBefore = await databaseState(mp.page);
+  assert.equal(await mp.page.getByText('Historical reference or identity issues', { exact: true }).count(), 0);
+  await msummary.getByText(/Metadata-only source review entries/).click();
+  const reviewTable = msummary.getByRole('table', { name: 'Historical metadata review entries' });
+  assert.equal(await reviewTable.locator('tbody tr').count(), 20);
+  await msummary.getByRole('button', { name: 'Next rows', exact: true }).click();
+  assert.equal(await reviewTable.locator('tbody tr').count(), 20);
+  assert.deepEqual(await databaseState(mp.page), mBefore);
+  pass('Increment A decade metadata-only cohort stays informational, bounded to 20 rows, with zero verification writes');
+  // True same-origin stale tab: another tab enriches/changes the live source while confirmation is open.
+  const stale = await profile(); const sp = stale.page;
+  await importBackup(sp, createBackupSnapshot(fixture())); await openCell(sp, 'Salary');
+  await sp.locator('[name=reviewHistoricalSource]').check();
+  await sp.locator('[name=historicalEvidence]').fill('Synthetic original evidence for source before concurrent change');
+  await sp.locator('[name=notes]').fill('Must not save on stale confirmation');
+  const actor = await stale.context.newPage(); await actor.goto(baseURL); await nav(actor, 'Manage');
+  await actor.getByRole('button', { name: /Scheduled Items/ }).last().click();
+  const actorRow = actor.locator('tbody tr').filter({ has: actor.getByText('Salary', { exact: true }) });
+  await actorRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await actor.getByLabel(/^Deposited to account/).selectOption('s');
+  await actor.getByRole('button', { name: 'Save Scheduled Item', exact: true }).click();
+  await actor.getByRole('button', { name: 'Save Scheduled Item', exact: true }).waitFor({ state: 'hidden' });
+  const afterActor = await databaseState(sp);
+  await sp.getByRole('button', { name: 'Save', exact: true }).click();
+  await sp.getByText(/Historical source changed since this entry was opened/).waitFor();
+  assert.deepEqual(await databaseState(sp), afterActor);
+  pass('Increment A same-origin concurrent source edit rejects stale single-entry confirmation without partial note, marker or audit writes');
+  // A test-only deletion in a separate isolated tab simulates a linked record removed after the editor opened.
+  await sp.getByRole('button', { name: 'Close', exact: true }).click();
+  await importBackup(sp, createBackupSnapshot(fixture())); await openCell(sp, 'Salary');
+  await sp.locator('[name=reviewHistoricalSource]').check();
+  await sp.locator('[name=historicalEvidence]').fill('Synthetic original account reference');
+  await actor.evaluate(() => new Promise((resolve, reject) => {
+    const open = indexedDB.open('budget-planner-db'); open.onsuccess = () => {
+      const db = open.result; const tx = db.transaction('accounts', 'readwrite');
+      tx.objectStore('accounts').delete('c'); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
+    };
+  }));
+  const afterReferenceDelete = await databaseState(sp);
+  await sp.getByRole('button', { name: 'Save', exact: true }).click();
+  await sp.getByText(/Historical source cannot be confirmed:/).waitFor();
+  assert.deepEqual(await databaseState(sp), afterReferenceDelete);
+  await sp.reload(); await nav(sp, 'Settings');
+  await sp.getByText('Historical reference or identity issues', { exact: true }).waitFor();
+  pass('Increment A removed account after preview blocks new confirmation, preserves records and surfaces a genuine integrity problem');
   evidence.limitations = ['Headless Chromium tests service-worker offline behavior, not OS installation/standalone app launch.',
     'Synthetic evidence only; the owner must verify real financial facts.', 'Broader multi-tab source edits and F3 Transactions historical ledger remain review limitations.'];
 } catch (error) {
