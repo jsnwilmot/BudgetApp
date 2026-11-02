@@ -244,3 +244,8 @@ Regression tests and separate CLI process acceptance verify frozen input, exact 
 ### Windows CLI security-test compatibility correction
 
 At `fa303c1`, owner testing on Windows PowerShell 5.1 / Node 22.23.3 exposed `ERR_UNSUPPORTED_ESM_URL_SCHEME` before all eight CLI test assertions. The harness now retains a `file:` URL for the guard preload instead of passing its Windows drive path to `--import`; the CLI executable path remains native. The shared guard value also covers negative controls. No security protections/assertions, application behavior, financial calculation or backup handling changes. Node 22.23.3 CI now includes Windows PowerShell and Linux for all regression/CLI/lint/build checks. Final exact-head evidence and owner-local retest limits are in PR #9 and the tool guide. No owner backup has been accessed or analyzed.
+
+
+### Independent file-rejection tests and Windows symlink permission skip
+
+Owner-local testing at `5d44ce7` reported 8 tests / 7 pass / 1 fail because Windows denied synthetic link creation with `EPERM` before the combined test reached link rejection or oversize assertions. Directory, symlink and oversize now run as three independent security tests (10 CLI tests total). A narrow catch around `symlink` creation alone skips only Windows `EPERM`/`EACCES`, with a diagnostic explicitly stating link rejection was not exercised; all other errors propagate. Actual CLI checks, negative controls and security guards are preserved. Final evidence separates pass/fail/skipped counts for local and Linux/Windows Node 22 CI in PR #9. No production application, utility reader, financial logic, database or backup behavior changed, and no real financial input was accessed.

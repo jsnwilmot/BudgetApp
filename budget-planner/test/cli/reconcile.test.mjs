@@ -51,12 +51,34 @@ test('CLI security guard tripwires reject attempted file writes and network acce
   }
 });
 
-test('CLI: rejects directory, symbolic link and oversized input with safe errors',async()=>{
+test('CLI: rejects directory input with a safe error',async()=>{
+  const {dir}=await setup();try{
+    const r=run(args(dir));assert.equal(r.status,3);assert.equal(r.stdout,'');assert.equal(r.stderr,'Cannot read a supported local JSON input.\n');assert.doesNotMatch(r.stderr,privatePattern);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('CLI: rejects symbolic link input with a safe error',async(t)=>{
+  const {dir,path}=await setup();let creationDenied;try{
+    const {symlink}=await import('node:fs/promises');const linked=join(dir,'PRIVATE_LINK');
+    try {
+      await symlink(path,linked,'file');
+    } catch (error) {
+      // Only fixture-creation permission failures on Windows are environmental skips.
+      // CLI failures, setup/cleanup errors and all other creation failures must still fail.
+      if (process.platform==='win32' && ['EPERM','EACCES'].includes(error.code)) {
+        creationDenied=error.code;
+      } else throw error;
+    }
+    if (!creationDenied) {
+      const r=run(args(linked));assert.equal(r.status,3);assert.equal(r.stdout,'');assert.equal(r.stderr,'Cannot read a supported local JSON input.\n');assert.doesNotMatch(r.stderr,privatePattern);
+    }
+  }finally{await rm(dir,{recursive:true,force:true});}
+  // Do not mark skipped until cleanup succeeds: cleanup failures must not be hidden.
+  if (creationDenied) t.skip(`Windows denied synthetic symbolic-link creation (${creationDenied}); CLI link rejection was not exercised.`);
+});
+test('CLI: rejects oversized input with a safe error',async()=>{
   const {dir,path}=await setup();try{
-    assert.equal(run(args(dir)).status,3);
-    const {symlink,truncate}=await import('node:fs/promises');const linked=join(dir,'PRIVATE_LINK');
-    await symlink(path,linked);const linkResult=run(args(linked));assert.equal(linkResult.status,3);assert.doesNotMatch(linkResult.stderr,privatePattern);
-    await truncate(path,16*1024*1024+1);const r=run(args(path));assert.equal(r.status,3);assert.doesNotMatch(r.stderr,privatePattern);
+    const {truncate}=await import('node:fs/promises');await truncate(path,16*1024*1024+1);
+    const r=run(args(path));assert.equal(r.status,3);assert.equal(r.stdout,'');assert.equal(r.stderr,'Cannot read a supported local JSON input.\n');assert.doesNotMatch(r.stderr,privatePattern);
   }finally{await rm(dir,{recursive:true,force:true});}
 });
 test('CLI: mixed schema errors and terminal-control strings cannot reach output',async()=>{

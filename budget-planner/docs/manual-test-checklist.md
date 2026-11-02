@@ -238,5 +238,12 @@ Use a separate browser profile with synthetic fixtures. Export first; never repl
 
 ### Windows M3 CLI preload regression
 
-- [ ] On Windows PowerShell 5.1 / Node 22.23.3, run `npm.cmd run test:cli` against the corrected commit. All eight synthetic CLI tests, including write/network negative controls, must pass; `ERR_UNSUPPORTED_ESM_URL_SCHEME` is a harness failure, not successful guard enforcement.
+- [ ] On Windows PowerShell 5.1 / Node 22.23.3, run `npm.cmd run test:cli` against the corrected commit. All runnable synthetic CLI tests, including write/network negative controls, must pass; `ERR_UNSUPPORTED_ESM_URL_SCHEME` is a harness failure, not successful guard enforcement.
 - [ ] Run complete `npm.cmd test`, lint and build checks. Verify guarded subprocesses use a file URL for `--import` while the CLI entrypoint/cwd use native paths. Do not run on private backups or weaken assertions to bypass failures.
+
+
+### Windows symlink fixture permission handling
+
+- [ ] Run `npm.cmd run test:cli`: report all 10 tests with separate pass/fail/skipped counts. Directory and oversized-file tests must execute even if symlink creation is denied.
+- [ ] On capable Windows and Linux hosts, verify actual symlink rejection (exit 3, empty stdout and fixed safe stderr). Only Windows `EPERM`/`EACCES` during fixture creation may skip that one test, with an explicit diagnostic; unexpected errors, CLI/assertion or cleanup failures must fail.
+- [ ] Keep guard and negative-control checks unchanged. Use synthetic files only; owner-local retesting is distinct from CI results.
