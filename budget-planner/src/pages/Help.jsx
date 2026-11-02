@@ -381,8 +381,12 @@ export default function Help() {
           validation changes and ordinary amount edits do not clear the warnings.
           In the cell editor, compare an original backup or statement, then explicitly
           confirm the amount and source details separately with a reference. If source
-          details differ, restore correct details before confirming. Keep the original
-          backup; the app records your acknowledgement, not proof of financial facts.
+          details differ, open Correct source for this saved entry. Edit its historical
+          type, account, category and bucket, then confirm with an evidence reference.
+          This separate form keeps amounts, validation, notes, markers and the recurring
+          schedule unchanged, and records a correction audit. Existing IDs are required;
+          inactive records are allowed. Source correction does not clear an amount warning.
+          Keep the original backup; acknowledgement is not proof of financial facts.
           This review build does not add year navigation.
         </p>
       </HelpCard>

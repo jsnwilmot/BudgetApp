@@ -102,6 +102,12 @@ export function prepareHistoricalEntry(previous, next, source, review = {}) {
     historicalSourceNeedsReview: review.source ? false : (capturedNewSource ? false : state.source),
     historicalReview: { ...previous?.historicalReview },
   };
+  // Only the dedicated correction command may append/change the correction audit.
+  if (previous?.historicalSourceCorrections !== undefined) {
+    result.historicalSourceCorrections = previous.historicalSourceCorrections;
+  } else {
+    delete result.historicalSourceCorrections;
+  }
   if (review.amount || review.source) {
     const acknowledgement = { evidence, reviewedAt: new Date().toISOString() };
     if (review.amount) result.historicalReview.amount = acknowledgement;
@@ -111,4 +117,65 @@ export function prepareHistoricalEntry(previous, next, source, review = {}) {
     }
   }
   return result;
+}
+
+export function getHistoricalSourceRevision(entry) {
+  return JSON.stringify([entry.updatedAt ?? null, entry.scheduledItemSnapshot ?? null,
+    entry.historicalReview?.source ?? null, entry.historicalSourceCorrections ?? null]);
+}
+
+// This command changes classification only. Never accept amounts or identity in its payload.
+export function buildHistoricalSourceCorrection(entry, liveSource, changes, references, approval = {}) {
+  if (!entry) throw new Error('This saved entry no longer exists. Reopen the planner.');
+  if (approval.confirmed !== true || typeof approval.evidence !== 'string' || !approval.evidence.trim()) {
+    throw new Error('Confirm this entry-only correction and enter the original evidence reference.');
+  }
+  if (approval.expectedRevision !== getHistoricalSourceRevision(entry)) {
+    throw new Error('This entry changed since it was opened. Reopen it before correcting its source.');
+  }
+  const allowed = ['type', 'accountId', 'categoryId', 'bucketId'];
+  if (!changes || allowed.some((key) => !Object.hasOwn(changes, key)) ||
+      Object.keys(changes).some((key) => !allowed.includes(key)) ||
+      !['income', 'expense', 'debt', 'transfer', 'savings', 'general'].includes(changes.type)) {
+    throw new Error('Only historical type, account, category and bucket may be corrected here.');
+  }
+  const corrected = { type: changes.type };
+  for (const [field, records] of [['accountId', references.accounts],
+    ['categoryId', references.categories], ['bucketId', references.savingsBuckets]]) {
+    const id = changes[field] === '' || changes[field] == null ? null : changes[field];
+    if (id !== null && (typeof id !== 'string' || !records.some((record) => record.id === id))) {
+      throw new Error(`The historical ${field.replace('Id', '')} could not be found. Choose an existing record.`);
+    }
+    corrected[field] = id;
+  }
+  if (!['transfer', 'savings'].includes(corrected.type) && !corrected.accountId) {
+    throw new Error('Choose an existing account for this historical income or expense.');
+  }
+  const split = entry.entryKey?.lastIndexOf('__');
+  const id = typeof split === 'number' && split > 0 ? entry.entryKey.slice(0, split) : '';
+  if (!id || (entry.scheduledItemId && entry.scheduledItemId !== id)) {
+    throw new Error('The saved entry identity is inconsistent. No correction was saved.');
+  }
+  if (entry.historicalSourceCorrections !== undefined && !Array.isArray(entry.historicalSourceCorrections)) {
+    throw new Error('The existing source correction audit needs review. No correction was saved.');
+  }
+  const original = entry.scheduledItemSnapshot || liveSource || { id, name: 'Historical entry' };
+  const previousSource = Object.fromEntries(allowed.map((field) => [field,
+    field === 'bucketId' ? original.bucketId || original.savingsBucketId || null : original[field] ?? null]));
+  const evidence = approval.evidence.trim();
+  const correctedAt = new Date().toISOString();
+  return {
+    ...entry,
+    scheduledItemId: entry.scheduledItemId || id,
+    scheduledItemSnapshot: { ...original, id, ...corrected, savingsBucketId: corrected.bucketId },
+    scheduledItemSnapshotProvenance: 'user-reconciled',
+    historicalSourceNeedsReview: false,
+    historicalAmountNeedsReview: getHistoricalReviewState(entry).amount,
+    historicalReview: { ...entry.historicalReview, source: { evidence, reviewedAt: correctedAt } },
+    historicalSourceCorrections: [...(entry.historicalSourceCorrections || []), {
+      previousSource, previousProvenance: entry.scheduledItemSnapshotProvenance || 'unverified-current-source',
+      correctedSource: corrected, evidence, correctedAt,
+    }],
+    updatedAt: correctedAt,
+  };
 }

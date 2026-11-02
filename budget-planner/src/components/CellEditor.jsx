@@ -1,3 +1,4 @@
+import HistoricalSourceCorrection from './HistoricalSourceCorrection';
 import { getHistoricalReviewState } from '../logic/plannerHistory';
 import { Plus, Trash2 } from 'lucide-react';
 import { getLastEntrySaveAction, isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
@@ -36,7 +37,7 @@ function HistoricalReviewFields({ state, source, accounts, savingsBuckets, categ
             account: {label(accounts, source?.accountId)};
             category: {label(categories, source?.categoryId)};
             bucket: {label(savingsBuckets, source?.bucketId || source?.savingsBucketId)}.
-            If these differ from the original, restore the correct details before confirming.
+            If these differ from the original, use “Correct source for this saved entry” before confirming.
           </p>
           <label className="flex items-start gap-2 text-sm">
             <input name="reviewHistoricalSource" type="checkbox" className="mt-1" />
@@ -81,6 +82,7 @@ export default function CellEditor({
   onClose,
   onSave,
   onClear,
+  onCorrectHistoricalSource,
 }) {
   if (!selectedCell) {
     return null;
@@ -279,6 +281,12 @@ export default function CellEditor({
           )}
         </p>
       </div>
+
+      {entry.entryKey && onCorrectHistoricalSource ? (
+        <HistoricalSourceCorrection entry={entry} source={selectedCell.row.item}
+          accounts={accounts} categories={categories} savingsBuckets={savingsBuckets}
+          onCorrect={onCorrectHistoricalSource} />
+      ) : null}
 
       {isLineItemCell ? (
         <form onSubmit={handleLineItemSubmit} className="space-y-4">

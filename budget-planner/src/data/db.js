@@ -1,4 +1,4 @@
-import { prepareHistoricalEntry } from '../logic/plannerHistory';
+import { buildHistoricalSourceCorrection, prepareHistoricalEntry } from '../logic/plannerHistory';
 import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
@@ -765,6 +765,43 @@ export async function savePlannerEntry(entryKey, entry, { source, review } = {})
       transaction, resolve, reject, value: () => record,
       errorMessage: 'Failed to save planner entry.',
     });
+  });
+}
+
+// Only this existing cell is written; reference/source stores are read in the same transaction.
+export async function correctHistoricalSource(entryKey, changes, approval) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const names = [STORES.plannerEntries, STORES.scheduledItems, STORES.accounts,
+      STORES.categories, STORES.savingsBuckets];
+    const transaction = db.transaction(names, 'readwrite');
+    const data = {};
+    let pending = names.length;
+    let record;
+    names.forEach((name) => {
+      const store = transaction.objectStore(name);
+      const request = name === STORES.plannerEntries ? store.get(entryKey) : store.getAll();
+      request.onsuccess = () => {
+        data[name] = request.result;
+        pending -= 1;
+        if (pending) return;
+        try {
+          const entry = data[STORES.plannerEntries];
+          const id = entry?.scheduledItemId || entryKey.slice(0, entryKey.lastIndexOf('__'));
+          record = buildHistoricalSourceCorrection(entry,
+            data[STORES.scheduledItems].find((item) => item.id === id), changes, {
+              accounts: data[STORES.accounts], categories: data[STORES.categories],
+              savingsBuckets: data[STORES.savingsBuckets],
+            }, approval);
+          transaction.objectStore(STORES.plannerEntries).put(record);
+        } catch (error) {
+          transaction.abort();
+          reject(error);
+        }
+      };
+    });
+    resolveOnTransactionComplete({ transaction, resolve, reject, value: () => record,
+      errorMessage: 'Could not save historical source correction. No changes were saved.' });
   });
 }
 

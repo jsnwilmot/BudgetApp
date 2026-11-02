@@ -1063,7 +1063,7 @@ function checkPlannerEntries(data, issues) {
     addHealthIssue(
       issues, 'warning', 'Historical source details need review',
       `${uncertainHistoricalSources} saved entries lack verified original account, type, category or bucket details.`,
-      'Current schedules and inferred snapshots are provisional, not evidence of original classification. Compare an original backup or statement. Reconcile source details explicitly in the cell editor; if they differ, restore the correct source details before confirming.'
+      'Current schedules and inferred snapshots are provisional, not evidence of original classification. Compare an original backup or statement. Reconcile source details explicitly in the cell editor. Use the per-entry source correction form if they differ; current schedules and other records are preserved.'
     );
   }
 

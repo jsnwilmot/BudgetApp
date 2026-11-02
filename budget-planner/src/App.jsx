@@ -27,6 +27,7 @@ import {
 import {
   archiveCategory,
   archiveBudgetTarget,
+  correctHistoricalSource,
   deleteManualAdjustment,
   deletePlannerEntry,
   deleteScheduledItem,
@@ -698,6 +699,14 @@ export default function App() {
       setStatusMessage('Could not save planner entry.');
     }
   }, [appMetadata, scheduledItems, selectedCell]);
+
+  const handleCorrectHistoricalSource = useCallback(async (entryKey, changes, approval) => {
+    const saved = await correctHistoricalSource(entryKey, changes, approval);
+    setPlannerEntries((entries) => ({ ...entries, [entryKey]: saved }));
+    setSelectedCell(null);
+    setStatusMessage('Historical source corrected for this entry. Recurring schedule unchanged.');
+    return saved;
+  }, []);
 
   const handleClearCell = useCallback(async (entryKey) => {
     try {
@@ -1538,6 +1547,7 @@ export default function App() {
         onClose={handleCloseCell}
         onSave={handleSaveCell}
         onClear={handleClearCell}
+        onCorrectHistoricalSource={handleCorrectHistoricalSource}
       />
 
       {needRefresh ? (

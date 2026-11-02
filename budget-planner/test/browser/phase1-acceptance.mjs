@@ -166,20 +166,69 @@ try {
   assert.equal((await entry(page)).scheduledItemSnapshotProvenance, 'unverified-current-source');
   assert.equal((await entry(page)).historicalSourceNeedsReview, true);
   pass('F2 reassigned current account remains provisional after note save');
-  // Original synthetic backup is the evidence for classification, not the reassigned current source.
-  await importBackup(page, createBackupSnapshot(fixture())); await openCell(page, 'Salary');
-  await page.locator('[name=reviewHistoricalSource]').check();
-  await page.locator('[name=historicalEvidence]').fill('Synthetic original-backup: Salary, income, Chequing, no category/bucket');
-  await saveCell(page);
-  assert.equal((await entry(page)).scheduledItemSnapshot.accountId, 'c');
-  assert.equal((await entry(page)).scheduledItemSnapshotProvenance, 'user-reconciled');
-  assert.equal((await entry(page)).historicalSourceNeedsReview, false);
-  assert.equal((await entry(page)).historicalAmountNeedsReview, true);
-  pass('restored original source resolves classification only after explicit evidence acknowledgement');
+  // Repair one historical cell directly: no backup restore and no live-schedule edit.
+  const entriesBeforeCorrection = await records(page, 'plannerEntries');
+  const schedulesBeforeCorrection = await records(page, 'scheduledItems');
+  const metadataBeforeCorrection = await records(page, 'appMetadata');
+  await openCell(page, 'Salary');
+  await page.locator('[name=actualAmount]').fill('9999');
+  await page.locator('[name=useActual]').check();
+  await page.locator('[name=validated]').uncheck();
+  await page.locator('[name=notes]').fill('Unsaved amount-form edits must not be included');
+  await page.getByText('Correct source for this saved entry', { exact: true }).click();
+  await page.locator('[name=historicalAccount]').selectOption('c');
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  assert.equal((await entry(page)).scheduledItemSnapshot.accountId, 's');
+  await page.locator('[name=sourceCorrectionEvidence]').fill('Synthetic original-backup salary__2026-12-30: original account c, income');
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  assert.equal(await page.locator('[name=confirmSourceCorrection]').evaluate((input) => input.validity.valid), false);
+  await page.locator('[name=confirmSourceCorrection]').check();
+  await page.locator('[name=historicalAccount]').evaluate((select) => {
+    const option = document.createElement('option'); option.value = 'missing-account'; option.text = 'Removed account';
+    select.append(option); select.value = option.value;
+  });
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: /historical account could not be found/ }).waitFor();
+  assert.deepEqual(await records(page, 'plannerEntries'), entriesBeforeCorrection);
+  pass('F4 missing confirmation/evidence and unknown account cannot change historical entries');
+  await page.locator('[name=historicalAccount]').selectOption('c');
+  await page.getByRole('button', { name: 'Save historical source correction', exact: true }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+  const correctedEntry = await entry(page);
+  assert.equal(correctedEntry.scheduledItemSnapshot.accountId, 'c');
+  assert.equal(correctedEntry.scheduledItemSnapshotProvenance, 'user-reconciled');
+  assert.equal(correctedEntry.historicalSourceNeedsReview, false);
+  assert.equal(correctedEntry.historicalAmountNeedsReview, true);
+  assert.equal(correctedEntry.historicalSourceCorrections.length, 1);
+  const previousEntry = entriesBeforeCorrection.find((value) => value.entryKey === correctedEntry.entryKey);
+  for (const field of ['plannedAmount', 'actualAmount', 'validated', 'useActual', 'notes', 'lineItems', 'entryKey', 'scheduledItemId', 'payPeriodDate']) {
+    assert.deepEqual(correctedEntry[field], previousEntry[field]);
+  }
+  assert.deepEqual(await records(page, 'scheduledItems'), schedulesBeforeCorrection);
+  assert.deepEqual(await records(page, 'appMetadata'), metadataBeforeCorrection);
+  const allCorrected = await records(page, 'plannerEntries');
+  for (const other of entriesBeforeCorrection.filter((value) => value.entryKey !== correctedEntry.entryKey)) {
+    assert.deepEqual(allCorrected.find((value) => value.entryKey === other.entryKey), other);
+  }
+  pass('F4 provisional B -> historical A correction preserves amounts, validation, other entries, marker and current B schedule');
+  await nav(page, 'Planner');
+  const correctedChequing = page.locator('tbody tr').filter({ has: page.locator('th').filter({ hasText: /^Validated Chequing$/ }) });
+  assert.match(await correctedChequing.locator('td').first().innerText(), /1,620\.00/);
+  assert.match(await correctedChequing.locator('td').nth(1).innerText(), /1,290\.00/);
+  pass('F4 corrected historical account carries forward while the later B occurrence remains in B');
+  const correctionBackup = await exportBackup(page);
+  const correctedProfile = await profile(); await importBackup(correctedProfile.page, correctionBackup);
+  assert.deepEqual((await entry(correctedProfile.page)).historicalSourceCorrections, correctedEntry.historicalSourceCorrections);
+  assert.deepEqual((await entry(correctedProfile.page)).historicalReview, correctedEntry.historicalReview);
+  assert.equal((await entry(correctedProfile.page)).historicalAmountNeedsReview, true);
+  pass('F4 correction audit, evidence and unresolved amount warning survive real browser export and fresh-profile restore');
   await context.setOffline(false);
   await page.setViewportSize({ width: 375, height: 812 });
   await openCell(page, 'Salary');
   assert.ok(await page.locator('[name=historicalEvidence]').isVisible());
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.getByText('Correct source for this saved entry', { exact: true }).click();
+  assert.ok(await page.locator('[name=historicalAccount]').isVisible());
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: join(output, 'mobile-history-review.png') });
   await page.getByRole('button', { name: 'Close', exact: true }).click();

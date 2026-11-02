@@ -192,5 +192,15 @@ Use a separate browser profile with synthetic fixtures. Export first; never repl
 - [ ] Checking a reconciliation confirmation without a backup/statement reference must block save. Providing text alone without a checkbox must not resolve a warning.
 - [ ] Confirm only the amount against the original evidence: source warning remains. Confirm only the source: unresolved amount warning remains. Restore the downloaded backup in a fresh isolated profile and verify flags and evidence references.
 - [ ] Reassign a legacy source from Chequing to Savings before a snapshot exists. Its current classification must remain provisional, including after source edits/deletion and automatic snapshot enrichment.
-- [ ] Treat older snapshots with no provenance as uncertain. Restore original source details from a trustworthy backup if the displayed classification is wrong; do not acknowledge the current fallback as original merely because it exists.
+- [ ] Treat older snapshots with no provenance as uncertain. Use the per-entry source correction form with a trustworthy original evidence reference if the displayed classification is wrong; do not acknowledge the current fallback as original merely because it exists.
 - [ ] Follow the sample reconciliation procedure in `continuous-planner-phase1.md`. Use real original evidence only with owner review; synthetic fixtures do not verify anyone's financial facts.
+
+
+### F4 per-entry source correction
+
+- [ ] With a validated 2026 cell provisionally assigned to B and current/later salary still B, correct only the old cell to A using the separate form. Require the entry-only confirmation and reference.
+- [ ] Change unsaved amount/notes/validation in the normal editor, then submit only the source form. None of those unsaved changes may be applied. Stored amounts, validated state, line-item IDs, key/date, marker and other entries remain intact.
+- [ ] Test historical type/account/category/bucket corrections, including archived reference IDs. Unknown/deleted IDs, missing required accounts, stale revisions and blank references must block writes with an error.
+- [ ] Check current recurring schedules remain B. Confirm the correction affects only the selected occurrence and subsequent cumulative balances, with no extra transfer/adjustment records.
+- [ ] Export and restore into a fresh isolated profile: corrected snapshot, source evidence, append-only audit and independent amount warning survive. Test a second correction, routine note save and source edit: prior correction audit remains.
+- [ ] On mobile, expand the correction details and check controls, confirmation and error text remain usable. Check offline reopen of the corrected entry where supported. OS-installed PWA acceptance remains separate.
