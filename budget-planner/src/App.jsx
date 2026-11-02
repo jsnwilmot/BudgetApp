@@ -773,7 +773,7 @@ export default function App() {
       return savedItem;
     } catch (error) {
       console.error(error);
-      setStatusMessage('Could not save scheduled item.');
+      setStatusMessage(error.message || 'Could not save scheduled item.');
       throw error;
     }
 
@@ -893,9 +893,9 @@ export default function App() {
 
   }, []);
 
-  const handleSaveSavingsBucket = useCallback(async (updatedBucket) => {
+  const handleSaveSavingsBucket = useCallback(async (updatedBucket, options) => {
     try {
-      const savedBucket = await saveSavingsBucket(updatedBucket);
+      const savedBucket = await saveSavingsBucket(updatedBucket, options);
 
       setSavingsBuckets((currentBuckets) => {
         const exists = currentBuckets.some(
@@ -914,7 +914,8 @@ export default function App() {
       setStatusMessage('Savings bucket saved.');
     } catch (error) {
       console.error(error);
-      setStatusMessage('Could not save savings bucket.');
+      setStatusMessage(error.message || 'Could not save savings bucket.');
+      throw error;
     }
 
   }, []);

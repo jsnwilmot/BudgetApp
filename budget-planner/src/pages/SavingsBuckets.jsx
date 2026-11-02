@@ -1,3 +1,4 @@
+import { activeSavingsAccounts, soleAccountId, bucketAccountStatus, bucketRevision, assertNewBucketAccount } from '../logic/accountConfiguration';
 import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import TransferEditor from '../components/TransferEditor';
@@ -10,11 +11,11 @@ import {
 } from '../logic/projectionLogic';
 import { createNewTransfer } from '../logic/transferLogic';
 
-function createNewBucket() {
+function createNewBucket(accounts) {
   return {
     id: `bucket-${crypto.randomUUID()}`,
     name: '',
-    linkedAccountId: 'acct-savings',
+    linkedAccountId: soleAccountId(activeSavingsAccounts(accounts)),
     startingAmount: 0,
     targetAmount: 0,
     active: true,
@@ -24,7 +25,7 @@ function createNewBucket() {
   };
 }
 
-function BucketEditor({ bucket, onCancel, onSave }) {
+function BucketEditor({ bucket, accounts, isNew, onCancel, onSave }) {
   const [formState, setFormState] = useState({
     ...bucket,
     name: bucket.name || '',
@@ -33,6 +34,10 @@ function BucketEditor({ bucket, onCancel, onSave }) {
     notes: bucket.notes ?? '',
   });
 
+  const [expectedRevision] = useState(() => isNew ? null : bucketRevision(bucket));
+  const [error, setError] = useState('');
+  const choices = activeSavingsAccounts(accounts);
+
   function updateField(fieldName, value) {
     setFormState((current) => ({
       ...current,
@@ -40,7 +45,7 @@ function BucketEditor({ bucket, onCancel, onSave }) {
     }));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     const cleanedBucket = {
@@ -50,7 +55,7 @@ function BucketEditor({ bucket, onCancel, onSave }) {
       targetAmount:
         formState.targetAmount === '' ? undefined : Number(formState.targetAmount) || 0,
       notes: String(formState.notes || '').trim(),
-      active: true,
+      active: formState.active,
       updatedAt: new Date().toISOString(),
     };
 
@@ -58,7 +63,10 @@ function BucketEditor({ bucket, onCancel, onSave }) {
       return;
     }
 
-    onSave(cleanedBucket);
+    try {
+      if (isNew) assertNewBucketAccount(cleanedBucket, accounts);
+      await onSave(cleanedBucket, { expectedRevision });
+    } catch (failure) { setError(failure.message); }
   }
 
   return (
@@ -86,6 +94,22 @@ function BucketEditor({ bucket, onCancel, onSave }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {isNew ? <label className="block">
+          <span className="text-sm font-medium text-slate-700">Savings account</span>
+          <select aria-label="Savings account" value={formState.linkedAccountId || ''}
+            onChange={(event) => updateField('linkedAccountId', event.target.value)} required
+            className="mt-1 w-full rounded-xl border border-slate-300 p-2">
+            <option value="">Choose a savings account</option>
+            {choices.map((account) => <option key={account.id} value={account.id}>{account.name} ({account.id})</option>)}
+          </select>
+          <span className="mt-1 block text-sm">{!choices.length ? 'Create an active savings account in Accounts before saving a bucket.' : 'Choose where this bucket belongs. Existing buckets and history will not be reassigned.'}</span>
+        </label> : <div className="rounded-xl border p-3 text-sm">
+          <p className="font-semibold">Linked savings account</p>
+          <p>{bucketAccountStatus(bucket, accounts)}</p>
+          <p>Association is read-only. Changing it requires a separately reviewed repair with financial impact evidence.</p>
+        </div>}
+        {error ? <p role="alert" className="text-sm text-red-800">{error}</p> : null}
+
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Bucket name</span>
           <input
@@ -204,6 +228,8 @@ function DeleteBucketDialog({
         ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-500">Funds to move</p>
             <p className="mt-1 text-2xl font-bold text-slate-950">
@@ -331,6 +357,8 @@ function BucketAdjustmentForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+
+
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Bucket</span>
           <select
@@ -562,8 +590,8 @@ export default function SavingsBuckets({
     setSelectedTransfer(null);
   }
 
-  async function handleSaveBucket(bucket) {
-    await onSaveSavingsBucket(bucket);
+  async function handleSaveBucket(bucket, options) {
+    await onSaveSavingsBucket(bucket, options);
     setSelectedBucket(null);
   }
 
@@ -596,7 +624,7 @@ export default function SavingsBuckets({
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => setSelectedBucket(createNewBucket())}
+            onClick={() => setSelectedBucket(createNewBucket(accounts))}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
           >
             <Plus size={16} />
@@ -777,7 +805,7 @@ export default function SavingsBuckets({
               return (
                 <tr key={item.bucket.id} className="border-t border-slate-200">
                   <td className="px-4 py-3 text-sm font-semibold text-slate-950">
-                    <div>{item.bucket.name}</div>
+                    <div>{item.bucket.name}</div><p className="mt-1 text-xs font-normal">{bucketAccountStatus(item.bucket, accounts)}</p>
                     {usedByTransfer ? (
                       <div className="mt-1 text-xs font-medium text-slate-500">
                         Used by transfer
@@ -947,6 +975,8 @@ export default function SavingsBuckets({
       {selectedBucket ? (
         <BucketEditor
           bucket={selectedBucket}
+          accounts={accounts}
+          isNew={!savingsBuckets.some((bucket) => bucket.id === selectedBucket.id)}
           onCancel={() => setSelectedBucket(null)}
           onSave={handleSaveBucket}
         />

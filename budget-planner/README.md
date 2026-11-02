@@ -865,3 +865,10 @@ Historical snapshot account/category/bucket IDs, required income/expense account
 Single-entry source confirmation uses a frozen entry revision and displayed classification, re-reading source/reference stores in the write transaction. A changed source, deleted link, invalid identity or malformed audit rejects the whole save. F4 source correction remains evidence-backed and preserves financial fields/audits; it cannot silently rewrite a conflicting snapshot/source ID. Ordinary saves cannot rewrite existing IDs/dates to hide an identity conflict. No read-only diagnostic changes any stored flag, amount, validation, marker, audit or calculation.
 
 Planner, Dashboard, Reports and Savings Buckets show balance limitations when historical classifications/amounts are unresolved. They do not silently drop records or change financial formulas. Orphan/identity cases and missing reference records can remain unresolved; use existing entry-only correction where a saved Planner cell is available. No identity repair, new record creation, data migration or Phase 2 navigation is added. ExportVersion 1, schema/data version 2 and IndexedDB version 9 remain unchanged. See the Increment A evidence section in `docs/continuous-planner-phase1.md`.
+
+
+### Savings account configuration (Issue #11 review)
+
+New buckets select actual active savings accounts: a sole account defaults, several require a choice, and none require account creation first. Existing linked-account status is visible and read-only; missing/inactive links are retained, never auto-repaired. Save-time account validation and stale bucket checks prevent invalid new links and overwriting concurrent edits. Scheduled defaults use a sole active chequing account, never a display-name assumption; existing references are not replaced on open.
+
+See [account configuration findings and historical reconciliation proposal](docs/issue11-account-reconciliation.md). Historical mappings and financial-impacting repairs require separate review; no historical group correction or real-data changes are included.

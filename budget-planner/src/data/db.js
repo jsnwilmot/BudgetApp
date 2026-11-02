@@ -1,3 +1,4 @@
+import { assertNewBucketAccount, bucketRevision } from '../logic/accountConfiguration';
 import { assertHistoricalIntegrity, historicalSourceSignature } from '../logic/historicalIntegrity';
 import { buildHistoricalSourceCorrection, getHistoricalSourceRevision, prepareHistoricalEntry } from '../logic/plannerHistory';
 import {
@@ -885,7 +886,7 @@ export async function getAllScheduledItems() {
 async function mutateScheduledItem(id, record, entrySnapshots) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.scheduledItems, STORES.plannerEntries], 'readwrite');
+    const transaction = db.transaction([STORES.scheduledItems, STORES.plannerEntries, STORES.accounts], 'readwrite');
     try {
       const store = transaction.objectStore(STORES.scheduledItems);
       const entriesStore = transaction.objectStore(STORES.plannerEntries);
@@ -907,8 +908,24 @@ async function mutateScheduledItem(id, record, entrySnapshots) {
           }
         };
       });
-      if (record) store.put(record);
-      else store.delete(id);
+      if (record) {
+        const old = store.get(id);
+        old.onsuccess = () => {
+          const refs = transaction.objectStore(STORES.accounts).getAll();
+          refs.onsuccess = () => {
+            try {
+              // Preserve legacy links on unrelated edits; never introduce an invalid new link.
+              if (!old.result || old.result.accountId !== record.accountId || old.result.type !== record.type) {
+                if ((record.accountId || !['transfer', 'savings'].includes(record.type)) &&
+                    !refs.result.some((account) => account.id === record.accountId && account.active !== false)) {
+                  throw new Error('Choose an existing active account for this scheduled item.');
+                }
+              }
+              store.put(record);
+            } catch (error) { transaction.abort(); reject(error); }
+          };
+        };
+      } else store.delete(id);
       resolveOnTransactionComplete({
         transaction, resolve, reject, value: record,
         errorMessage: 'Could not update scheduled item and preserve its history.',
@@ -1060,31 +1077,33 @@ export async function getAllSavingsBuckets() {
   });
 }
 
-export async function saveSavingsBucket(bucket) {
+export async function saveSavingsBucket(bucket, options = {}) {
   const db = await openDatabase();
-
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.savingsBuckets, 'readwrite');
+    const transaction = db.transaction([STORES.savingsBuckets, STORES.accounts], 'readwrite');
     const store = transaction.objectStore(STORES.savingsBuckets);
-
-    const record = {
-      ...normalizeSavingsBucketRecord(bucket),
-      updatedAt: new Date().toISOString(),
+    let current; let accounts; let pending = 2; let record;
+    const prepare = () => {
+      if (--pending) return;
+      try {
+        if (Object.hasOwn(options, 'expectedRevision') && options.expectedRevision !== (current ? bucketRevision(current) : null)) {
+          throw new Error('This bucket changed since the editor opened. Reopen it before saving.');
+        }
+        if (current) {
+          if (bucket.linkedAccountId !== current.linkedAccountId) {
+            throw new Error('Existing bucket associations require a separately reviewed repair. No account was reassigned.');
+          }
+        } else assertNewBucketAccount(bucket, accounts);
+        record = { ...normalizeSavingsBucketRecord(bucket), updatedAt: new Date().toISOString() };
+        store.put(record);
+      } catch (error) { transaction.abort(); reject(error); }
     };
-
-    const request = store.put(record);
-
-    request.onerror = () => {
-      reject(new Error('Failed to save savings bucket.'));
-    };
-
-    resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      value: record,
-      errorMessage: 'Failed to save savings bucket.',
-    });
+    const existing = store.get(bucket.id);
+    existing.onsuccess = () => { current = existing.result; prepare(); };
+    const refs = transaction.objectStore(STORES.accounts).getAll();
+    refs.onsuccess = () => { accounts = refs.result; prepare(); };
+    resolveOnTransactionComplete({ transaction, resolve, reject, value: () => record,
+      errorMessage: 'Failed to save savings bucket.' });
   });
 }
 

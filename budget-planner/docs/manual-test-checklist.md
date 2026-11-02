@@ -216,3 +216,14 @@ Use a separate browser profile with synthetic fixtures. Export first; never repl
 - [ ] Correct a broken classification using F4 with evidence; existing audit and independent amount warning remain. Conflicting keys/dates/IDs or malformed prior audits are reported, never implicitly normalized by confirmation/correction.
 - [ ] Export/restore in a clean synthetic profile and compare IDs, values, validation, marker and F4 audit. Check mobile layout, keyboard controls, bounded tables and existing offline reopen behavior.
 - [ ] Private M3 real-data reconciliation and independent Architect/owner acceptance remain separate; never attach private backups/statements/screenshots to GitHub.
+
+
+### Issue #11 preventative account configuration
+
+- [ ] In a fresh synthetic profile, create buckets with zero, one and several savings accounts. Zero requires creating an account, one selects its actual ID, multiple require a choice; inactive/non-savings accounts are excluded.
+- [ ] Import a legacy bucket with a missing link. Projection/editor show the exact missing link read-only; open/cancel changes nothing and ordinary notes edits preserve the link. Inactive links remain visible.
+- [ ] Delete/deactivate/change the selected savings account in another synthetic tab before saving a new bucket. Save must fail without creating a bucket or changing any financial store.
+- [ ] Open the same bucket in two tabs; save a note in one, then save in the stale tab. Expect rejection and retained latest record. Deleted bucket and repeated create submissions must also reject.
+- [ ] New scheduled defaults use a sole active chequing account regardless of name; multiple/none require a choice. Existing blank/missing IDs do not change on open. Invalid new/changed account references must reject atomically with history untouched.
+- [ ] Export/import into a clean profile; compare existing buckets, entries, amounts, validations, IDs, Last Entry and audits. Check mobile selector and all previous offline/ledger tests.
+- [ ] Review `issue11-account-reconciliation.md` before proposing any private repair. No real backup changes, mapping execution or grouped historical correction is authorized here.

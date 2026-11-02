@@ -5,6 +5,8 @@ export const RELEASE_NOTES = {
   title: 'Phase 1 review build',
   date: '2026-11-02',
   highlights: [
+    'Replaced demo bucket account links with actual savings-account selection and save-time validation; existing associations remain visible and unchanged.',
+    'Added stale bucket-edit protection and safer scheduled-account defaults; historical reconciliation remains a separately reviewed proposal.',
     'Preserved saved planner amounts, notes, line items and source snapshots when recurring items change or are deleted.',
     'Added historical account, category and bucket integrity checks; broken links cannot be newly confirmed.',
     'Added read-only legacy cohorts and exception reporting, separate from missing verification metadata.',

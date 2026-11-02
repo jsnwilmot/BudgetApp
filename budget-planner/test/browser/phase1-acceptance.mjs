@@ -24,6 +24,10 @@ async function profile(viewport = { width: 1440, height: 1000 }) {
   return { context, page };
 }
 async function nav(page, name) {
+  if (await page.locator('.app-splash').count()) {
+    await page.clock.fastForward(3000);
+    await page.locator('.app-splash').waitFor({ state: 'hidden', timeout: 30000 });
+  }
   const target = page.getByRole('button', { name, exact: true });
   await target.or(page.getByRole('button', { name: 'Open navigation menu' })).filter({ visible: true }).first().waitFor();
   if (!await target.first().isVisible()) await page.getByRole('button', { name: 'Open navigation menu' }).click();
@@ -368,6 +372,87 @@ try {
   await sp.reload(); await nav(sp, 'Settings');
   await sp.getByText('Historical reference or identity issues', { exact: true }).waitFor();
   pass('Increment A removed account after preview blocks new confirmation, preserves records and surfaces a genuine integrity problem');
+
+  // Issue 11: preventative configuration only, using custom IDs and isolated profiles.
+  async function bucketPage(page) {
+    await nav(page, 'Manage'); await page.getByRole('button', { name: /Savings Buckets/ }).last().click();
+  }
+  const config = fixture();
+  config.accounts = [{ id: 'custom-reserve', name: 'Personal Reserve', type: 'savings', active: true, startingBalance: 0 },
+    { id: 'custom-second', name: 'Other Savings', type: 'savings', active: true, startingBalance: 0 },
+    { id: 'old-reserve', name: 'Archived Reserve', type: 'savings', active: false, startingBalance: 0 }];
+  config.savingsBuckets[0].linkedAccountId = 'acct-savings';
+  const cp = await profile(); await importBackup(cp.page, createBackupSnapshot(config)); await bucketPage(cp.page);
+  const configBefore = await databaseState(cp.page);
+  await cp.page.getByText('Missing account (acct-savings) — needs review', { exact: true }).waitFor();
+  const legacyRow = cp.page.locator('tbody tr').filter({ has: cp.page.getByText('Tax', { exact: true }) }).first();
+  await legacyRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await cp.page.getByText('Linked savings account', { exact: true }).waitFor();
+  assert.equal(await cp.page.getByRole('combobox', { name: 'Savings account', exact: true }).count(), 0);
+  await cp.page.getByRole('button', { name: 'Close', exact: true }).click();
+  assert.deepEqual(await databaseState(cp.page), configBefore);
+  pass('Issue 11 existing broken bucket association is visible and read-only; opening and closing makes no financial writes');
+  await cp.page.getByRole('button', { name: 'Add Bucket', exact: true }).click();
+  const accountSelect = cp.page.getByRole('combobox', { name: 'Savings account', exact: true });
+  assert.equal(await accountSelect.inputValue(), '');
+  assert.equal(await accountSelect.locator('option').count(), 3);
+  await cp.page.getByLabel('Bucket name', { exact: true }).fill('New Custom Bucket');
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  assert.equal(await accountSelect.evaluate((element) => element.validity.valid), false);
+  await accountSelect.selectOption('custom-second');
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await cp.page.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+  const configAfter = await databaseState(cp.page);
+  assert.equal(configAfter.savingsBuckets.find((value) => value.name === 'New Custom Bucket').linkedAccountId, 'custom-second');
+  for (const store of Object.keys(configBefore).filter((store) => store !== 'savingsBuckets')) assert.deepEqual(configAfter[store], configBefore[store]);
+  assert.deepEqual(configAfter.savingsBuckets.find((value) => value.id === 'tax-bucket'), configBefore.savingsBuckets[0]);
+  pass('Issue 11 multiple custom savings accounts require explicit choice; archived accounts excluded and history, schedules, markers and audits unchanged');
+  const configBackup = await exportBackup(cp.page); const cr = await profile(); await importBackup(cr.page, configBackup);
+  assert.deepEqual(await records(cr.page, 'savingsBuckets'), configAfter.savingsBuckets);
+  assert.deepEqual(await records(cr.page, 'plannerEntries'), configBefore.plannerEntries);
+  pass('Issue 11 configuration and existing legacy financial records round-trip through real JSON backup');
+  await bucketPage(cp.page);
+  await cp.page.getByRole('button', { name: 'Add Bucket', exact: true }).click();
+  await accountSelect.selectOption('custom-reserve');
+  await cp.page.getByLabel('Bucket name', { exact: true }).fill('Deleted Account Draft');
+  const configActor = await cp.context.newPage(); await configActor.goto(baseURL);
+  await configActor.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('budget-planner-db'); request.onsuccess = () => {
+      const db = request.result; const tx = db.transaction('accounts', 'readwrite');
+      tx.objectStore('accounts').delete('custom-reserve'); tx.oncomplete = () => { db.close(); resolve(); }; tx.onerror = () => reject(tx.error);
+    };
+  }));
+  const afterRemoval = await databaseState(cp.page);
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await cp.page.getByRole('alert').getByText(/Choose an existing active savings account/).waitFor();
+  assert.deepEqual(await databaseState(cp.page), afterRemoval);
+  await cp.page.getByRole('button', { name: 'Close', exact: true }).click();
+  pass('Issue 11 account deleted in another tab after selection rejects new bucket with zero partial writes');
+  // Concurrent ordinary edit of an existing bucket must not overwrite another tab.
+  const newBucketRow = cp.page.locator('tbody tr').filter({ has: cp.page.getByText('New Custom Bucket', { exact: true }) }).first();
+  await newBucketRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await cp.page.getByLabel('Notes', { exact: true }).fill('Stale tab notes');
+  await bucketPage(configActor);
+  await configActor.locator('tbody tr').filter({ has: configActor.getByText('New Custom Bucket', { exact: true }) }).first().getByRole('button', { name: 'Edit', exact: true }).click();
+  await configActor.getByLabel('Notes', { exact: true }).fill('Latest notes');
+  await configActor.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await configActor.getByRole('button', { name: 'Close', exact: true }).waitFor({ state: 'hidden' });
+  const actorSaved = await databaseState(cp.page);
+  await cp.page.getByRole('button', { name: 'Save Bucket', exact: true }).click();
+  await cp.page.getByRole('alert').getByText(/changed since the editor opened/).waitFor();
+  assert.deepEqual(await databaseState(cp.page), actorSaved);
+  pass('Issue 11 concurrent bucket edit rejects stale notes without overwriting current configuration');
+  for (const [choices, expected] of [[[], ''], [[config.accounts[0]], 'custom-reserve']]) {
+    const only = fixture(); only.accounts = choices; const p = await profile();
+    await importBackup(p.page, createBackupSnapshot(only)); await bucketPage(p.page);
+    await p.page.getByRole('button', { name: 'Add Bucket', exact: true }).click();
+    const select = p.page.getByRole('combobox', { name: 'Savings account', exact: true });
+    assert.equal(await select.inputValue(), expected);
+    if (!choices.length) await p.page.getByText('Create an active savings account in Accounts before saving a bucket.', { exact: true }).waitFor();
+    await p.page.setViewportSize({ width: 375, height: 812 });
+    assert.ok(await p.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  }
+  pass('Issue 11 zero accounts requires account creation; sole custom savings account defaults correctly and editor fits mobile');
   evidence.limitations = ['Headless Chromium tests service-worker offline behavior, not OS installation/standalone app launch.',
     'Synthetic evidence only; the owner must verify real financial facts.', 'Broader multi-tab source edits and F3 Transactions historical ledger remain review limitations.'];
 } catch (error) {

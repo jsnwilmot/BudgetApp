@@ -433,6 +433,9 @@ export default function Help() {
       </HelpCard>
 
       <HelpCard title="Savings Bucket Balances">
+        <p>New buckets require an existing active savings account. One account is preselected; with several, choose explicitly. With none, create a savings account in Accounts first.</p>
+        <p>Each bucket shows its linked account. Existing associations are read-only, including missing or inactive references. Opening or editing notes does not repair them. Keep original backups and request an evidence-backed repair review before changing existing associations or historical classifications.</p>
+        <p>If a bucket changes in another tab, reopen its editor before saving. Scheduled Items default only to a sole active chequing account; otherwise choose an account explicitly.</p>
         <p>
           Savings Buckets separates what is current from what is still a future
           forecast.

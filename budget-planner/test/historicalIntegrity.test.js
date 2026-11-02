@@ -108,6 +108,7 @@ test('Increment A: removed reference and changed fallback source reject stale ta
   await seed(fixture);
   const salaryKey = 'salary__stable__2026-01-02'; before = await getAllPlannerEntries(); current = before[salaryKey];
   const oldReview = consent(current, fixture.scheduledItems[0]);
+  await replaceAccounts(fixture.accounts.map((account) => ({ ...account, active: true })));
   await saveScheduledItem({ ...fixture.scheduledItems[0], accountId: 'A' });
   await assert.rejects(savePlannerEntry(salaryKey, current, { review: oldReview }), /changed since/);
   assert.deepEqual(await getAllPlannerEntries(), before);
