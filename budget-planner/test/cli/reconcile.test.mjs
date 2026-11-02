@@ -9,7 +9,7 @@ import { reconciliationFixture } from '../fixtures/reconciliation.js';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const cli=join(root,'tools/reconcile/cli.mjs'); const guard=fileURLToPath(new URL('./guard.mjs',import.meta.url));
 const args=(path)=>['--input',path,'--orphan-source','PRIVATE_OLD_SENTINEL','--current-source','PRIVATE_CURRENT_SENTINEL'];
-const run=(argv,guarded=true)=>spawnSync(process.execPath,[...(guarded?['--import',guard]:[]),cli,...argv],{cwd:root,encoding:'utf8',timeout:20000,env:{...process.env,NODE_OPTIONS:'',NODE_V8_COVERAGE:''},maxBuffer:100000});
+const run=(argv,guarded=true)=>spawnSync(process.execPath,[...(guarded?['--import',guard]:[]),cli,...argv],{cwd:root,encoding:'utf8',timeout:20000,env:{...process.env,NODE_OPTIONS:'',NODE_V8_COVERAGE:'',NODE_COMPILE_CACHE:''},maxBuffer:100000});
 async function setup(body=JSON.stringify(reconciliationFixture())) {
   const dir=await mkdtemp(join(tmpdir(),'synthetic-finpath-cli-'));const path=join(dir,'PRIVATE_FILENAME_SENTINEL.json');await writeFile(path,body);return {dir,path};
 }
@@ -47,7 +47,7 @@ test('CLI: BOM and alias backups are read without normalization; safe analysis f
 });
 test('CLI security guard tripwires reject attempted file writes and network access',()=>{
   for(const script of ["import fs from 'node:fs';fs.writeFileSync('ignored','ignored')","await fetch('https://example.invalid')","import net from 'node:net';net.connect(1)"]){
-    const r=spawnSync(process.execPath,['--import',guard,'--input-type=module','-e',script],{encoding:'utf8',env:{...process.env,NODE_OPTIONS:'',NODE_V8_COVERAGE:''}});assert.notEqual(r.status,0);assert.match(r.stderr,/GUARD_DENIED/);
+    const r=spawnSync(process.execPath,['--import',guard,'--input-type=module','-e',script],{encoding:'utf8',env:{...process.env,NODE_OPTIONS:'',NODE_V8_COVERAGE:'',NODE_COMPILE_CACHE:''}});assert.notEqual(r.status,0);assert.match(r.stderr,/GUARD_DENIED/);
   }
 });
 
@@ -64,5 +64,12 @@ test('CLI: mixed schema errors and terminal-control strings cannot reach output'
   const {dir,path}=await setup(JSON.stringify(f));try{
     const good=run(args(path));assert.equal(good.status,0);assert.ok(!good.stdout.includes(String.fromCharCode(27)));assert.doesNotMatch(good.stdout,/PRIVATE_|\\u001b/);
     f.data.planner={entries:{PRIVATE_CONFLICT:{}}};await writeFile(path,JSON.stringify(f));const bad=run(args(path));assert.equal(bad.status,4);assert.equal(bad.stdout,'');assert.doesNotMatch(bad.stderr,privatePattern);
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('CLI: raw numeric over-precision is invalid, not rounded into an equal-amount match',async()=>{
+  const raw=JSON.stringify(reconciliationFixture()).replace('"actualAmount":100','"actualAmount":100.0000000000000000001');
+  const {dir,path}=await setup(raw);try{
+    const r=run(args(path));assert.equal(r.status,0,r.stderr);const report=JSON.parse(r.stdout);assert.equal(report.counts.invalidEntries,1);assert.equal(report.comparison.candidateEdges,21);assert.doesNotMatch(r.stdout+r.stderr,privatePattern);assert.equal(await readFile(path,'utf8'),raw);
   }finally{await rm(dir,{recursive:true,force:true});}
 });

@@ -118,3 +118,16 @@ test('offline: malformed keys are still inventoried via explicit stored source i
   const r=analyze(f,selection);assert.equal(r.counts.selectedEntries,48);assert.equal(r.counts.invalidEntries,1);assert.equal(r.counts.allInvalidEntries,1);assert.equal(r.comparison.candidateEdges,22);
   assert.equal(f.data.plannerEntries.malformed.entryKey,'malformed');
 });
+
+test('offline: raw JSON money lexemes cannot silently round into exact candidates', async () => {
+  const {decodeBackup}=await import('../tools/reconcile/json.mjs');
+  const raw='{"actualAmount":0.10000000000000001,"plannedAmount":1e2,"startingAmount":-0.001,"version":2,"notes":"amount: 1.001","nested":{"amount":0.10},"\\u0061mount":100.0000000000000000001}';
+  const d=decodeBackup(raw);assert.equal(d.actualAmount,'0.10000000000000001');assert.equal(d.plannedAmount,'1e2');assert.equal(d.amount,'100.0000000000000000001');assert.equal(d.version,2);assert.equal(d.nested.amount,'0.10');assert.equal(d.notes,'amount: 1.001');
+  assert.equal(cents(d.actualAmount),null);assert.equal(cents(d.plannedAmount),null);assert.equal(cents(d.amount),null);
+});
+
+test('offline: duplicate JSON keys, including escaped aliases, are never silently collapsed', async () => {
+  const {decodeBackup}=await import('../tools/reconcile/json.mjs');
+  for(const raw of ['{"amount":1,"amount":2}','{"entries":{"key":1,"key":2}}','{"amount":1,"\\u0061mount":2}']) assert.throws(()=>decodeBackup(raw));
+  assert.deepEqual(decodeBackup('{"items":[{"amount":1},{"amount":2}],"notes":"{amount:1}"}'),{items:[{amount:'1'},{amount:'2'}],notes:'{amount:1}'});
+});

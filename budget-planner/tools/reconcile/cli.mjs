@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { open, lstat, constants } from 'node:fs/promises';
 import { register } from 'node:module';
+import { decodeBackup } from './json.mjs';
 
 // One explicit local regular file, opened read-only. No directory search, stdin dump or output path.
 const HELP = 'FinPath offline reconciliation (review required before private-data use)\nnode tools/reconcile/cli.mjs --input <local-copy.json> --orphan-source <id> --current-source <id> [--from YYYY-MM-DD --to YYYY-MM-DD]\nOutput: aggregate counts and fixed risk warnings only. No corrections or files are produced.\n';
@@ -37,7 +38,7 @@ try {
       }
       const after = await handle.stat();
       if (size !== stat.size || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) throw new Error();
-      backup = JSON.parse(buffer.subarray(0, size).toString('utf8').replace(/^\uFEFF/, ''));
+      backup = decodeBackup(buffer.subarray(0, size).toString('utf8').replace(/^\uFEFF/, ''));
     } catch { throw new Error('input'); }
     await handle.close(); handle = undefined;
     register('./loader.mjs', import.meta.url);
