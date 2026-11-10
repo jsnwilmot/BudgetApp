@@ -8,7 +8,7 @@ const requireThat = (condition, code, ref) => { if (!condition) fail(code, ref);
 const list = v => { requireThat(Array.isArray(v), 'INVALID_COLLECTION'); return v; };
 const unique = (items, key) => { const map = new Map(); for (const x of items) { requireThat(object(x) && text(key(x)) && !map.has(key(x)), 'DUPLICATE_OR_INVALID_ID'); map.set(key(x), x); } return map; };
 const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
-const kinds = ['income','expense','contribution','withdrawal','allocation','release','reallocation'];
+const kinds = ['income','expense','account_transfer','contribution','withdrawal','allocation','release','reallocation'];
 function snapshot(state, cp) {
   const accounts = Object.fromEntries([...state.accounts].map(([k,v]) => [k,String(v)]));
   const buckets = Object.fromEntries([...state.buckets].map(([k,v]) => [k,String(v)]));
@@ -31,6 +31,7 @@ function invariant(state, cp) {
 function validate(cp) {
   requireThat(object(cp) && text(cp.id) && cp.verified===true && cp.basis==='posted' && text(cp.evidenceRef),'UNVERIFIED_CHECKPOINT');
   requireThat(date(cp.date) && date(cp.originalAnchor) && [7,14,28,30].includes(cp.frequencyDays),'INVALID_CADENCE');
+  requireThat(cp.date>=cp.originalAnchor,'CHECKPOINT_BEFORE_ANCHOR');
   requireThat((Date.parse(cp.date)-Date.parse(cp.originalAnchor)) / 86400000 % cp.frequencyDays===0,'OFF_CADENCE_CHECKPOINT');
   requireThat(text(cp.timeZone),'INVALID_ZONE');try {new Intl.DateTimeFormat('en',{timeZone:cp.timeZone});}catch{fail('INVALID_ZONE');}
   requireThat(['CAD','USD','EUR','GBP','AUD','NZD','CHF'].includes(cp.currency),'UNSUPPORTED_CURRENCY');
@@ -48,6 +49,7 @@ function eventLegs(e, refs) {
   const account=(id,type)=>{requireThat(refs.accounts.has(id) && (!type || refs.accounts.get(id).type===type),'INVALID_EVENT_ACCOUNT',e.id);return id;};
   const bucket=(id,accountId)=>{requireThat(refs.buckets.has(id) && (!accountId || refs.buckets.get(id).accountId===accountId),'INVALID_EVENT_BUCKET',e.id);return refs.buckets.get(id);};
   const leg=(target,id,value)=>target.push({id,amountMinor:String(value)});
+  if(e.kind==='account_transfer') {account(e.fromAccountId);account(e.toAccountId);requireThat(e.fromAccountId!==e.toAccountId,'SELF_TRANSFER',e.id);leg(bank,e.fromAccountId,-n);leg(bank,e.toAccountId,n);}
   if(e.kind==='income') leg(bank,account(e.toAccountId),n);
   if(e.kind==='expense') {
     leg(bank,account(e.fromAccountId),-n);
@@ -61,11 +63,15 @@ function eventLegs(e, refs) {
     if(e.kind==='reallocation') {const target=bucket(e.toBucketId,b.accountId);requireThat(target.id!==b.id,'SAME_BUCKET',e.id);leg(reserve,target.id,n);}
   }
   // Reject irrelevant routing rather than silently accepting a conflicting source claim.
-  const allowed={income:['toAccountId'],expense:['fromAccountId','bucketId'],contribution:['fromAccountId','toAccountId','bucketId'],withdrawal:['fromAccountId','toAccountId','bucketId'],allocation:['bucketId'],release:['bucketId'],reallocation:['bucketId','toBucketId']}[e.kind];
+  const allowed={account_transfer:['fromAccountId','toAccountId'],income:['toAccountId'],expense:['fromAccountId','bucketId'],contribution:['fromAccountId','toAccountId','bucketId'],withdrawal:['fromAccountId','toAccountId','bucketId'],allocation:['bucketId'],release:['bucketId'],reallocation:['bucketId','toBucketId']}[e.kind];
   for(const key of ['fromAccountId','toAccountId','bucketId','toBucketId']) requireThat(e[key]===undefined || allowed.includes(key),'EXTRANEOUS_ROUTING',e.id);
   return {bank,reserve};
 }
-function apply(state, legs, cp) {
+function apply(state, legs, cp, event) {
+  if(event.kind==='account_transfer') {
+    const n=BigInt(event.amountMinor),id=event.fromAccountId;
+    requireThat(state.accounts.get(id)>=n && (!state.unallocated.has(id) || state.unallocated.get(id)>=n),'INSUFFICIENT_TRANSFER_FUNDS',event.id);
+  }
   for(const l of legs.bank) state.accounts.set(l.id,state.accounts.get(l.id)+BigInt(l.amountMinor));
   for(const l of legs.reserve) state.buckets.set(l.id,state.buckets.get(l.id)+BigInt(l.amountMinor));
   for(const a of cp.accounts.filter(a=>a.type==='savings')) state.unallocated.set(a.id,state.accounts.get(a.id)-cp.buckets.filter(b=>b.accountId===a.id).reduce((s,b)=>s+state.buckets.get(b.id),0n));
@@ -77,7 +83,13 @@ function run(input) {
   requireThat(date(input.throughDate) && input.throughDate>=cp.date,'INVALID_WINDOW');
   const events=list(input.events);requireThat(events.length<=10000,'WORK_LIMIT');const byId=unique(events,e=>e.id);
   const origins=new Set();
-  for(const e of events) {requireThat(object(e.origin) && ['scheduled','manual','adjustment'].includes(e.origin.kind) && text(e.origin.id) && text(e.origin.revision),'INVALID_ORIGIN',e.id);const key=JSON.stringify([e.origin.kind,e.origin.id]);requireThat(!origins.has(key),'DUPLICATE_ORIGIN',e.id);origins.add(key);requireThat(date(e.accountingDate) && date(e.assignedDate),'UNKNOWN_EVENT_DATE',e.id);}
+  for(const e of events) {
+    requireThat(date(e.accountingDate) && date(e.assignedDate),'UNKNOWN_EVENT_DATE',e.id);
+    requireThat(object(e.origin) && ['scheduled','manual','adjustment'].includes(e.origin.kind) && text(e.origin.id) && text(e.origin.revision),'INVALID_ORIGIN',e.id);
+    if(e.origin.kind==='scheduled') requireThat(e.origin.occurrenceId===`${e.origin.id}__${e.assignedDate}`,'INVALID_OCCURRENCE',e.id);
+    const key=JSON.stringify([e.origin.kind,e.origin.kind==='scheduled'?e.origin.occurrenceId:e.origin.id]);
+    requireThat(!origins.has(key),'DUPLICATE_ORIGIN',e.id);origins.add(key);
+  }
   const decisions=unique(list(input.boundaryDecisions??[]),d=>d.eventId);const excluded=[],eligible=[];
   for(const d of decisions.values()) requireThat(byId.has(d.eventId) && d.revision===byId.get(d.eventId).origin.revision && text(d.evidenceRef) && ['carry-forward','already-in-opening'].includes(d.kind),'INVALID_BOUNDARY_DECISION',d.eventId);
   for(const e of events) {
@@ -112,7 +124,7 @@ function run(input) {
   for(let i=0;i<eligible.length;i++) for(let j=i+1;j<eligible.length;j++) {
     const a=eligible[i],b=eligible[j];
     const shared=text(a.movementId) && a.movementId===b.movementId;
-    const coincidence=['contribution','withdrawal'].includes(a.kind) && a.kind===b.kind && a.accountingDate===b.accountingDate && a.amountMinor===b.amountMinor && a.fromAccountId===b.fromAccountId && a.toAccountId===b.toAccountId && a.bucketId===b.bucketId;
+    const coincidence=['contribution','withdrawal','account_transfer'].includes(a.kind) && a.kind===b.kind && a.accountingDate===b.accountingDate && a.amountMinor===b.amountMinor && a.fromAccountId===b.fromAccountId && a.toAccountId===b.toAccountId && a.bucketId===b.bucketId;
     if(shared || coincidence) {candidates.push([a.id,b.id]);requireThat(policyFor.has(a.id) && policyFor.get(a.id)===policyFor.get(b.id),'REPRESENTATION_DECISION_REQUIRED',a.id);}
   }
   const accepted=eligible.filter(e=>{const p=policyFor.get(e.id);if(p?.decision==='representative' && p.representativeId!==e.id){excluded.push({id:e.id,reason:'represented-by-policy'});return false;}return true;});
@@ -122,7 +134,7 @@ function run(input) {
   accepted.sort((a,b)=>a.accountingDate<b.accountingDate?-1:a.accountingDate>b.accountingDate?1:a.sequence-b.sequence);
   const validated=stateOf(cp),projected=stateOf(cp),opening=snapshot(validated,cp),ledger=[],months=new Map();
   for(const e of accepted) {
-    const legs=eventLegs(e,refs);apply(projected,legs,cp);if(e.validated)apply(validated,legs,cp);
+    const legs=eventLegs(e,refs);apply(projected,legs,cp,e);if(e.validated)apply(validated,legs,cp,e);
     const month=e.accountingDate.slice(0,7);
     if(!months.has(month)) months.set(month,{month,partialPeriod:month===cp.date.slice(0,7) && cp.date.slice(8)!=='01',validated:{},projected:{}});
     for(const track of ['projected',...(e.validated?['validated']:[])]) {const m=months.get(month)[track];m[e.kind]=String(BigInt(m[e.kind]??'0')+BigInt(e.amountMinor));}

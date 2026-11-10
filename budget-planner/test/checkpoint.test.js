@@ -7,7 +7,11 @@ const cp=()=>({id:'synthetic-checkpoint',date:'2026-12-30',timeZone:'America/Edm
   {id:'S',type:'savings',currency:'CAD',openingMinor:'300000',verified:true,evidenceRef:'s'},
   {id:'S2',type:'savings',currency:'CAD',openingMinor:'10000',verified:true,evidenceRef:'s2'}],
   buckets:[{id:'tax',accountId:'S',openingMinor:'120000',verified:true,evidenceRef:'t'},{id:'emergency',accountId:'S',openingMinor:'150000',verified:true,evidenceRef:'e'},{id:'other',accountId:'S2',openingMinor:'5000',verified:true,evidenceRef:'o'}],unallocated:[{accountId:'S',amountMinor:'30000'},{accountId:'S2',amountMinor:'5000'}]});
-const event=(id,kind,amountMinor,fields={})=>({id,kind,amountMinor,origin:{kind:'scheduled',id,revision:'v1'},currency:'CAD',accountingDate:'2026-12-30',assignedDate:'2026-12-30',validated:true,settlement:'posted',sequence:0,...fields});
+const event=(id,kind,amountMinor,fields={})=>{
+ const value={id,kind,amountMinor,origin:{kind:'scheduled',id,revision:'v1'},currency:'CAD',accountingDate:'2026-12-30',assignedDate:'2026-12-30',validated:true,settlement:'posted',sequence:0,...fields};
+ if(value.origin.kind==='scheduled') value.origin.occurrenceId=`${value.origin.id}__${value.assignedDate}`;
+ return value;
+};
 const fixture=()=>({checkpoint:cp(),throughDate:'2027-01-13',legacyContext:{validated:true,notes:'retain',marker:'old-key',audit:[{evidence:'old'}]},events:[
  event('old','contribution','999',{accountingDate:'2026-12-16',assignedDate:'2026-12-16'}),
  event('salary','income','100000',{toAccountId:'C',sequence:1}),
@@ -102,4 +106,54 @@ test('checkpoint: already-in-opening decisions cannot conceal invalid post-bound
  const h=fixture();h.checkpoint.unallocated=[];blocked(h,'MISSING_UNALLOCATED');
  const i=fixture();i.events[1].validated=true;i.events[1].settlement='forecast';blocked(i,'UNKNOWN_SETTLEMENT');
  const j=fixture();j.events[5].accountingDate='2028-02-30';blocked(j,'UNKNOWN_EVENT_DATE');
+});
+
+test('F1: neutral transfers C→C2, S→S2, C→S and S→C follow independent exact bank ledger without reserve changes',()=>{
+ const f=fixture();f.events=[
+  event('cc','account_transfer','10000',{fromAccountId:'C',toAccountId:'C2',sequence:0}),
+  event('ss','account_transfer','2000',{fromAccountId:'S',toAccountId:'S2',sequence:1}),
+  event('cs','account_transfer','3000',{fromAccountId:'C',toAccountId:'S',sequence:2}),
+  event('sc','account_transfer','1000',{fromAccountId:'S2',toAccountId:'C',sequence:3})];
+ const before=JSON.stringify(f),r=result(f);
+ assert.deepEqual(r.validated.accounts,{C:'188000',C2:'60000',S:'301000',S2:'11000'});
+ assert.deepEqual(r.validated.buckets,{tax:'120000',emergency:'150000',other:'5000'});
+ assert.deepEqual(r.validated.unallocated,{S:'31000',S2:'6000'});
+ assert.equal(r.validated.aggregate.cash,'560000');assert.deepEqual(r.projected,r.validated);
+ for(const row of r.ledger){assert.equal(row.legs.bank.length,2);assert.equal(BigInt(row.legs.bank[0].amountMinor)+BigInt(row.legs.bank[1].amountMinor),0n);assert.deepEqual(row.legs.reserve,[]);}
+ assert.deepEqual(r.monthlyReports[0].validated,{account_transfer:'16000'});assert.equal(JSON.stringify(f),before);
+});
+test('F1: transfers reject self/unknown/bucket routes and cannot spend reserved savings or an overdraft facility',()=>{
+ for(const [from,to,amount,code] of [['C','C','1','SELF_TRANSFER'],['missing','S','1','INVALID_EVENT_ACCOUNT'],['S','missing','1','INVALID_EVENT_ACCOUNT'],['S','C','30001','INSUFFICIENT_TRANSFER_FUNDS'],['S2','S','5001','INSUFFICIENT_TRANSFER_FUNDS'],['C','C2','200001','INSUFFICIENT_TRANSFER_FUNDS']]) {
+  const f=fixture();f.checkpoint.accounts[0].allowOverdraft=true;f.events=[event('transfer','account_transfer',amount,{fromAccountId:from,toAccountId:to})];blocked(f,code);
+ }
+ const f=fixture();f.events=[event('transfer','account_transfer','1',{fromAccountId:'C',toAccountId:'S',bucketId:'tax'})];blocked(f,'EXTRANEOUS_ROUTING');
+});
+test('F1: transfer forecasts stay projected; confirmed transfer cannot depend on unconfirmed available funds',()=>{
+ const f=fixture();f.events=[event('forecast','account_transfer','1',{fromAccountId:'C',toAccountId:'S',validated:false,settlement:'forecast'})];
+ const r=result(f);assert.equal(r.projected.accounts.S,'300001');assert.equal(r.validated.accounts.S,'300000');assert.equal(r.projected.buckets.tax,'120000');
+ f.events=[event('deposit','income','1000',{toAccountId:'S',validated:false,settlement:'forecast'}),event('transfer','account_transfer','30001',{fromAccountId:'S',toAccountId:'C',sequence:1})];blocked(f,'INSUFFICIENT_TRANSFER_FUNDS');
+});
+test('F1: duplicate manual/scheduled neutral transfers require explicit representation decisions',()=>{
+ const f=fixture();const a=event('scheduled','account_transfer','100',{fromAccountId:'C',toAccountId:'S'});const b={...a,id:'manual',origin:{kind:'manual',id:'m',revision:'v1'},sequence:1};f.events=[a,b];blocked(f,'REPRESENTATION_DECISION_REQUIRED');
+ f.representationPolicies=[{eventIds:['scheduled','manual'],decision:'representative',representativeId:'scheduled',evidenceRef:'same bank movement'}];assert.equal(result(f).validated.accounts.C,'199900');
+});
+test('F2: one stable recurring source spans 2026/2027/2028 with unique original occurrence keys and revisions',()=>{
+ const f=fixture();f.throughDate='2028-12-31';const source='salary__stable';
+ f.events=['2026-12-30','2027-01-13','2027-12-29','2028-01-12'].map((d,i)=>event(`event-${i}`,'income','100',{assignedDate:d,accountingDate:d,toAccountId:'C',origin:{kind:'scheduled',id:source,revision:i<2?'v1':'v2'}}));
+ const before=JSON.stringify(f),r=result(f);assert.equal(r.validated.accounts.C,'200400');assert.equal(r.ledger.length,4);
+ assert.deepEqual(r.ledger.map(x=>x.origin.id),Array(4).fill(source));
+ assert.deepEqual(r.ledger.map(x=>x.origin.occurrenceId),f.events.map(x=>`${source}__${x.assignedDate}`));assert.equal(JSON.stringify(f),before);
+ // Different event ID, posting date and revision cannot replay the same original occurrence.
+ f.events.push({...f.events[0],id:'duplicate',accountingDate:'2027-02-01',origin:{...f.events[0].origin,revision:'v3'}});blocked(f,'DUPLICATE_ORIGIN');
+});
+test('F2: missing/mismatched occurrence identity rejects without rekeying; non-scheduled identities remain record-specific',()=>{
+ const f=fixture();delete f.events[1].origin.occurrenceId;blocked(f,'INVALID_OCCURRENCE');
+ f.events[1].origin.occurrenceId='other__2026-12-30';blocked(f,'INVALID_OCCURRENCE');
+ const g=fixture();g.events=[event('manual1','income','1',{toAccountId:'C',origin:{kind:'manual',id:'record',revision:'v1'}}),event('manual2','income','1',{toAccountId:'C',sequence:1,origin:{kind:'manual',id:'record',revision:'v2'}})];blocked(g,'DUPLICATE_ORIGIN');
+});
+test('F3: pre-anchor aligned/unaligned checkpoints reject, equal anchor and later cadence boundaries remain valid',()=>{
+ const f=fixture();f.events=[];
+ for(const d of ['2026-12-02','2026-12-15']){f.checkpoint.date=d;blocked(f,'CHECKPOINT_BEFORE_ANCHOR');}
+ for(const d of ['2026-12-16','2026-12-30','2027-01-13']){f.checkpoint.date=d;assert.deepEqual(result(f).cadence,{originalAnchor:'2026-12-16',frequencyDays:14,timeZone:'America/Edmonton'});}
+ f.checkpoint.date='2027-01-12';blocked(f,'OFF_CADENCE_CHECKPOINT');
 });
