@@ -87,9 +87,9 @@ test('checkpoint: no implicit intraday ordering, future incomplete routing block
 });
 
 test('checkpoint: covered opening and forward record cannot both claim the same movement',()=>{
- const f=fixture();const a={...f.events[2],id:'covered',origin:{kind:'manual',id:'covered',revision:'v1'},movementId:'one'};f.events[2].movementId='one';f.events.push(a);
+ const f=fixture();const a={...f.events[2],id:'covered',origin:{kind:'manual',id:'covered',revision:'v1'},accountingDate:'2026-12-29',movementId:'one'};f.events[2].movementId='one';f.events.push(a);
  f.boundaryDecisions=[{eventId:'covered',revision:'v1',kind:'already-in-opening',evidenceRef:'s'}];blocked(f,'OPENING_REPRESENTATION_CONFLICT');
- f.boundaryDecisions.push({eventId:'save',revision:'v1',kind:'already-in-opening',evidenceRef:'s'});assert.equal(result(f).validated.accounts.S,'240000');
+ f.boundaryDecisions.push({eventId:'save',revision:'v1',kind:'already-in-opening',evidenceRef:'s'});blocked(f,'OPENING_DATE_CONFLICT');f.events[2].accountingDate='2026-12-29';assert.equal(result(f).validated.accounts.S,'240000');
 });
 test('checkpoint: original prospective source revisions remain untouched; inactive accounts and tiny money remain exact',()=>{
  const f=fixture();f.events=[event('tiny','income','1',{toAccountId:'C2'})];const before=JSON.stringify(f);assert.equal(result(f).validated.accounts.C2,'50001');assert.equal(JSON.stringify(f),before);

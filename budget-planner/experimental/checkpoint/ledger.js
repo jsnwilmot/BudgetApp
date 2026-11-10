@@ -87,7 +87,7 @@ function run(input) {
       requireThat(kinds.includes(e.kind) && money(e.amountMinor) && BigInt(e.amountMinor)>0n && e.currency===cp.currency && (e.movementId===undefined || text(e.movementId)),'INVALID_EVENT_MONEY_OR_KIND',e.id);
       eventLegs(e,refs);
     }
-    if(d?.kind==='already-in-opening') {requireThat(e.settlement==='posted','OPENING_NOT_POSTED',e.id);excluded.push({id:e.id,reason:'already-in-opening'});continue;}
+    if(d?.kind==='already-in-opening') {requireThat(e.accountingDate<cp.date,'OPENING_DATE_CONFLICT',e.id);requireThat(e.settlement==='posted','OPENING_NOT_POSTED',e.id);excluded.push({id:e.id,reason:'already-in-opening'});continue;}
     if(e.accountingDate<cp.date) {requireThat(!d && e.assignedDate<cp.date,'BOUNDARY_DECISION_REQUIRED',e.id);excluded.push({id:e.id,reason:'legacy'});continue;}
     requireThat(crossing ? d?.kind==='carry-forward' : !d,'BOUNDARY_DECISION_REQUIRED',e.id);
     requireThat(kinds.includes(e.kind) && money(e.amountMinor) && BigInt(e.amountMinor)>0n && e.currency===cp.currency,'INVALID_EVENT_MONEY_OR_KIND',e.id);
