@@ -278,6 +278,105 @@ test('adapter: account/bucket coverage includes inactive assets; unsupported cre
   const h = fixture(); h.data.savingsBuckets[0].linkedAccountId = 'demonstration-missing'; bad(h, 'BUCKET_ASSOCIATION_CONFLICT');
 });
 
+const excludedUnsupported = (type = 'credit') => {
+  const f = fixture(), account = { id: 'X', type, active: false, startingBalance: '0', audit: [{ id: 'original-X' }] };
+  f.data.accounts.push(account);
+  f.decisions.excludedAccounts = [{ ...bind('accounts', account.id, account), evidenceRef: 'synthetic-unused-X' }];
+  return f;
+};
+const recurringUnsupportedExpense = (f, fields = {}) => {
+  const source = { id: 'recurring-charge', type: 'expense', accountId: 'X', active: true, amount: '1.00',
+    frequency: 'biweekly', startDate: '2026-12-30', audit: [{ id: 'original-source' }], ...fields };
+  f.data.scheduledItems.push(source); return source;
+};
+
+test('A1: active scheduled expense blocks unsupported exclusion even with empty supplied intents; original graph is immutable', () => {
+  const f = excludedUnsupported(); recurringUnsupportedExpense(f);
+  const before = sourceRevision(f), r = bad(deepFreeze(f), 'UNSUPPORTED_ACCOUNT_REFERENCED');
+  assert.deepEqual(f.intents, []); assert.deepEqual(f.data.plannerEntries, {});
+  assert.ok(r.diagnostics.some(d => d.code === 'UNSUPPORTED_ACCOUNT_REFERENCED' && d.ref === ref('accounts', 'X')));
+  assert.ok(r.diagnostics.some(d => d.code === 'UNRESOLVED_SOURCE_COVERAGE' && d.ref === ref('scheduledItems', 'recurring-charge')));
+  assert.ok(!r.diagnostics.some(d => d.code === 'UNSUPPORTED_ACCOUNT_EXCLUDED'));
+  assert.notEqual(r.manifest.records.find(i => i.ref === ref('accounts', 'X')).disposition, 'qualified-unsupported-account');
+  assert.equal(r.manifest.records.find(i => i.ref === ref('scheduledItems', 'recurring-charge')).disposition, 'unresolved');
+  assert.equal(sourceRevision(f), before); assert.deepEqual(r.manifest.original, f.data);
+  assert.ok(Object.isFrozen(r.manifest.original.scheduledItems[0].audit));
+});
+
+test('A1: active source checks cover both bank endpoints and every bucket/account association alias', () => {
+  for (const field of ['accountId', 'fromAccountId', 'toAccountId']) {
+    const f = excludedUnsupported(); recurringUnsupportedExpense(f, { accountId: undefined, [field]: 'X' });
+    bad(deepFreeze(f), 'UNSUPPORTED_ACCOUNT_REFERENCED');
+  }
+  for (const field of ['bucketId', 'savingsBucketId', 'fromBucketId', 'toBucketId']) {
+    for (const accountField of ['linkedAccountId', 'accountId']) {
+      const f = excludedUnsupported(); recurringUnsupportedExpense(f, { accountId: undefined, [field]: 'tax' });
+      // Conflicting aliases must not hide the unsupported endpoint. Existing
+      // bucket-integrity errors also remain blocking, independently of A1.
+      f.data.savingsBuckets[0][accountField] = 'X';
+      bad(deepFreeze(f), 'UNSUPPORTED_ACCOUNT_REFERENCED');
+    }
+  }
+});
+
+test('A1: absent or uncertain activity flags and source dates cannot establish unused coverage by inference', () => {
+  for (const active of [undefined, null, 'false', 0, true]) {
+    const f = excludedUnsupported(); recurringUnsupportedExpense(f, { active, endDate: '2020-01-01' });
+    bad(f, 'UNSUPPORTED_ACCOUNT_REFERENCED');
+  }
+});
+
+test('A1: genuinely unused inactive zero unsupported accounts still qualify with exact evidence and no invented postings', () => {
+  for (const type of ['credit', 'cash', 'other']) {
+    const f = excludedUnsupported(type); recurringUnsupportedExpense(f, { accountId: 'C' });
+    const before = sourceRevision(f), r = good(deepFreeze(f));
+    assert.equal(r.manifest.records.find(i => i.ref === ref('accounts', 'X')).disposition, 'qualified-unsupported-account');
+    assert.ok(r.diagnostics.some(d => d.code === 'UNSUPPORTED_ACCOUNT_EXCLUDED' && d.severity === 'warning'));
+    assert.deepEqual(r.events, []); assert.deepEqual(r.calculation.ledger, []);
+    assert.equal(r.calculation.validated.aggregate.cash, '560000'); assert.equal(r.calculation.validated.accounts.X, undefined);
+    assert.equal(r.manifest.coverage, 'synthetic-supplied-members-only'); assert.equal(sourceRevision(f), before);
+  }
+});
+
+test('A1: inactive sources cannot permit unsupported references in future saved entries or supplied prospective intents', () => {
+  for (const intent of [false, true]) {
+    const f = excludedUnsupported();
+    const record = scheduled(f, 'future-charge', '1', { kind: 'expense', fromAccountId: 'X' },
+      { intent, status: 'forecast', assigned: '2028-01-12' });
+    Object.assign(f.data.scheduledItems[0], { active: false, accountId: 'X' }); refresh(f);
+    const before = sourceRevision(f), r = bad(deepFreeze(f), 'INVALID_ACCOUNT_REFERENCE');
+    assert.ok(record.payPeriodDate > f.throughDate);
+    assert.deepEqual(r.manifest.records.find(i => i.collection === (intent ? 'intents' : 'plannerEntries')).original, record);
+    assert.equal(sourceRevision(f), before);
+  }
+});
+
+test('A1: explicitly scoped legacy-only unsupported references stay qualified without replay or changing validation/audits', () => {
+  const f = excludedUnsupported();
+  const record = scheduled(f, 'old-charge', '100', { kind: 'expense', fromAccountId: 'X' },
+    { assigned: '2026-12-16', record: { validated: true, historicalSourceNeedsReview: true } });
+  Object.assign(f.data.scheduledItems[0], { active: false, accountId: 'X' });
+  f.decisions.postings = []; f.decisions.routing = [];
+  f.decisions.legacy = [{ ...bind('plannerEntries', record.entryKey, record), accountingDate: '2026-12-16', evidenceRef: 'synthetic-pre-T' }];
+  const before = sourceRevision(f), r = good(deepFreeze(f));
+  assert.ok(r.legacyExceptions.some(d => d.code === 'LEGACY_ACCOUNT_TYPE_UNSUPPORTED'));
+  const preserved = r.manifest.original.plannerEntries[record.entryKey];
+  assert.equal(preserved.validated, true); assert.equal(preserved.historicalSourceNeedsReview, true);
+  assert.deepEqual(preserved.historicalSourceCorrections, record.historicalSourceCorrections);
+  assert.equal(r.manifest.records.find(i => i.key === record.entryKey).disposition, 'legacy-context');
+  assert.equal(r.calculation.validated.aggregate.cash, '560000');
+  assert.deepEqual(r.calculation.monthlyReports, []); assert.deepEqual(r.events, []); assert.equal(sourceRevision(f), before);
+});
+
+test('A1: source coverage does not weaken evidence, active-account or nonzero-balance exclusion guards', () => {
+  for (const change of [{ active: true }, { startingBalance: '0.01' }]) {
+    const f = excludedUnsupported(); Object.assign(f.data.accounts.at(-1), change); refresh(f);
+    bad(f, 'MATERIAL_UNSUPPORTED_ACCOUNT');
+  }
+  const f = excludedUnsupported(); f.decisions.excludedAccounts[0].evidenceRef = '';
+  bad(f, 'DUPLICATE_OR_UNEVIDENCED_DECISION');
+});
+
 test('adapter: old starts are preserved context, not replayed into independently evidenced checkpoint openings', () => {
   const f = fixture(); f.data.accounts[0].startingBalance = '999999.99'; f.data.savingsBuckets[0].startingAmount = '888888.88';
   const r = good(deepFreeze(f));

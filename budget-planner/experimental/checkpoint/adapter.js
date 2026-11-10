@@ -170,12 +170,33 @@ function run(input, out) {
     });
   }
   const cpAccounts = new Map(cp.accounts.map(a => [a.id, a])), cpBuckets = new Map(cp.buckets.map(b => [b.id, b]));
+  // An omitted intent list is not evidence that a referenced account is unused.
+  // Inspect the supplied source graph only: no recurrence/date/posting inference.
+  const prospectiveAccountSources = new Map();
+  for (const source of indexed.scheduledItems.values()) {
+    if (source.original.active === false) continue;
+    const accountIds = new Set(['accountId', 'fromAccountId', 'toAccountId'].map(k => source.original[k]));
+    for (const field of ['bucketId', 'savingsBucketId', 'fromBucketId', 'toBucketId']) {
+      const bucket = indexed.savingsBuckets.get(source.original[field])?.original;
+      if (bucket) { accountIds.add(bucket.linkedAccountId); accountIds.add(bucket.accountId); }
+    }
+    for (const id of accountIds) if (text(id)) {
+      if (!prospectiveAccountSources.has(id)) prospectiveAccountSources.set(id, []);
+      prospectiveAccountSources.get(id).push(source);
+    }
+  }
   for (const item of indexed.accounts.values()) attempt(item.ref, () => {
     const account = item.original, excluded = maps.excludedAccounts.get(item.ref);
     if (!['chequing', 'savings'].includes(account.type)) {
       if (excluded) {
         need(account.active === false && decimalToMinor(account.startingBalance, cp.currency) === '0' && !cpAccounts.has(account.id), 'MATERIAL_UNSUPPORTED_ACCOUNT');
-        used.add(excluded); item.disposition = 'qualified-unsupported-account';
+        used.add(excluded);
+        const sources = prospectiveAccountSources.get(account.id) ?? [];
+        for (const source of sources) {
+          source.disposition = 'unresolved'; report('UNRESOLVED_SOURCE_COVERAGE', source.ref);
+        }
+        need(sources.length === 0, 'UNSUPPORTED_ACCOUNT_REFERENCED');
+        item.disposition = 'qualified-unsupported-account';
         report('UNSUPPORTED_ACCOUNT_EXCLUDED', item.ref, 'warning'); return;
       }
       fail('UNSUPPORTED_ACCOUNT_TYPE');

@@ -96,7 +96,7 @@ Final exact-head suite counts and Windows/Linux CI links are recorded in the
 draft PR after final validation. Prior accepted Stage 1 evidence is not reused
 as proof of this adapter.
 
-Final local Linux / Node v24.19.0 validation of the delivered code:
+Original delivery local Linux / Node v24.19.0 validation at `5f3ac81`:
 
 | Suite/check | Passed | Failed | Skipped |
 | --- | ---: | ---: | ---: |
@@ -112,6 +112,37 @@ in the draft PR; local Node 24 results do not establish Windows/Node 22 support.
 No browser/PWA/IndexedDB/migration/backup/real-data/activation testing was run or
 claimed for this phase. These are not implemented here; browser/storage
 acceptance is a separately authorized 2B–E responsibility.
+
+## Architect A1 correction
+
+Review [5847734016](https://github.com/jsnwilmot/BudgetApp/pull/18#pullrequestreview-5847734016)
+found that an inactive zero-start unsupported account could be qualified as
+unused despite an active expense source referencing it with empty supplied
+intents. The new pre-exclusion graph check examines exact scheduled bank
+endpoints and bucket aliases/associations. Sources not explicitly inactive
+produce blocking account/source diagnostics before qualification; no recurring
+occurrence or posting is generated. Original source/account/audit records remain
+unchanged. Explicitly inactive legacy-only references can remain qualified,
+and existing forward saved/intent routing checks still block unsupported use.
+
+Seven new A1 synthetic tests cover the reproduced active expense/empty-intent
+case, direct endpoints and indirect bucket aliases, unknown activity flags/old
+source dates, genuine unused credit/cash/other accounts with evidence, future
+saved entries/intents beyond the window, qualified pre-T history, immutable
+originals and unchanged material-account/evidence guards. Before the fix, the
+focused reproduction run had **4 passed / 3 failed / 0 skipped**. After the fix,
+the entire adapter suite has **50 passed / 0 failed / 0 skipped**. The final PR
+records full regression/security and exact-head Windows/Linux CI evidence.
+
+Final local Linux / Node 24.19.0 A1 validation: full regression/checkpoint/adapter
+**171 passed / 0 failed / 0 skipped**; CLI/security **10 passed / 0 failed /
+0 skipped**. Lint, production build and diff checks PASS. Existing advisory
+notices only; no security assertions or negative controls were weakened.
+
+This reference check deliberately treats sources with active missing/uncertain
+or old/out-of-window date fields as unresolved prospective use unless explicitly
+inactive. It is not a recurrence-completeness proof or an excluded-source policy.
+All earlier Stage 2A limitations and the independent Architect review gate remain.
 
 ## Limitations and independent Architect gates
 

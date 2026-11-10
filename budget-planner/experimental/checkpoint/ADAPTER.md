@@ -42,6 +42,22 @@ excluded with evidence **and inactive, zero-start and unused**. Such exclusion
 is qualified coverage, never verified net worth/debt. Legacy broken snapshots
 can remain qualified context without invalidating separately evidenced openings.
 
+Before allowing an unsupported-account exclusion, inspect the supplied
+scheduled-source graph: accountId/fromAccountId/toAccountId and
+bucketId/savingsBucketId/fromBucketId/toBucketId, following both bucket
+linkedAccountId/accountId aliases. Any source **not explicitly active=false**
+that references the account blocks with UNSUPPORTED_ACCOUNT_REFERENCED on the
+account and UNRESOLVED_SOURCE_COVERAGE on the source; it cannot receive the
+qualified exclusion warning/disposition. No source-scoped exclusion override is
+implemented. This is deliberately conservative even for a source with old or
+out-of-window dates: no recurrence/date analysis proves that source unused.
+Explicitly inactive sources and evidenced pre-T legacy snapshots may remain
+qualified historical references; forward saved/intent routing to an unsupported
+account still blocks independently, including records after throughDate.
+The graph check does **not** establish completeness of the supplied future
+intent list, generate recurring transactions or infer bank postings. Recurrence
+completeness remains a separately reviewed future integration obligation.
+
 ## Decisions (all synthetic, exact membership)
 
 All decisions require nonblank evidenceRef. Monetary/date/status/order decisions
