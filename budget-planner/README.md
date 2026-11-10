@@ -878,3 +878,7 @@ See [account configuration findings and historical reconciliation proposal](docs
 `tools/reconcile/cli.mjs` is a standalone Node 22+ local, read-only backup analyzer with explicit cohort selectors. It prints only aggregate counts/fixed risks, separates bill expenses from contributions, compares exact saved validated money, traces current representation and flags possible manual/withdrawal/adjustment overlap. It offers no repair, dump, output-file or network mode and does not start the app or database. Existing application behavior is unchanged.
 
 See the [operator/security guide](tools/reconcile/README.md) for assumptions, limits, CLI/exit codes and Windows PowerShell steps. **Do not run on private financial data until independent Architect/security review and separate owner run approval.** Tests use synthetic data exclusively: `npm test` and `npm run test:cli`. Original backups must remain untouched and outside repository/Codex access.
+
+### Experimental checkpoint foundation — Stage 1 only
+
+[Contract](experimental/checkpoint/CONTRACT.md), [pure engine](experimental/checkpoint/ledger.js) and [Stage 2 integration requirements](experimental/checkpoint/INTEGRATION.md) implement Issue #14's isolated synthetic-only read-only preview. No production app, database or backup path imports it. `npm test` includes independent checkpoint reference-ledger tests. It does not activate a real checkpoint, repair history, change existing financial calculations or implement perpetual Planner navigation. Stage 2 and real-data use require separate approval.
