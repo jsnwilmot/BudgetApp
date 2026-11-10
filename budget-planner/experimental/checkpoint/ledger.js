@@ -116,8 +116,11 @@ function run(input) {
     requireThat(object(p) && text(p.evidenceRef) && ['distinct','representative'].includes(p.decision) && Array.isArray(p.eventIds) && p.eventIds.length>=2 && new Set(p.eventIds).size===p.eventIds.length,'INVALID_REPRESENTATION_POLICY');
     for(const id of p.eventIds) {requireThat(eligible.some(e=>e.id===id) && !policyFor.has(id),'INVALID_REPRESENTATION_MEMBER',id);policyFor.set(id,p);}
     const members=p.eventIds.map(id=>byId.get(id));
-    requireThat(members.every(e=>signature(e)===signature(members[0])),'INCOMPATIBLE_REPRESENTATION');
-    if(p.decision==='representative') requireThat(p.eventIds.includes(p.representativeId),'INVALID_REPRESENTATIVE');
+    if(p.decision==='representative') {
+      // Suppression requires equivalence; distinct evidence never suppresses a member.
+      requireThat(members.every(e=>signature(e)===signature(members[0])),'INCOMPATIBLE_REPRESENTATION');
+      requireThat(p.eventIds.includes(p.representativeId),'INVALID_REPRESENTATIVE');
+    }
     else requireThat(new Set(members.filter(e=>e.movementId).map(e=>e.movementId)).size===members.filter(e=>e.movementId).length,'CONFLICTING_MOVEMENT_CLAIM');
   }
   const candidates=[];

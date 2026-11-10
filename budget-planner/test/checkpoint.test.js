@@ -157,3 +157,56 @@ test('F3: pre-anchor aligned/unaligned checkpoints reject, equal anchor and late
  for(const d of ['2026-12-16','2026-12-30','2027-01-13']){f.checkpoint.date=d;assert.deepEqual(result(f).cadence,{originalAnchor:'2026-12-16',frequencyDays:14,timeZone:'America/Edmonton'});}
  f.checkpoint.date='2027-01-12';blocked(f,'OFF_CADENCE_CHECKPOINT');
 });
+
+const distinctPair=(kind='account_transfer')=>{
+ const f=fixture();f.events=[
+  event('left',kind,'1000',{accountingDate:'2027-01-13',assignedDate:'2026-12-30',fromAccountId:'C',toAccountId:'S',sequence:0,origin:{kind:'scheduled',id:'repeat',revision:'v1'},...(kind==='contribution'?{bucketId:'tax'}:{})}),
+  event('right',kind,'1000',{accountingDate:'2027-01-13',assignedDate:'2027-01-13',fromAccountId:'C',toAccountId:'S',sequence:1,origin:{kind:'scheduled',id:'repeat',revision:'v1'},...(kind==='contribution'?{bucketId:'tax'}:{})})];
+ f.representationPolicies=[{eventIds:['left','right'],decision:'distinct',evidenceRef:'Synthetic two independent bank movements'}];return f;
+};
+test('F4: evidenced DISTINCT permits same posting/value/routing across original pay periods',()=>{
+ const f=distinctPair(),before=JSON.stringify(f);const r=result(freeze(f));
+ assert.deepEqual(r.validated.accounts,{C:'198000',C2:'50000',S:'302000',S2:'10000'});
+ assert.deepEqual(r.projected,r.validated);assert.deepEqual(r.validated.buckets,{tax:'120000',emergency:'150000',other:'5000'});
+ assert.deepEqual(r.validated.unallocated,{S:'32000',S2:'5000'});assert.equal(r.validated.aggregate.cash,'560000');
+ assert.equal(r.ledger.length,2);assert.equal(r.excluded.length,0);assert.deepEqual(r.candidates,[['left','right']]);
+ assert.deepEqual(r.monthlyReports[0].validated,{account_transfer:'2000'});
+ assert.deepEqual(r.ledger.map(e=>e.assignedDate),['2026-12-30','2027-01-13']);assert.equal(JSON.stringify(f),before);
+});
+test('F4: DISTINCT posted/forecast contributions in one pay period preserve separate validated/projected reserves',()=>{
+ const f=distinctPair('contribution');const b=f.events[1];b.assignedDate=f.events[0].assignedDate;b.origin={kind:'manual',id:'separate-transfer',revision:'v1'};b.validated=false;b.settlement='forecast';
+ const before=JSON.stringify(f),r=result(freeze(f));
+ assert.equal(r.validated.accounts.C,'199000');assert.equal(r.validated.accounts.S,'301000');assert.equal(r.validated.buckets.tax,'121000');
+ assert.equal(r.projected.accounts.C,'198000');assert.equal(r.projected.accounts.S,'302000');assert.equal(r.projected.buckets.tax,'122000');
+ assert.deepEqual(r.projected.unallocated,{S:'30000',S2:'5000'});assert.deepEqual(r.validated.unallocated,r.projected.unallocated);
+ assert.equal(r.monthlyReports[0].validated.contribution,'1000');assert.equal(r.monthlyReports[0].projected.contribution,'2000');assert.equal(r.monthlyReports[0].validated.expense,undefined);
+ assert.equal(JSON.stringify(f),before);
+});
+test('F4: DISTINCT never bypasses duplicate occurrences, shared movement claims, evidence or ordering',()=>{
+ const f=distinctPair();f.events[1].assignedDate=f.events[0].assignedDate;f.events[1].origin.occurrenceId=f.events[0].origin.occurrenceId;blocked(f,'DUPLICATE_ORIGIN');
+ const g=distinctPair();g.events[0].movementId='one-bank-movement';g.events[1].movementId='one-bank-movement';blocked(g,'CONFLICTING_MOVEMENT_CLAIM');
+ const h=distinctPair();h.representationPolicies[0].evidenceRef=' ';blocked(h,'INVALID_REPRESENTATION_POLICY');
+ const i=distinctPair();i.events[1].sequence=0;blocked(i,'AMBIGUOUS_EVENT_ORDER');
+ const j=distinctPair();j.representationPolicies=[];blocked(j,'REPRESENTATION_DECISION_REQUIRED');
+});
+test('F4: REPRESENTATIVE still rejects different periods, settlement/validation, money and routing',()=>{
+ for(const variant of ['period','status','amount','route']){
+  const f=distinctPair();const a=f.events[0],b=f.events[1];b.assignedDate=a.assignedDate;b.origin={kind:'manual',id:'duplicate-record',revision:'v1'};
+  if(variant==='period')b.assignedDate='2027-01-13';
+  if(variant==='status'){b.validated=false;b.settlement='forecast';}
+  if(variant==='amount')b.amountMinor='1001';
+  if(variant==='route')b.toAccountId='S2';
+  f.representationPolicies=[{eventIds:['left','right'],decision:'representative',representativeId:'left',evidenceRef:'Synthetic purported duplicate'}];blocked(f,'INCOMPATIBLE_REPRESENTATION');
+ }
+});
+test('F4: exact confirmed duplicate may choose one representative with both originals preserved',()=>{
+ const f=distinctPair();const a=f.events[0],b=f.events[1];b.assignedDate=a.assignedDate;b.origin={kind:'manual',id:'duplicate-record',revision:'v1'};a.movementId=b.movementId='one-bank-movement';
+ f.representationPolicies=[{eventIds:['left','right'],decision:'representative',representativeId:'right',evidenceRef:'Synthetic same actual movement'}];
+ const before=JSON.stringify(f),r=result(freeze(f));assert.equal(r.ledger.length,1);assert.equal(r.ledger[0].eventId,'right');assert.deepEqual(r.excluded,[{id:'left',reason:'represented-by-policy'}]);
+ assert.equal(r.validated.accounts.C,'199000');assert.equal(r.validated.accounts.S,'301000');assert.equal(r.validated.unallocated.S,'31000');assert.deepEqual(r.projected,r.validated);assert.equal(JSON.stringify(f),before);
+});
+test('F4: DISTINCT cannot bypass eligible membership or sufficient funds',()=>{
+ const f=distinctPair();f.representationPolicies[0].eventIds.push('unknown');blocked(f,'INVALID_REPRESENTATION_MEMBER');
+ const g=distinctPair();g.representationPolicies.push({...g.representationPolicies[0]});blocked(g,'INVALID_REPRESENTATION_MEMBER');
+ const h=distinctPair();h.events[0].amountMinor=h.events[1].amountMinor='150000';blocked(h,'INSUFFICIENT_TRANSFER_FUNDS');
+});
