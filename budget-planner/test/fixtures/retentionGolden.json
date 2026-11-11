@@ -1,0 +1,778 @@
+{
+  "empty": {
+    "plan": {
+      "planId": "c6f7d57cf705d2c7523c8fd13f770df46657f4495a52cd3792bc224237fdfa5c",
+      "body": {
+        "profile": "P1.1a-RETENTION-PLAN-1",
+        "modelOnly": true,
+        "experimentOnly": true,
+        "source": {
+          "sha": "7bd40fdb0dc23ec94fbc1a522260d0403b1f22ec",
+          "instanceId": "vector-instance",
+          "generation": "local-g",
+          "modelRoot": "5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1",
+          "indexRoot": "8b47f02ae6f5afdec8a5888eed93ef1e8b606a290943f9d18a73143af8f47599",
+          "inventoryDigest": "7ebacfbbdee3e8c4509c97f9462411467d8c31c09ea2ae40c33db2d150d08a19",
+          "census": {
+            "objects": 3,
+            "bytes": 1010,
+            "byKind": {
+              "map": {
+                "count": 1,
+                "bytes": 226
+              },
+              "data-root": {
+                "count": 1,
+                "bytes": 350
+              },
+              "model-root": {
+                "count": 1,
+                "bytes": 434
+              }
+            }
+          }
+        },
+        "policy": {
+          "fullInventoryPinned": false,
+          "roots": "all-non-map-plus-pins",
+          "kept": "source-minus-exclusions"
+        },
+        "manifests": {
+          "roots": {
+            "tip": "f43e67ada2cf1da2b94f7e5227769ae6aebdb7c85a70a15fac60e4f48e6c8726",
+            "pages": 1,
+            "rows": 2,
+            "bytes": 136
+          },
+          "excluded": {
+            "tip": null,
+            "pages": 0,
+            "rows": 0,
+            "bytes": 0
+          },
+          "pins": {
+            "tip": null,
+            "pages": 0,
+            "rows": 0,
+            "bytes": 0
+          }
+        },
+        "candidate": {
+          "keptCount": 3,
+          "keptBytes": 1010,
+          "excludedMapCount": 0,
+          "excludedMapBytes": 0,
+          "protectedMapCount": 1,
+          "protectedMapBytes": 226,
+          "byKind": {
+            "map": {
+              "count": 1,
+              "bytes": 226
+            },
+            "data-root": {
+              "count": 1,
+              "bytes": 350
+            },
+            "model-root": {
+              "count": 1,
+              "bytes": 434
+            }
+          },
+          "ordinalPolicy": "source-gaps-preserved"
+        },
+        "accounting": {
+          "pageBytes": 136,
+          "headerBytes": 1732,
+          "verificationBytes": 448,
+          "overheadBytes": 2316,
+          "accountedBytes": 3326,
+          "mapDelta": {
+            "direction": "increase",
+            "bytes": 2316,
+            "basisPoints": 102477
+          },
+          "totalDelta": {
+            "direction": "increase",
+            "bytes": 2316,
+            "basisPoints": 22930
+          },
+          "mapGoal": false,
+          "totalGoal": false,
+          "noRegression": false
+        },
+        "qualifications": [
+          "MODEL_ONLY",
+          "EXPERIMENT_ONLY",
+          "NOT_P1_INVENTORY",
+          "NOT_BACKUP",
+          "NOT_RESTORE",
+          "WRITER_INDEX_NATIVE_COST_UNKNOWN"
+        ]
+      }
+    },
+    "canonical": "{\"body\":{\"accounting\":{\"accountedBytes\":3326,\"headerBytes\":1732,\"mapDelta\":{\"basisPoints\":102477,\"bytes\":2316,\"direction\":\"increase\"},\"mapGoal\":false,\"noRegression\":false,\"overheadBytes\":2316,\"pageBytes\":136,\"totalDelta\":{\"basisPoints\":22930,\"bytes\":2316,\"direction\":\"increase\"},\"totalGoal\":false,\"verificationBytes\":448},\"candidate\":{\"byKind\":{\"data-root\":{\"bytes\":350,\"count\":1},\"map\":{\"bytes\":226,\"count\":1},\"model-root\":{\"bytes\":434,\"count\":1}},\"excludedMapBytes\":0,\"excludedMapCount\":0,\"keptBytes\":1010,\"keptCount\":3,\"ordinalPolicy\":\"source-gaps-preserved\",\"protectedMapBytes\":226,\"protectedMapCount\":1},\"experimentOnly\":true,\"manifests\":{\"excluded\":{\"bytes\":0,\"pages\":0,\"rows\":0,\"tip\":null},\"pins\":{\"bytes\":0,\"pages\":0,\"rows\":0,\"tip\":null},\"roots\":{\"bytes\":136,\"pages\":1,\"rows\":2,\"tip\":\"f43e67ada2cf1da2b94f7e5227769ae6aebdb7c85a70a15fac60e4f48e6c8726\"}},\"modelOnly\":true,\"policy\":{\"fullInventoryPinned\":false,\"kept\":\"source-minus-exclusions\",\"roots\":\"all-non-map-plus-pins\"},\"profile\":\"P1.1a-RETENTION-PLAN-1\",\"qualifications\":[\"MODEL_ONLY\",\"EXPERIMENT_ONLY\",\"NOT_P1_INVENTORY\",\"NOT_BACKUP\",\"NOT_RESTORE\",\"WRITER_INDEX_NATIVE_COST_UNKNOWN\"],\"source\":{\"census\":{\"byKind\":{\"data-root\":{\"bytes\":350,\"count\":1},\"map\":{\"bytes\":226,\"count\":1},\"model-root\":{\"bytes\":434,\"count\":1}},\"bytes\":1010,\"objects\":3},\"generation\":\"local-g\",\"indexRoot\":\"8b47f02ae6f5afdec8a5888eed93ef1e8b606a290943f9d18a73143af8f47599\",\"instanceId\":\"vector-instance\",\"inventoryDigest\":\"7ebacfbbdee3e8c4509c97f9462411467d8c31c09ea2ae40c33db2d150d08a19\",\"modelRoot\":\"5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1\",\"sha\":\"7bd40fdb0dc23ec94fbc1a522260d0403b1f22ec\"}},\"planId\":\"c6f7d57cf705d2c7523c8fd13f770df46657f4495a52cd3792bc224237fdfa5c\"}",
+    "pages": {
+      "roots": [
+        {
+          "id": "f43e67ada2cf1da2b94f7e5227769ae6aebdb7c85a70a15fac60e4f48e6c8726",
+          "body": {
+            "kind": "roots",
+            "index": 0,
+            "previous": null,
+            "rows": [
+              2,
+              3
+            ]
+          }
+        }
+      ],
+      "excluded": [],
+      "pins": []
+    }
+  },
+  "fullPin": {
+    "plan": {
+      "planId": "2fd88ff79fa9d252db262c604cae8918c12d368954e9557181b66100621697f2",
+      "body": {
+        "profile": "P1.1a-RETENTION-PLAN-1",
+        "modelOnly": true,
+        "experimentOnly": true,
+        "source": {
+          "sha": "7bd40fdb0dc23ec94fbc1a522260d0403b1f22ec",
+          "instanceId": "vector-instance",
+          "generation": "local-g",
+          "modelRoot": "5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1",
+          "indexRoot": "8b47f02ae6f5afdec8a5888eed93ef1e8b606a290943f9d18a73143af8f47599",
+          "inventoryDigest": "7ebacfbbdee3e8c4509c97f9462411467d8c31c09ea2ae40c33db2d150d08a19",
+          "census": {
+            "objects": 3,
+            "bytes": 1010,
+            "byKind": {
+              "map": {
+                "count": 1,
+                "bytes": 226
+              },
+              "data-root": {
+                "count": 1,
+                "bytes": 350
+              },
+              "model-root": {
+                "count": 1,
+                "bytes": 434
+              }
+            }
+          }
+        },
+        "policy": {
+          "fullInventoryPinned": true,
+          "roots": "all-non-map-plus-pins",
+          "kept": "source-minus-exclusions"
+        },
+        "manifests": {
+          "roots": {
+            "tip": "3079f319ddfa24938a8d38f5e394ffe8cb6ac2d7eff58fdedbda0a8a497cac47",
+            "pages": 1,
+            "rows": 3,
+            "bytes": 138
+          },
+          "excluded": {
+            "tip": null,
+            "pages": 0,
+            "rows": 0,
+            "bytes": 0
+          },
+          "pins": {
+            "tip": "ec208ff8f18ee8395d050001c474d0894bb53d8e594c603b4c96789079b0ca10",
+            "pages": 1,
+            "rows": 1,
+            "bytes": 229
+          }
+        },
+        "candidate": {
+          "keptCount": 3,
+          "keptBytes": 1010,
+          "excludedMapCount": 0,
+          "excludedMapBytes": 0,
+          "protectedMapCount": 1,
+          "protectedMapBytes": 226,
+          "byKind": {
+            "map": {
+              "count": 1,
+              "bytes": 226
+            },
+            "data-root": {
+              "count": 1,
+              "bytes": 350
+            },
+            "model-root": {
+              "count": 1,
+              "bytes": 434
+            }
+          },
+          "ordinalPolicy": "source-gaps-preserved"
+        },
+        "accounting": {
+          "pageBytes": 367,
+          "headerBytes": 1795,
+          "verificationBytes": 510,
+          "overheadBytes": 2672,
+          "accountedBytes": 3682,
+          "mapDelta": {
+            "direction": "increase",
+            "bytes": 2672,
+            "basisPoints": 118230
+          },
+          "totalDelta": {
+            "direction": "increase",
+            "bytes": 2672,
+            "basisPoints": 26455
+          },
+          "mapGoal": false,
+          "totalGoal": false,
+          "noRegression": false
+        },
+        "qualifications": [
+          "MODEL_ONLY",
+          "EXPERIMENT_ONLY",
+          "NOT_P1_INVENTORY",
+          "NOT_BACKUP",
+          "NOT_RESTORE",
+          "WRITER_INDEX_NATIVE_COST_UNKNOWN"
+        ]
+      }
+    },
+    "canonical": "{\"body\":{\"accounting\":{\"accountedBytes\":3682,\"headerBytes\":1795,\"mapDelta\":{\"basisPoints\":118230,\"bytes\":2672,\"direction\":\"increase\"},\"mapGoal\":false,\"noRegression\":false,\"overheadBytes\":2672,\"pageBytes\":367,\"totalDelta\":{\"basisPoints\":26455,\"bytes\":2672,\"direction\":\"increase\"},\"totalGoal\":false,\"verificationBytes\":510},\"candidate\":{\"byKind\":{\"data-root\":{\"bytes\":350,\"count\":1},\"map\":{\"bytes\":226,\"count\":1},\"model-root\":{\"bytes\":434,\"count\":1}},\"excludedMapBytes\":0,\"excludedMapCount\":0,\"keptBytes\":1010,\"keptCount\":3,\"ordinalPolicy\":\"source-gaps-preserved\",\"protectedMapBytes\":226,\"protectedMapCount\":1},\"experimentOnly\":true,\"manifests\":{\"excluded\":{\"bytes\":0,\"pages\":0,\"rows\":0,\"tip\":null},\"pins\":{\"bytes\":229,\"pages\":1,\"rows\":1,\"tip\":\"ec208ff8f18ee8395d050001c474d0894bb53d8e594c603b4c96789079b0ca10\"},\"roots\":{\"bytes\":138,\"pages\":1,\"rows\":3,\"tip\":\"3079f319ddfa24938a8d38f5e394ffe8cb6ac2d7eff58fdedbda0a8a497cac47\"}},\"modelOnly\":true,\"policy\":{\"fullInventoryPinned\":true,\"kept\":\"source-minus-exclusions\",\"roots\":\"all-non-map-plus-pins\"},\"profile\":\"P1.1a-RETENTION-PLAN-1\",\"qualifications\":[\"MODEL_ONLY\",\"EXPERIMENT_ONLY\",\"NOT_P1_INVENTORY\",\"NOT_BACKUP\",\"NOT_RESTORE\",\"WRITER_INDEX_NATIVE_COST_UNKNOWN\"],\"source\":{\"census\":{\"byKind\":{\"data-root\":{\"bytes\":350,\"count\":1},\"map\":{\"bytes\":226,\"count\":1},\"model-root\":{\"bytes\":434,\"count\":1}},\"bytes\":1010,\"objects\":3},\"generation\":\"local-g\",\"indexRoot\":\"8b47f02ae6f5afdec8a5888eed93ef1e8b606a290943f9d18a73143af8f47599\",\"instanceId\":\"vector-instance\",\"inventoryDigest\":\"7ebacfbbdee3e8c4509c97f9462411467d8c31c09ea2ae40c33db2d150d08a19\",\"modelRoot\":\"5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1\",\"sha\":\"7bd40fdb0dc23ec94fbc1a522260d0403b1f22ec\"}},\"planId\":\"2fd88ff79fa9d252db262c604cae8918c12d368954e9557181b66100621697f2\"}",
+    "pages": {
+      "roots": [
+        {
+          "id": "3079f319ddfa24938a8d38f5e394ffe8cb6ac2d7eff58fdedbda0a8a497cac47",
+          "body": {
+            "kind": "roots",
+            "index": 0,
+            "previous": null,
+            "rows": [
+              1,
+              2,
+              3
+            ]
+          }
+        }
+      ],
+      "excluded": [],
+      "pins": [
+        {
+          "id": "ec208ff8f18ee8395d050001c474d0894bb53d8e594c603b4c96789079b0ca10",
+          "body": {
+            "kind": "pins",
+            "index": 0,
+            "previous": null,
+            "rows": [
+              {
+                "kind": "full-inventory",
+                "id": "8b47f02ae6f5afdec8a5888eed93ef1e8b606a290943f9d18a73143af8f47599"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "inventoryDigest": "7ebacfbbdee3e8c4509c97f9462411467d8c31c09ea2ae40c33db2d150d08a19",
+  "inventoryPages": [
+    {
+      "id": "7cc65023fcae965f3104c93970df397ffddaaedc28d8aefbf7172fbc53c2a952",
+      "body": {
+        "kind": "inventory",
+        "index": 0,
+        "previous": null,
+        "rows": [
+          [
+            "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+            "data-root",
+            2,
+            350,
+            "e7a87e6270da945e73035fc5c861cd368ac353197fe3da13f6f7dbdf4272ae91"
+          ],
+          [
+            "5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1",
+            "model-root",
+            3,
+            434,
+            "27d2c2e7107292676502dfc805e0d6d162d5fa338db3b17c9c403a6d93ffaa54"
+          ],
+          [
+            "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+            "map",
+            1,
+            226,
+            "30519bad396e1fbda44496b7b0e1fc748af963c32feb62d66715803c5447db49"
+          ]
+        ]
+      }
+    }
+  ],
+  "records": [
+    {
+      "id": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+      "kind": "map",
+      "body": {
+        "tag": "leaf",
+        "entries": [],
+        "total": 0,
+        "live": 0
+      },
+      "ordinal": 1,
+      "payloadBytes": 226,
+      "recordDigest": "30519bad396e1fbda44496b7b0e1fc748af963c32feb62d66715803c5447db49"
+    },
+    {
+      "id": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+      "kind": "data-root",
+      "body": {
+        "originsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+        "datasetsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9"
+      },
+      "ordinal": 2,
+      "payloadBytes": 350,
+      "recordDigest": "e7a87e6270da945e73035fc5c861cd368ac353197fe3da13f6f7dbdf4272ae91"
+    },
+    {
+      "id": "5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1",
+      "kind": "model-root",
+      "body": {
+        "instanceId": "vector-instance",
+        "generation": "local-g",
+        "revision": "0",
+        "dataRoot": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+        "operationsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+        "journal": null
+      },
+      "ordinal": 3,
+      "payloadBytes": 434,
+      "recordDigest": "27d2c2e7107292676502dfc805e0d6d162d5fa338db3b17c9c403a6d93ffaa54"
+    }
+  ],
+  "closure": {
+    "records": [
+      {
+        "ordinal": 1,
+        "kind": "chunk",
+        "refs": []
+      },
+      {
+        "ordinal": 2,
+        "kind": "map",
+        "refs": [
+          1
+        ]
+      },
+      {
+        "ordinal": 3,
+        "kind": "version",
+        "refs": [
+          1
+        ]
+      },
+      {
+        "ordinal": 4,
+        "kind": "map",
+        "refs": [
+          2,
+          3
+        ]
+      },
+      {
+        "ordinal": 5,
+        "kind": "map",
+        "refs": [
+          2,
+          3
+        ]
+      },
+      {
+        "ordinal": 6,
+        "kind": "model-root",
+        "refs": [
+          5
+        ]
+      }
+    ],
+    "unpinned": [
+      1,
+      2,
+      3,
+      5,
+      6
+    ],
+    "pinned": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "tiny": {
+    "records": [
+      {
+        "id": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+        "kind": "map",
+        "body": {
+          "tag": "leaf",
+          "entries": [],
+          "total": 0,
+          "live": 0
+        },
+        "ordinal": 1,
+        "payloadBytes": 226,
+        "recordDigest": "30519bad396e1fbda44496b7b0e1fc748af963c32feb62d66715803c5447db49"
+      },
+      {
+        "id": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+        "kind": "data-root",
+        "body": {
+          "originsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+          "datasetsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9"
+        },
+        "ordinal": 2,
+        "payloadBytes": 350,
+        "recordDigest": "e7a87e6270da945e73035fc5c861cd368ac353197fe3da13f6f7dbdf4272ae91"
+      },
+      {
+        "id": "5b67b89e8676a4dd37154cbc6c98d8eddf01e8663b0e305c2004764b0e8abff1",
+        "kind": "model-root",
+        "body": {
+          "instanceId": "vector-instance",
+          "generation": "local-g",
+          "revision": "0",
+          "dataRoot": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+          "operationsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+          "journal": null
+        },
+        "ordinal": 3,
+        "payloadBytes": 434,
+        "recordDigest": "27d2c2e7107292676502dfc805e0d6d162d5fa338db3b17c9c403a6d93ffaa54"
+      },
+      {
+        "id": "970957cf535d095869da942af3820cd20b8282843d74cfcabf137f785a521418",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"s\",\"s\"]"
+        },
+        "ordinal": 4,
+        "payloadBytes": 191,
+        "recordDigest": "318ea32280096c8fde053d104f73d887173cf4e7f2a2aa916baa9e78ee33ad10"
+      },
+      {
+        "id": "0450c2e6c640794b3c017b4e39d5675ebd876782b12dc080c9afac3fca6dc0bb",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 9,
+          "chunks": [
+            "970957cf535d095869da942af3820cd20b8282843d74cfcabf137f785a521418"
+          ],
+          "children": []
+        },
+        "ordinal": 5,
+        "payloadBytes": 292,
+        "recordDigest": "28ef522caac72f0d40b341211b16b0d4bf77b74210716e1bc56b0151bd75977d"
+      },
+      {
+        "id": "7fd38503ea637770d5c2b9269956d3481670d1639969b0bfce98b1a27853fd7a",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"s\",\"k00000\"]"
+        },
+        "ordinal": 6,
+        "payloadBytes": 196,
+        "recordDigest": "6790bb343dc7ecb3b1fc587be1721e969a5b3c3a5d9245b489e208d2eef7ec7a"
+      },
+      {
+        "id": "d7f1f71e0237c5d1e5f8f287349eb16622a3c4f8cceff2fdfee71c1a0069b6d4",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 14,
+          "chunks": [
+            "7fd38503ea637770d5c2b9269956d3481670d1639969b0bfce98b1a27853fd7a"
+          ],
+          "children": []
+        },
+        "ordinal": 7,
+        "payloadBytes": 293,
+        "recordDigest": "88f79567cd880861791da7e62a5d8ba1e0cbcb1abc39e57971507943808f30dd"
+      },
+      {
+        "id": "17ee1199234e59e23d15f1211d974bfefb511c67dd04dc1469d72c4838e32f2f",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"arr-leaf\",[\"0450c2e6c640794b3c017b4e39d5675ebd876782b12dc080c9afac3fca6dc0bb\",\"d7f1f71e0237c5d1e5f8f287349eb16622a3c4f8cceff2fdfee71c1a0069b6d4\"]]"
+        },
+        "ordinal": 8,
+        "payloadBytes": 330,
+        "recordDigest": "598ac37e936d1dd734240f7453b5e12b2250592ca3a3aeab12423443f3414559"
+      },
+      {
+        "id": "28695935a9fe5ad1bcca94f105aa49b83e2f7b82b4e7f66c9a908b00dbe0ca7b",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 148,
+          "chunks": [
+            "17ee1199234e59e23d15f1211d974bfefb511c67dd04dc1469d72c4838e32f2f"
+          ],
+          "children": [
+            "0450c2e6c640794b3c017b4e39d5675ebd876782b12dc080c9afac3fca6dc0bb",
+            "d7f1f71e0237c5d1e5f8f287349eb16622a3c4f8cceff2fdfee71c1a0069b6d4"
+          ]
+        },
+        "ordinal": 9,
+        "payloadBytes": 427,
+        "recordDigest": "7e9b98a462a723b4d67f2c9d57df972abfe4e020c4b4c720dfd40e38b834e3cb"
+      },
+      {
+        "id": "fe238366af5e8c357de9f1440ffa816bf7a68fa1ab094e761cc85f7a5da4b306",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"s\",\"1.25\"]"
+        },
+        "ordinal": 10,
+        "payloadBytes": 195,
+        "recordDigest": "652b6b341b47b29d525e3d73c23a198ff2acd917f1bfd9402fd389c9fea920a8"
+      },
+      {
+        "id": "59023ac7fdc86c02b9c5065c0eae140500e14675391862ce1c4f5533686fddf4",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 12,
+          "chunks": [
+            "fe238366af5e8c357de9f1440ffa816bf7a68fa1ab094e761cc85f7a5da4b306"
+          ],
+          "children": []
+        },
+        "ordinal": 11,
+        "payloadBytes": 294,
+        "recordDigest": "b830b3520d97692eaf90fbd0f4a8743fd75a8cb20ef6d4ac185b4d0168979c7f"
+      },
+      {
+        "id": "7e96e41d7235e7e2de78fa80031b5b491e38106af6d01d74ee4ea1bf38f58c7f",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"obj\",[\"id\",\"amount\"],[[\"amount\",\"59023ac7fdc86c02b9c5065c0eae140500e14675391862ce1c4f5533686fddf4\"],[\"id\",\"d7f1f71e0237c5d1e5f8f287349eb16622a3c4f8cceff2fdfee71c1a0069b6d4\"]]]"
+        },
+        "ordinal": 12,
+        "payloadBytes": 360,
+        "recordDigest": "547937d9bbdc8c95141f468505e1d7a0f826354d8f76c900990063d64779f11c"
+      },
+      {
+        "id": "df3e1645bfffea408fb4530d3d6419cc70252174bbcc19f5894e202d08419e35",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 177,
+          "chunks": [
+            "7e96e41d7235e7e2de78fa80031b5b491e38106af6d01d74ee4ea1bf38f58c7f"
+          ],
+          "children": [
+            "59023ac7fdc86c02b9c5065c0eae140500e14675391862ce1c4f5533686fddf4",
+            "d7f1f71e0237c5d1e5f8f287349eb16622a3c4f8cceff2fdfee71c1a0069b6d4"
+          ]
+        },
+        "ordinal": 13,
+        "payloadBytes": 428,
+        "recordDigest": "429bbd8e223fdb1f2000e41a3faf242954497fd6635d3a00f13851fcf4d41602"
+      },
+      {
+        "id": "f9485f3b4f485525b3aabcdafb02c8e6ebe6d5c3971706120acd6d9b37fd3a1a",
+        "kind": "version",
+        "body": {
+          "datasetId": "vector",
+          "store": "accounts",
+          "keyRef": "28695935a9fe5ad1bcca94f105aa49b83e2f7b82b4e7f66c9a908b00dbe0ca7b",
+          "valueRef": "df3e1645bfffea408fb4530d3d6419cc70252174bbcc19f5894e202d08419e35",
+          "deleted": false,
+          "previous": null,
+          "sourceVersionRef": null,
+          "localRevision": "1"
+        },
+        "ordinal": 14,
+        "payloadBytes": 456,
+        "recordDigest": "f355c1d01973adae4d0914a97807272cafe372d6bed44bde16251d4ebbf1feda"
+      },
+      {
+        "id": "c5a084661e2ebf404104c9619f37c18d1cd0c798548aacd7b772809c671e5119",
+        "kind": "map",
+        "body": {
+          "tag": "leaf",
+          "entries": [
+            {
+              "keyRef": "28695935a9fe5ad1bcca94f105aa49b83e2f7b82b4e7f66c9a908b00dbe0ca7b",
+              "valueRef": "df3e1645bfffea408fb4530d3d6419cc70252174bbcc19f5894e202d08419e35",
+              "versionRef": "f9485f3b4f485525b3aabcdafb02c8e6ebe6d5c3971706120acd6d9b37fd3a1a",
+              "deleted": false
+            }
+          ],
+          "total": 1,
+          "live": 1
+        },
+        "ordinal": 15,
+        "payloadBytes": 478,
+        "recordDigest": "35efb84efec62feb4443c6f46c6d2f943626b192f785b211cede37d4ebae253d"
+      },
+      {
+        "id": "d7d8828319e423e1be26f2ded2f68d1783433eb554fd15cd13ab6a35f1dc459d",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"s\",\"k00001\"]"
+        },
+        "ordinal": 16,
+        "payloadBytes": 197,
+        "recordDigest": "4f25e51ce510351c4de9988c9d2ff9cfe1091245bb36f88534b93b766a42b1af"
+      },
+      {
+        "id": "86c14a1e7aee5c847b73892f717aa1e097f0958064d067f1bee1625408ea4ea8",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 14,
+          "chunks": [
+            "d7d8828319e423e1be26f2ded2f68d1783433eb554fd15cd13ab6a35f1dc459d"
+          ],
+          "children": []
+        },
+        "ordinal": 17,
+        "payloadBytes": 294,
+        "recordDigest": "79fa84d6ea65be317789cb1864fb096c1b30ff49f2f9488a4955ecf5179c8a78"
+      },
+      {
+        "id": "e2256ff933b46fdb71e377167c7aaddf6423f0a2052595a4c9308a8e1c48ce41",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"arr-leaf\",[\"0450c2e6c640794b3c017b4e39d5675ebd876782b12dc080c9afac3fca6dc0bb\",\"86c14a1e7aee5c847b73892f717aa1e097f0958064d067f1bee1625408ea4ea8\"]]"
+        },
+        "ordinal": 18,
+        "payloadBytes": 331,
+        "recordDigest": "d00cb088224df48d41a5e3aacd2a73b03f84dd74c4d044e29cd5dccba33a163a"
+      },
+      {
+        "id": "42db342e1d980254260a35fca91456d6c0d54b430be7f75c621c46d773abbd7f",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 148,
+          "chunks": [
+            "e2256ff933b46fdb71e377167c7aaddf6423f0a2052595a4c9308a8e1c48ce41"
+          ],
+          "children": [
+            "0450c2e6c640794b3c017b4e39d5675ebd876782b12dc080c9afac3fca6dc0bb",
+            "86c14a1e7aee5c847b73892f717aa1e097f0958064d067f1bee1625408ea4ea8"
+          ]
+        },
+        "ordinal": 19,
+        "payloadBytes": 428,
+        "recordDigest": "f94b443c52fa4a396203eba43f267f6cec07a2110a1dab5318e7efd2992c3f67"
+      },
+      {
+        "id": "2358c840cdcbe2fdff7f116a058399c3ba56633d20d08294d33ef1bcdd3da895",
+        "kind": "chunk",
+        "body": {
+          "data": "[\"obj\",[\"id\",\"amount\"],[[\"amount\",\"59023ac7fdc86c02b9c5065c0eae140500e14675391862ce1c4f5533686fddf4\"],[\"id\",\"86c14a1e7aee5c847b73892f717aa1e097f0958064d067f1bee1625408ea4ea8\"]]]"
+        },
+        "ordinal": 20,
+        "payloadBytes": 360,
+        "recordDigest": "bf94cdea60a4bde51e143336858ae9bd816e1dda7905b8f22bdd17c8dbc3a035"
+      },
+      {
+        "id": "4131fa8519d51fd844340539030318b45ee4ca10ab3cf1e5803d7b3fa9b2224c",
+        "kind": "value",
+        "body": {
+          "logicalBytes": 177,
+          "chunks": [
+            "2358c840cdcbe2fdff7f116a058399c3ba56633d20d08294d33ef1bcdd3da895"
+          ],
+          "children": [
+            "59023ac7fdc86c02b9c5065c0eae140500e14675391862ce1c4f5533686fddf4",
+            "86c14a1e7aee5c847b73892f717aa1e097f0958064d067f1bee1625408ea4ea8"
+          ]
+        },
+        "ordinal": 21,
+        "payloadBytes": 428,
+        "recordDigest": "ded771fc09b4b0a2e75572de09b654afe59db470c086db4c6bcf1ce4b57e4ec7"
+      },
+      {
+        "id": "5f404feb988c39362e3985a09e7b2dad8f6a6299d3f43255fabed5040d1ae572",
+        "kind": "version",
+        "body": {
+          "datasetId": "vector",
+          "store": "accounts",
+          "keyRef": "42db342e1d980254260a35fca91456d6c0d54b430be7f75c621c46d773abbd7f",
+          "valueRef": "4131fa8519d51fd844340539030318b45ee4ca10ab3cf1e5803d7b3fa9b2224c",
+          "deleted": false,
+          "previous": null,
+          "sourceVersionRef": null,
+          "localRevision": "1"
+        },
+        "ordinal": 22,
+        "payloadBytes": 456,
+        "recordDigest": "8d14577ae3f7b0d5c18e5d8df36131f47c00fed5f6620c527ccb4289dc7dfe95"
+      },
+      {
+        "id": "a84b092ecb2c538e15c75d3fc168c978da177945939717e8d5d770ea0025ecd7",
+        "kind": "map",
+        "body": {
+          "tag": "leaf",
+          "entries": [
+            {
+              "keyRef": "28695935a9fe5ad1bcca94f105aa49b83e2f7b82b4e7f66c9a908b00dbe0ca7b",
+              "valueRef": "df3e1645bfffea408fb4530d3d6419cc70252174bbcc19f5894e202d08419e35",
+              "versionRef": "f9485f3b4f485525b3aabcdafb02c8e6ebe6d5c3971706120acd6d9b37fd3a1a",
+              "deleted": false
+            },
+            {
+              "keyRef": "42db342e1d980254260a35fca91456d6c0d54b430be7f75c621c46d773abbd7f",
+              "valueRef": "4131fa8519d51fd844340539030318b45ee4ca10ab3cf1e5803d7b3fa9b2224c",
+              "versionRef": "5f404feb988c39362e3985a09e7b2dad8f6a6299d3f43255fabed5040d1ae572",
+              "deleted": false
+            }
+          ],
+          "total": 2,
+          "live": 2
+        },
+        "ordinal": 23,
+        "payloadBytes": 730,
+        "recordDigest": "8466c960d996cdfecdd8d43659f03af197a83c1948ba3bba6bc367804ec9db6f"
+      }
+    ],
+    "root": "a84b092ecb2c538e15c75d3fc168c978da177945939717e8d5d770ea0025ecd7",
+    "sourceIndexRoot": "9e6267cfdae3c1d4800042cb5187c7f3cb664cb3761947d085838e58238dfc6c",
+    "pins": [
+      {
+        "kind": "object",
+        "id": "a84b092ecb2c538e15c75d3fc168c978da177945939717e8d5d770ea0025ecd7"
+      }
+    ],
+    "excluded": [
+      15
+    ],
+    "keptOrdinals": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ]
+  }
+}
