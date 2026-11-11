@@ -12,7 +12,6 @@ const token = v => (m.tick(), v === undefined ? 'u' : typeof v === 'number' && O
   Array.isArray(v) ? `a:[${v.map(token).join(',')}]` : plain(v) ?
     `o:{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${token(v[k])}`).join(',')}}` : `${typeof v}:${JSON.stringify(v)}`);
 const nativeEqual = (a, b) => token(a) === token(b);
-const nativeToken = token;
 
 function validateRows(store, rows) {
   need(Array.isArray(rows), 'INVALID_FORMAT'); const seen = new Set();

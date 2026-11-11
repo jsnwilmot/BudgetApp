@@ -253,11 +253,23 @@ export function inspectWriter(snapshot, runtime) {
 export function createWriterSource(snapshot, runtime) {
   try {
     const s = state(snapshot), m = meter(s.limits, runtime, false, true), reads = new WeakMap();
+    // Output copies are borrowed only during this call, then owned by the
+    // caller. Keep session visits/work/deadline cumulative; release only new
+    // copy reservations, never the session's retained encoding caches.
+    function copiedRead(action) {
+      const prior = m.stats.stageBytes;
+      try { return action(); }
+      catch (e) { return failure(e); }
+      finally { m.release(m.stats.stageBytes - prior); }
+    }
     function get(id, type) { m.tick(); const r = lookup(s.pool, id, m); need(r && (type ? r.physicalType === type : !r.physicalType), 'MISSING_OBJECT'); return r; }
     const source = { context: freeze({ physicalInstance: s.physicalInstance, generation: s.generation, stateRoot: s.stateRoot }),
-      readPage(id) { try { const r = get(id, 'page'); m.tick(r.bytes.length); return { ok: true, bytes: new Uint8Array(r.bytes) }; } catch (e) { return failure(e); } },
-      readMetadata(id) { try { const r = lookup(s.pool, id, m); need(r && r.physicalType && r.physicalType !== 'page', 'MISSING_OBJECT'); return freeze({ ok: true, record: m.copy(r) }); } catch (e) { return failure(e); } },
-      readLogical(id) { try { const r = get(id); return freeze({ ok: true, record: m.copy({ id: r.id, kind: r.kind, body: r.body, sequence: r.sequence, locator: r.locator }) }); } catch (e) { return failure(e); } },
+      readPage(id) { return copiedRead(() => { const r = get(id, 'page'); m.tick(r.bytes.length); m.reserve(r.bytes.length);
+        return { ok: true, bytes: new Uint8Array(r.bytes) }; }); },
+      readMetadata(id) { return copiedRead(() => { const r = lookup(s.pool, id, m); need(r && r.physicalType && r.physicalType !== 'page', 'MISSING_OBJECT');
+        return freeze({ ok: true, record: m.copy(r) }); }); },
+      readLogical(id) { return copiedRead(() => { const r = get(id); return freeze({ ok: true, record: m.copy({ id: r.id, kind: r.kind, body: r.body,
+        sequence: r.sequence, locator: r.locator }) }); }); },
       beginIndex() { const reader = Object.freeze({ profile: PROFILE }); reads.set(reader, { queue: s.pool ? [s.pool] : [], done: false }); return reader; },
       readIndex(reader) {
         try { const r = reads.get(reader); need(r && !r.done, 'INVALID_MODEL'); const rows = []; let bytes = 0;

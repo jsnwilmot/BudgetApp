@@ -3,6 +3,7 @@ import { CAPABILITIES, SCHEMA, STORES, DOMAIN } from './backupFormat.js';
 import { need, fields, freeze } from './writerFormat.js';
 import { graphBuilder } from './writerValue.js';
 import { sourceValidator } from './writerSourceRules.js';
+import { parseSourceTransport } from './writerSourceParse.js';
 
 export async function source17(input, producerInput, m) {
   const snapshot = m.copy(input), producer = m.copy(producerInput);
@@ -39,6 +40,10 @@ export async function source17(input, producerInput, m) {
   need(globalThis.crypto?.subtle, 'DIGEST_UNAVAILABLE');
   const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(transport)); m.tick();
   const transportDigest = [...new Uint8Array(digest)].map(n => n.toString(16).padStart(2, '0')).join('');
-  return freeze({ snapshot, envelope, qualifications, snapshotDigest: data.source.snapshotDigest,
+  // P1 captures decodeSyntheticBackup(bytes).envelope, not the constructed
+  // encoder DTO: FP-TV hashes include nested own-property order. Parse the
+  // entire canonical transport, leaving source-native FP-TV values untouched.
+  const decodedEnvelope = parseSourceTransport(transport, m);
+  return freeze({ snapshot, envelope: decodedEnvelope, qualifications, snapshotDigest: data.source.snapshotDigest,
     contentDigest: envelope.integrity.contentDigest, transportDigest });
 }
