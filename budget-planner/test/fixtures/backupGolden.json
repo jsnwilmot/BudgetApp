@@ -1,0 +1,295 @@
+{
+  "reference": "Python struct/hashlib independent FP-CJ-1/FP-TV-1 reference",
+  "snapshot": {
+    "synthetic": true,
+    "protocolVersion": 1,
+    "databaseName": "finpath-synthetic-b1-golden",
+    "stores": {
+      "appMetadata": [],
+      "appSettings": [],
+      "budgetTargets": [],
+      "categories": [],
+      "plannerEntries": [],
+      "scheduledItems": [],
+      "accounts": [],
+      "manualAdjustments": [],
+      "savingsBuckets": [],
+      "savingsBucketAdjustments": [],
+      "transfers": [],
+      "financialControl": [
+        {
+          "key": "financial-control",
+          "value": {
+            "id": "financial-control",
+            "protocolVersion": 1,
+            "synthetic": true,
+            "mode": "inactive-only",
+            "capabilities": [
+              "synthetic-repository-v1",
+              "raw-snapshot-v1",
+              "atomic-command-v1",
+              "inactive-draft-v1"
+            ],
+            "generation": "g",
+            "stateRevision": "0",
+            "financialRevision": "0"
+          }
+        }
+      ],
+      "recordRevisions": [],
+      "checkpointDrafts": [],
+      "checkpointDraftHeads": [],
+      "financialAudit": [
+        {
+          "key": "init",
+          "value": {
+            "id": "init",
+            "commandIdentity": "0000000000000000000000000000000000000000000000000000000000000000",
+            "receipt": {
+              "operationId": "init",
+              "kind": "initialize",
+              "generation": "g",
+              "stateRevision": "0",
+              "financialRevision": "0",
+              "snapshotId": "init"
+            },
+            "affected": [
+              {
+                "collection": "appMetadata"
+              },
+              {
+                "collection": "appSettings"
+              },
+              {
+                "collection": "budgetTargets"
+              },
+              {
+                "collection": "categories"
+              },
+              {
+                "collection": "plannerEntries"
+              },
+              {
+                "collection": "scheduledItems"
+              },
+              {
+                "collection": "accounts"
+              },
+              {
+                "collection": "manualAdjustments"
+              },
+              {
+                "collection": "savingsBuckets"
+              },
+              {
+                "collection": "savingsBucketAdjustments"
+              },
+              {
+                "collection": "transfers"
+              }
+            ],
+            "consent": {
+              "confirmed": true,
+              "action": "initialize"
+            }
+          }
+        }
+      ],
+      "protectedSnapshots": [
+        {
+          "key": "init",
+          "value": {
+            "id": "init",
+            "before": {
+              "stores": {
+                "appMetadata": [],
+                "appSettings": [],
+                "budgetTargets": [],
+                "categories": [],
+                "plannerEntries": [],
+                "scheduledItems": [],
+                "accounts": [],
+                "manualAdjustments": [],
+                "savingsBuckets": [],
+                "savingsBucketAdjustments": [],
+                "transfers": [],
+                "financialControl": [],
+                "recordRevisions": [],
+                "checkpointDrafts": [],
+                "checkpointDraftHeads": []
+              },
+              "history": {
+                "financialAudit": [],
+                "protectedSnapshots": []
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "producer": {
+    "appVersion": "synthetic-golden",
+    "exportedAt": "2026-12-31T00:00:00.000Z"
+  },
+  "canonicalEnvelope": "{\"appName\":\"FinPath\",\"appVersion\":\"synthetic-golden\",\"data\":{\"appDataVersion\":3,\"derived\":{},\"format\":\"FP-FULL-1\",\"manifest\":[{\"collectionDigest\":\"234185217ba27e1832dc04e3f3ec296c210b7b8f9457f51a650e72f9f38195a5\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"f356eb8f213662300705b6f0d88075e62b289a1d665fcb4e1e2a5b27c832df00\",\"rows\":[],\"store\":\"accounts\"},{\"collectionDigest\":\"2e4cdbd44ea904bb5c446e05b7167e325a4213a37acf9847aa1e314813ffa0de\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"1c30204a20adf7d8164340c862c16168e5728185eb3c968a591aa40a1fdcdfe6\",\"rows\":[],\"store\":\"appMetadata\"},{\"collectionDigest\":\"7eaa07cd8b9d1b053ef98cf07b6a67f4d2f035b57ea1717cb1ce3bfc9cd5461d\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"5b3a19cc5009272c211814a6f9ef66d83ff288a5b1e880141ccabc88ae0f5c96\",\"rows\":[],\"store\":\"appSettings\"},{\"collectionDigest\":\"d49cd6842d7dd7057cbdcfa80920eaec07e31f558636a95499d8faef00d95af0\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"45f74d4a10f399b3b87e398b9e75b758d8547fc1d75bdf7ca7612734c37379e8\",\"rows\":[],\"store\":\"budgetTargets\"},{\"collectionDigest\":\"69c1e6254faf5ca102f92c3b0c2952ccf0b4c8f4020b2225fed2e591c6346afa\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"96c1bd363bf1fde3c076c107d199270a087a0589589acfd257e3af43b1b63b59\",\"rows\":[],\"store\":\"categories\"},{\"collectionDigest\":\"3e811887468a056496049726aa81c18804a9fecdbbf7ce816c1d246a9c5851e3\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"1891f23878b65fa21054fba7f34548e8000bea02f6e4c30502085c9151f01853\",\"rows\":[],\"store\":\"checkpointDraftHeads\"},{\"collectionDigest\":\"e6e6aab9bebd337ad9b775471faf20c423af0fee8c3a1b311bdc24f9fcb89278\",\"count\":0,\"keyPath\":[\"id\",\"revision\"],\"keysetDigest\":\"95688dcef4c545f64d565c9baeeba29df41af9b79c000b14fba092087299b719\",\"rows\":[],\"store\":\"checkpointDrafts\"},{\"collectionDigest\":\"7c8425679b1a03696de792358e04c13ad84dd049d4d2210e5a71dfb99985c631\",\"count\":1,\"keyPath\":\"id\",\"keysetDigest\":\"6365899408d035fa15790185f2b8ad8f5ef53fc4ef008e9aebb6ec882215df30\",\"rows\":[{\"key\":[\"s\",\"init\"],\"valueRef\":\"dfe8be0edfa0fb895bc4e1b513bdf976ce9d1d7f7c29aeee38c2d399e9bc9862\"}],\"store\":\"financialAudit\"},{\"collectionDigest\":\"6f47d09b2a02a10183a6af31340f966cdf0e7d6c54ee59ad628cfed12794bdf1\",\"count\":1,\"keyPath\":\"id\",\"keysetDigest\":\"c573d2562fd0106b5b23198771e582eae6d91b0229cbe24c26d3a17394857b1f\",\"rows\":[{\"key\":[\"s\",\"financial-control\"],\"valueRef\":\"0529d53eee5a43581b1fefb9e971ff6487d6c3ed37d52313941e8130a8e4230d\"}],\"store\":\"financialControl\"},{\"collectionDigest\":\"820a4cf134177721329f2e885bcb3ba684573b5b2e4784eb6bcdd6b289c4d881\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"be1e7eb7fafe4c25cadb28824c6d793c1945a103522a32aa0469c44ca1bc259f\",\"rows\":[],\"store\":\"manualAdjustments\"},{\"collectionDigest\":\"cc0fbe2097f0fb3829aa08c46a42e4d75cd36da8b818de96a290d241409bdef2\",\"count\":0,\"keyPath\":\"entryKey\",\"keysetDigest\":\"4dd083c1cf0c7b56e28efa5bda45f4d2c7e44349ec4b45412ffc9eff4fb3f830\",\"rows\":[],\"store\":\"plannerEntries\"},{\"collectionDigest\":\"5b47b12c84293f5903c8144c784782ced730664ce6d16e0aa27f7d1b2310bbeb\",\"count\":1,\"keyPath\":\"id\",\"keysetDigest\":\"c02f90854124a3213c34b25ad04c40146b630ec4994efd3fd8433062f91d27a3\",\"rows\":[{\"key\":[\"s\",\"init\"],\"valueRef\":\"5271448ecf397550b70aa17ff62f444d5b263c88396beddc06e3f7939e356f4b\"}],\"store\":\"protectedSnapshots\"},{\"collectionDigest\":\"8b3f6dfa585f8c08880d4df40147743ed973e025990bfec43ad3ee5e26baf99a\",\"count\":0,\"keyPath\":[\"collection\",\"key\"],\"keysetDigest\":\"f03e23b4b816fb5bf1ca75799b73f2de9a48db764fdb600141db7af6ac5e0c0f\",\"rows\":[],\"store\":\"recordRevisions\"},{\"collectionDigest\":\"e118229b08cb23759e3c1f974aaddfd0fdee02d5d5e558c5d121924bc417be44\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"1b1243313819b12e504323ff457d66fe496dd651d2a6dd500715209fd337f5db\",\"rows\":[],\"store\":\"savingsBucketAdjustments\"},{\"collectionDigest\":\"c97d77b16dc8c1d925ba211d69c5f5e93a320c17ea1bc32d123cac408fc71530\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"106148ca65bbda8740113cecb016e8195f8ac4acb218e4e5d92a20a79a012875\",\"rows\":[],\"store\":\"savingsBuckets\"},{\"collectionDigest\":\"9f543e64995b4c27204f4714cdd01d60ab0cf6303e7ea2ae4e29a8844be40ac2\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"160ef31d47d09dbd581e24c2966bb84814eb2446a6235b5881fb0c190cc53b27\",\"rows\":[],\"store\":\"scheduledItems\"},{\"collectionDigest\":\"479ca26eab21b5e58510c7dd999b2928c0be27e6056193509716b6315b64687e\",\"count\":0,\"keyPath\":\"id\",\"keysetDigest\":\"a9b38bea738b61fd484c3f4b92e0a2f0545de9e9d865d62c65fa0a67f8e91dd9\",\"rows\":[],\"store\":\"transfers\"}],\"nodes\":[{\"id\":\"0529d53eee5a43581b1fefb9e971ff6487d6c3ed37d52313941e8130a8e4230d\",\"value\":[\"obj\",[\"id\",\"protocolVersion\",\"synthetic\",\"mode\",\"capabilities\",\"generation\",\"stateRevision\",\"financialRevision\"],[[\"capabilities\",\"73d276754a5f004a1e278b363d9522890d7251e4345deb6c6594d859e1225059\"],[\"financialRevision\",\"ac19235e4b07b935f37021f0301dbe4ef0743d6584f0fdf802d555ab84219e2c\"],[\"generation\",\"1cbda2fc373d35418782f402f904061ad386afbb079661614efa4b73f569b7fa\"],[\"id\",\"e8e34b831de3a58641bcfa83efdbb79b7d3a1e24611d01d172a04dce9fdccb7a\"],[\"mode\",\"6f86e4a644178839490b7f7819e7ef0e48f2447f40a84279bc1923ac6820b27e\"],[\"protocolVersion\",\"910be5aeed72b275e3215ba54feb4578436a15d0dd144d6ff4ebbaac5b22a973\"],[\"stateRevision\",\"ac19235e4b07b935f37021f0301dbe4ef0743d6584f0fdf802d555ab84219e2c\"],[\"synthetic\",\"7bc5125a4823bfb0bc0941466c38501bb95f5d0f36c96620665fe7c475574b41\"]]]},{\"id\":\"0d3bd173ffc5caf584708c9d4f441e8073a66b9d148c0982cdb8188011127663\",\"value\":[\"s\",\"categories\"]},{\"id\":\"1cbda2fc373d35418782f402f904061ad386afbb079661614efa4b73f569b7fa\",\"value\":[\"s\",\"g\"]},{\"id\":\"27697550b340a5b1d3d6abb1c3654fe7589ae44ce9a88cd66a082c5879952008\",\"value\":[\"obj\",[\"operationId\",\"kind\",\"generation\",\"stateRevision\",\"financialRevision\",\"snapshotId\"],[[\"financialRevision\",\"ac19235e4b07b935f37021f0301dbe4ef0743d6584f0fdf802d555ab84219e2c\"],[\"generation\",\"1cbda2fc373d35418782f402f904061ad386afbb079661614efa4b73f569b7fa\"],[\"kind\",\"f60bd256ba8504420d88f8788c6779cbb19f29d5859c965e88adabe34a40cd7f\"],[\"operationId\",\"e07cdb54365163f65707c3f436a1af09b849c82169f903d24f34bdc005f9e393\"],[\"snapshotId\",\"e07cdb54365163f65707c3f436a1af09b849c82169f903d24f34bdc005f9e393\"],[\"stateRevision\",\"ac19235e4b07b935f37021f0301dbe4ef0743d6584f0fdf802d555ab84219e2c\"]]]},{\"id\":\"4079b1dfc6285c3d40302883a0a9781a8f9ebeea58637d52d0c04c139d9d73c8\",\"value\":[\"s\",\"atomic-command-v1\"]},{\"id\":\"44f9d2349bb0d20acf96f982fdb5bea5aa85d4204bc40e92fc1a069fa05b9b66\",\"value\":[\"s\",\"0000000000000000000000000000000000000000000000000000000000000000\"]},{\"id\":\"4668be2c67eb71b3c868676054181daaa725a451bee05d1c71e6c3b693380915\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"79ea0c93088123cfcc006b383abb6ff754870ada5a4fc5f35d0a90f5f95e47ab\"]]]},{\"id\":\"4b8c7216ee1fb270322748f53f1b29157eb00c11dcba9a5280e8a8b845faab96\",\"value\":[\"arr-leaf\",[\"b7f5b2842bacf4fd8089d18f92b173a698991108c037af42b26ce73ba9232a95\",\"566b2c2799dd957ba0f5d859910c17c011fc0156add1edd5283e9ab8bcdb4985\",\"bfc7fd87483eac5d45a96f965a7ac32f7fa580c69b85cc0bb0c5f76aa60256bc\",\"dbeadae29938970ec475baf2c2f8149d45bf2d5b718692af40244634595386ef\",\"ebdf96b509b20da92ad9c7926c0b7166cbd82c4be809e4523848bbded65b320a\",\"88d6dbf5dc7732a5ce5836cfbf8a92aa4ec9bbb6aac0f719f9c3c36f85d02c9c\",\"4668be2c67eb71b3c868676054181daaa725a451bee05d1c71e6c3b693380915\",\"8aa8f79e2a5fad87c6c61f08d7b552a9f75fd9ffa857dd5c694d29c5386e82b2\",\"ea30a3c3eb8214cb11071729e64aa50ff4a7ff8cee43c097b1a141e2c65f14fa\",\"55e4bb2a1550651ce208ae3ef54c07b02ceb6dc75f0690a27b1cd7804ecdc7a1\",\"d94f9d74ac5e6b787fd299537c04d979ba87bc9d3c4f214da86b5713cb539a83\"]]},{\"id\":\"5271448ecf397550b70aa17ff62f444d5b263c88396beddc06e3f7939e356f4b\",\"value\":[\"obj\",[\"id\",\"before\"],[[\"before\",\"849752c11abbe924d42345a5a83e362a417e34e682cfcb4db04ebab9fc1323ef\"],[\"id\",\"e07cdb54365163f65707c3f436a1af09b849c82169f903d24f34bdc005f9e393\"]]]},{\"id\":\"545c6d7b9b82934bffa4938c8e547fc78c0c3f6d0905360e9bfe8259acd553d5\",\"value\":[\"s\",\"appMetadata\"]},{\"id\":\"55e4bb2a1550651ce208ae3ef54c07b02ceb6dc75f0690a27b1cd7804ecdc7a1\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"de8bcfac030ae1b18c176fa100926902194b9462224fdf6a7e78a197511d8819\"]]]},{\"id\":\"566b2c2799dd957ba0f5d859910c17c011fc0156add1edd5283e9ab8bcdb4985\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"f3fb1c383af40480a2cde2f21428b3997ea8aefb4ac218423f328e91491a52d2\"]]]},{\"id\":\"6a614ef1aacd83888b04754f0c91cfaa0f5028f0c93d8575c0448dd0e1d204e0\",\"value\":[\"obj\",[\"appMetadata\",\"appSettings\",\"budgetTargets\",\"categories\",\"plannerEntries\",\"scheduledItems\",\"accounts\",\"manualAdjustments\",\"savingsBuckets\",\"savingsBucketAdjustments\",\"transfers\",\"financialControl\",\"recordRevisions\",\"checkpointDrafts\",\"checkpointDraftHeads\"],[[\"accounts\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"appMetadata\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"appSettings\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"budgetTargets\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"categories\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"checkpointDraftHeads\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"checkpointDrafts\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"financialControl\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"manualAdjustments\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"plannerEntries\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"recordRevisions\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"savingsBucketAdjustments\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"savingsBuckets\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"scheduledItems\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"transfers\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"]]]},{\"id\":\"6ed5f2b6a38544df274d168d775ec29fd12b39a1ec2cea4a1aafbe3afd406bec\",\"value\":[\"s\",\"inactive-draft-v1\"]},{\"id\":\"6f86e4a644178839490b7f7819e7ef0e48f2447f40a84279bc1923ac6820b27e\",\"value\":[\"s\",\"inactive-only\"]},{\"id\":\"73d276754a5f004a1e278b363d9522890d7251e4345deb6c6594d859e1225059\",\"value\":[\"arr-leaf\",[\"f3a26f964072169696e52a7e42976e017ac01e0e0b86ded62b0370763724e6e6\",\"9822293bc89b2618795a0df3e7c7190f5a45843d76f5ec5c7d6a65964107eeda\",\"4079b1dfc6285c3d40302883a0a9781a8f9ebeea58637d52d0c04c139d9d73c8\",\"6ed5f2b6a38544df274d168d775ec29fd12b39a1ec2cea4a1aafbe3afd406bec\"]]},{\"id\":\"79ea0c93088123cfcc006b383abb6ff754870ada5a4fc5f35d0a90f5f95e47ab\",\"value\":[\"s\",\"accounts\"]},{\"id\":\"7bc5125a4823bfb0bc0941466c38501bb95f5d0f36c96620665fe7c475574b41\",\"value\":[\"b\",true]},{\"id\":\"7f04e09d0964c81f265bc5259d88cd358963cb871d8dc31b32405287ce64dae2\",\"value\":[\"obj\",[\"confirmed\",\"action\"],[[\"action\",\"f60bd256ba8504420d88f8788c6779cbb19f29d5859c965e88adabe34a40cd7f\"],[\"confirmed\",\"7bc5125a4823bfb0bc0941466c38501bb95f5d0f36c96620665fe7c475574b41\"]]]},{\"id\":\"8215cbe374c3e24828376d727355946c2e6a09875997bf50b59adeb1d362ffd2\",\"value\":[\"s\",\"plannerEntries\"]},{\"id\":\"849752c11abbe924d42345a5a83e362a417e34e682cfcb4db04ebab9fc1323ef\",\"value\":[\"obj\",[\"stores\",\"history\"],[[\"history\",\"d9143fb029d410aaa477e3e18a8d9b5a7b7742af9cd6ea6b507d7cc0e19fd85c\"],[\"stores\",\"6a614ef1aacd83888b04754f0c91cfaa0f5028f0c93d8575c0448dd0e1d204e0\"]]]},{\"id\":\"8774aa14ac314bb601bc7c1eca53dd7adbcb8d55f40f6d9a5ef4380078c61902\",\"value\":[\"s\",\"savingsBuckets\"]},{\"id\":\"88d6dbf5dc7732a5ce5836cfbf8a92aa4ec9bbb6aac0f719f9c3c36f85d02c9c\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"d0a3824566c9d4bab391fa853be7efb4a4ee7da3d528c2de4bf524dcee9d141a\"]]]},{\"id\":\"8aa8f79e2a5fad87c6c61f08d7b552a9f75fd9ffa857dd5c694d29c5386e82b2\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"f7c9a802fa7b49b2208dba1d2d96e6e728a7c3cd75f2ab3ce21911b20858bc68\"]]]},{\"id\":\"910be5aeed72b275e3215ba54feb4578436a15d0dd144d6ff4ebbaac5b22a973\",\"value\":[\"f64\",\"3ff0000000000000\"]},{\"id\":\"9822293bc89b2618795a0df3e7c7190f5a45843d76f5ec5c7d6a65964107eeda\",\"value\":[\"s\",\"raw-snapshot-v1\"]},{\"id\":\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\",\"value\":[\"arr-leaf\",[]]},{\"id\":\"a0a0eadaf7ed3a3f9f160f1b3d9a305e553dd8d61b931411f56a188d8d227098\",\"value\":[\"s\",\"budgetTargets\"]},{\"id\":\"ac19235e4b07b935f37021f0301dbe4ef0743d6584f0fdf802d555ab84219e2c\",\"value\":[\"s\",\"0\"]},{\"id\":\"b7f5b2842bacf4fd8089d18f92b173a698991108c037af42b26ce73ba9232a95\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"545c6d7b9b82934bffa4938c8e547fc78c0c3f6d0905360e9bfe8259acd553d5\"]]]},{\"id\":\"bfc7fd87483eac5d45a96f965a7ac32f7fa580c69b85cc0bb0c5f76aa60256bc\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"a0a0eadaf7ed3a3f9f160f1b3d9a305e553dd8d61b931411f56a188d8d227098\"]]]},{\"id\":\"d0a3824566c9d4bab391fa853be7efb4a4ee7da3d528c2de4bf524dcee9d141a\",\"value\":[\"s\",\"scheduledItems\"]},{\"id\":\"d9143fb029d410aaa477e3e18a8d9b5a7b7742af9cd6ea6b507d7cc0e19fd85c\",\"value\":[\"obj\",[\"financialAudit\",\"protectedSnapshots\"],[[\"financialAudit\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"],[\"protectedSnapshots\",\"9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5\"]]]},{\"id\":\"d94f9d74ac5e6b787fd299537c04d979ba87bc9d3c4f214da86b5713cb539a83\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"f8a2286599922895ae578e15d218338dbb86a4d3cc86f83ca46fada39bd92eb3\"]]]},{\"id\":\"dbeadae29938970ec475baf2c2f8149d45bf2d5b718692af40244634595386ef\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"0d3bd173ffc5caf584708c9d4f441e8073a66b9d148c0982cdb8188011127663\"]]]},{\"id\":\"de8bcfac030ae1b18c176fa100926902194b9462224fdf6a7e78a197511d8819\",\"value\":[\"s\",\"savingsBucketAdjustments\"]},{\"id\":\"dfe8be0edfa0fb895bc4e1b513bdf976ce9d1d7f7c29aeee38c2d399e9bc9862\",\"value\":[\"obj\",[\"id\",\"commandIdentity\",\"receipt\",\"affected\",\"consent\"],[[\"affected\",\"4b8c7216ee1fb270322748f53f1b29157eb00c11dcba9a5280e8a8b845faab96\"],[\"commandIdentity\",\"44f9d2349bb0d20acf96f982fdb5bea5aa85d4204bc40e92fc1a069fa05b9b66\"],[\"consent\",\"7f04e09d0964c81f265bc5259d88cd358963cb871d8dc31b32405287ce64dae2\"],[\"id\",\"e07cdb54365163f65707c3f436a1af09b849c82169f903d24f34bdc005f9e393\"],[\"receipt\",\"27697550b340a5b1d3d6abb1c3654fe7589ae44ce9a88cd66a082c5879952008\"]]]},{\"id\":\"e07cdb54365163f65707c3f436a1af09b849c82169f903d24f34bdc005f9e393\",\"value\":[\"s\",\"init\"]},{\"id\":\"e8e34b831de3a58641bcfa83efdbb79b7d3a1e24611d01d172a04dce9fdccb7a\",\"value\":[\"s\",\"financial-control\"]},{\"id\":\"ea30a3c3eb8214cb11071729e64aa50ff4a7ff8cee43c097b1a141e2c65f14fa\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"8774aa14ac314bb601bc7c1eca53dd7adbcb8d55f40f6d9a5ef4380078c61902\"]]]},{\"id\":\"ebdf96b509b20da92ad9c7926c0b7166cbd82c4be809e4523848bbded65b320a\",\"value\":[\"obj\",[\"collection\"],[[\"collection\",\"8215cbe374c3e24828376d727355946c2e6a09875997bf50b59adeb1d362ffd2\"]]]},{\"id\":\"f3a26f964072169696e52a7e42976e017ac01e0e0b86ded62b0370763724e6e6\",\"value\":[\"s\",\"synthetic-repository-v1\"]},{\"id\":\"f3fb1c383af40480a2cde2f21428b3997ea8aefb4ac218423f328e91491a52d2\",\"value\":[\"s\",\"appSettings\"]},{\"id\":\"f60bd256ba8504420d88f8788c6779cbb19f29d5859c965e88adabe34a40cd7f\",\"value\":[\"s\",\"initialize\"]},{\"id\":\"f7c9a802fa7b49b2208dba1d2d96e6e728a7c3cd75f2ab3ce21911b20858bc68\",\"value\":[\"s\",\"manualAdjustments\"]},{\"id\":\"f8a2286599922895ae578e15d218338dbb86a4d3cc86f83ca46fada39bd92eb3\",\"value\":[\"s\",\"transfers\"]}],\"provenance\":{\"qualifications\":[],\"sourceEnvelopes\":[]},\"requiredCapabilities\":[\"canonical-json-v1\",\"closed-content-graph-v1\",\"foreign-provenance-v1\",\"full-raw17-v1\",\"inactive-state-only-v1\",\"typed-values-v1\"],\"source\":{\"controlRef\":\"0529d53eee5a43581b1fefb9e971ff6487d6c3ed37d52313941e8130a8e4230d\",\"databaseName\":\"finpath-synthetic-b1-golden\",\"protocolVersion\":1,\"snapshotDigest\":\"1ab65ebc92b1089edf7d28fecc4fd614052c457a64e3fc4d28d50dfe5cc4c139\",\"storageSchema\":1},\"sourceProfile\":\"finpath-b1-raw17-v1\"},\"exportVersion\":2,\"exportedAt\":\"2026-12-31T00:00:00.000Z\",\"integrity\":{\"algorithm\":\"SHA-256\",\"canonicalization\":\"FP-CJ-1\",\"contentDigest\":\"e2f12ef10ad5cc1a1f36e424b1122cfb9a1316eb03a36fc5a78a0623929a3b14\",\"graph\":\"FP-GRAPH-1\",\"valueCodec\":\"FP-TV-1\"},\"metadata\":{\"appDataVersion\":3,\"appName\":\"FinPath\",\"appVersion\":\"synthetic-golden\",\"exportVersion\":2,\"exportedAt\":\"2026-12-31T00:00:00.000Z\",\"requiredCapabilities\":[\"canonical-json-v1\",\"closed-content-graph-v1\",\"foreign-provenance-v1\",\"full-raw17-v1\",\"inactive-state-only-v1\",\"typed-values-v1\"],\"schemaVersion\":3,\"source\":\"synthetic-harness\",\"synthetic\":true},\"schemaVersion\":3}",
+  "snapshotDigest": "1ab65ebc92b1089edf7d28fecc4fd614052c457a64e3fc4d28d50dfe5cc4c139",
+  "contentDigest": "e2f12ef10ad5cc1a1f36e424b1122cfb9a1316eb03a36fc5a78a0623929a3b14",
+  "nodes": [
+    {
+      "value": [
+        "n"
+      ],
+      "canonical": "[\"n\"]",
+      "hash": "baf52263b49bc14fb2014364c79a48b0ccf4793beb8b5865e8d3630eb751edf5"
+    },
+    {
+      "value": [
+        "u"
+      ],
+      "canonical": "[\"u\"]",
+      "hash": "4180368372e980156c047d021d934a4378d26f4248c6160a4215424d5b680683"
+    },
+    {
+      "value": [
+        "b",
+        true
+      ],
+      "canonical": "[\"b\",true]",
+      "hash": "7bc5125a4823bfb0bc0941466c38501bb95f5d0f36c96620665fe7c475574b41"
+    },
+    {
+      "value": [
+        "f64",
+        "8000000000000000"
+      ],
+      "canonical": "[\"f64\",\"8000000000000000\"]",
+      "hash": "ceece5bd74ff09829752e68dd2f433ce49513a56137c8f582fab77c48c847e27"
+    },
+    {
+      "value": [
+        "f64",
+        "0000000000000001"
+      ],
+      "canonical": "[\"f64\",\"0000000000000001\"]",
+      "hash": "5b88a1f47931bed77f77db685fb51d81dad5e19944b99c7ff58badbfe38bbbaf"
+    },
+    {
+      "value": [
+        "f64",
+        "3fb999999999999a"
+      ],
+      "canonical": "[\"f64\",\"3fb999999999999a\"]",
+      "hash": "f5f1d198003a8e777a39b966f50b080330108f45520a5dfd32f09c2d550d091d"
+    },
+    {
+      "value": [
+        "s",
+        "\u00e9"
+      ],
+      "canonical": "[\"s\",\"\\u00e9\"]",
+      "hash": "d5f41ac46eefe9939a742907e6cc5e53c7293cc9dd6b8d7ff5548c05e82b4e44"
+    },
+    {
+      "value": [
+        "s",
+        "e\u0301"
+      ],
+      "canonical": "[\"s\",\"e\\u0301\"]",
+      "hash": "b15c810dc57dc3f7089ec93aac8d0dbdc46a1dc9d25217dca54d49e5eac8559e"
+    },
+    {
+      "value": [
+        "s",
+        "\ud800"
+      ],
+      "canonical": "[\"s\",\"\\ud800\"]",
+      "hash": "7887e862b10d17b1b456233497647245f1ff6d44c6172c3d11da31cbeb714942"
+    },
+    {
+      "value": [
+        "s",
+        "\ud83d\ude00"
+      ],
+      "canonical": "[\"s\",\"\\ud83d\\ude00\"]",
+      "hash": "b26055780fc99e13cdf384b1f756da377970302440de43fe8efe2ecb097e317c"
+    },
+    {
+      "value": [
+        "s",
+        "\n\"\\"
+      ],
+      "canonical": "[\"s\",\"\\u000a\\\"\\\\\"]",
+      "hash": "c4615a3fab359a1e2d536446d5a2199e0b02d8bc6bd8eed7e7649f9f822c2658"
+    }
+  ],
+  "canonicalObject": {
+    "value": {
+      "\ue000": "last",
+      "\ud83d\ude00": "middle",
+      "Z": "\u0000",
+      "__proto__": "own"
+    },
+    "canonical": "{\"Z\":\"\\u0000\",\"__proto__\":\"own\",\"\\ud83d\\ude00\":\"middle\",\"\\ue000\":\"last\"}"
+  },
+  "chunks": [
+    {
+      "length": 0,
+      "root": "9abd7af9714c80cd56e310c45dc7c2616ff3f27857821ac2ebf1fc4fc22c4df5",
+      "uniqueNodes": 1
+    },
+    {
+      "length": 64,
+      "root": "4349dbbe0f7df1598128f47d2b6dd3e214e689d0e4e4850caf267c5daf1fb6ad",
+      "uniqueNodes": 2
+    },
+    {
+      "length": 65,
+      "root": "970f71d5e0e072a6c4240ff99f033bb995dfcd4a67b0a227e2fac2cc791d095d",
+      "uniqueNodes": 4
+    },
+    {
+      "length": 4096,
+      "root": "695fabc9dfcde47b9d4337385c2ef08ba30d62146dddc36e57d0b627f5e1d0d9",
+      "uniqueNodes": 3
+    },
+    {
+      "length": 4097,
+      "root": "57f66d3909524cbf806495db38e2a5ab1f8aaffd33a3e398f0aaaf0dd39aaf2e",
+      "uniqueNodes": 5
+    }
+  ],
+  "keyset": {
+    "payload": {
+      "store": "example",
+      "keyPath": [
+        "id",
+        "revision"
+      ],
+      "keys": [
+        [
+          "k",
+          [
+            "A",
+            "10"
+          ]
+        ],
+        [
+          "k",
+          [
+            "A",
+            "2"
+          ]
+        ],
+        [
+          "k",
+          [
+            "\ud83d\ude00",
+            "0"
+          ]
+        ]
+      ]
+    },
+    "hash": "ef92b09be43f8f578a3e0898e516773384cb57f8a715601eec1920edc6f8cb4e"
+  }
+}
