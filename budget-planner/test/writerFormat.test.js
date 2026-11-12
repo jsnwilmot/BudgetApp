@@ -10,6 +10,7 @@ import { parseCanonical } from '../experimental/checkpoint/writerCanonical.js';
 import { graphBuilder } from '../experimental/checkpoint/writerValue.js';
 import { mapEditor } from '../experimental/checkpoint/writerMap.js';
 import { logicalBuilder } from '../experimental/checkpoint/writerCore.js';
+import { indexBuilder } from '../experimental/checkpoint/writerIndex.js';
 import { canonical } from '../experimental/checkpoint/backupFormat.js';
 
 const golden = JSON.parse(readFileSync(new URL('./fixtures/writerGolden.json', import.meta.url)));
@@ -136,6 +137,11 @@ test('W12: every fixed numeric cap rejects raising; deep helper exact/over limit
 test('W12: logical-record, dirty-map, reference, old-lookup and value-expansion limits refuse in deep helpers', async () => {
   const hostile = new Proxy({}, { getOwnPropertyDescriptor() { throw Error('synthetic-private'); } });
   assert.deepEqual(failure(hostile), { ok: false, diagnostics: [{ code: 'INVALID_INPUT' }] });
+  // 3 leaves*96 + one 3-slot branch*(24+3*8) = 336 declared units.
+  // At 328, the third child must refuse, including mutable slot growth.
+  const index = indexBuilder(null, met({ stageBytes: 328 }));
+  index.put('a'.repeat(64), {}); index.put('b'.repeat(64), {});
+  assert.throws(() => index.put('c'.repeat(64), {}), { code: 'RESOURCE_LIMIT' });
   const graph = graphBuilder(met({ stagedRecords: 1 })); await graph.value('first');
   await assert.rejects(graph.value('second'), { code: 'RESOURCE_LIMIT' });
   const h = met({ dirtyMaps: 1 }), editor = mapEditor({}, h); editor.empty(); assert.throws(() => editor.empty(), { code: 'RESOURCE_LIMIT' });

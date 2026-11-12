@@ -50,9 +50,15 @@ export async function runWriterWorkload(years, variant) {
       if (error) reject(Error(stderr || error.message)); else { try { resolve(JSON.parse(stdout)); } catch (e) { reject(e); } }
     }));
   const source = historicalSource(), c = config[variant], commands = years * 370, changesByCommand = [];
-  let f, roots;
+  let f, roots, bootstrapWork, bootstrapElapsedMs, bootstrapObserved;
   { // Do not retain a second, obsolete private-index handle.
-    const candidate = goodModel(await writer.createWriter(writerOptions(source), runtime()));
+    const crypto = observeCrypto(), begin = performance.now(); let candidate;
+    try {
+      candidate = goodModel(await writer.createWriter(writerOptions(source), runtime()));
+      bootstrapElapsedMs = performance.now() - begin; bootstrapWork = candidate.work; bootstrapObserved = crypto.read();
+    } finally { crypto.close(); }
+    assert.equal(bootstrapWork.phases.reduce((n, p) => n + p.hashCalls, 0), bootstrapObserved.calls);
+    assert.equal(bootstrapWork.phases.reduce((n, p) => n + p.hashedBytes, 0), bootstrapObserved.bytes);
     assert.deepEqual(candidate.bootstrapRoots, ORIGINAL_ROOTS);
     f = { source, candidate: { controller: candidate.controller }, snapshot: candidate.snapshot }; roots = [...candidate.bootstrapRoots];
   }
@@ -123,6 +129,7 @@ export async function runWriterWorkload(years, variant) {
   return { years, variant, operations: commands, periodsPerYear: c.periods, rowsPerOperation: c.changes, noteUnits: c.notes,
     repetitions: 1, comparedVersions, committedRootsCompared: roots.length, original17: true,
     oracleIsolation: 'sequential separate process; expected roots/facts never supplied to writer',
+    bootstrap: { writerElapsedMs: bootstrapElapsedMs, writerWork: bootstrapWork, writerObservedCrypto: bootstrapObserved, p1: reference.bootstrap },
     baselineP1: reference.final, p11aCounterfactualBytes: expected[2], writerPhysicalBytes: physical,
     requiredCurrentBytes: required, allHandlesConservativeBytes: allHandles,
     totalDecreasePercent: decrease(expected[0], required), physicalDecreasePercent: decrease(expected[0], physical),
@@ -133,5 +140,6 @@ export async function runWriterWorkload(years, variant) {
     work, observedCrypto: observed, p1NonHashSerializationBytes: 'UNKNOWN', nativeIndexBytes: 'UNKNOWN', peakJSHeap: 'UNKNOWN',
     commandMedianMs: percentile(times, 0.5), commandP95Ms: percentile(times, 0.95), commandTotalMs: times.reduce((a, b) => a + b, 0),
     p1MedianMs: percentile(referenceTimes, 0.5), p1P95Ms: percentile(referenceTimes, 0.95),
+    p1CommandTotalMs: referenceTimes.reduce((a, b) => a + b, 0),
     elapsedMs: performance.now() - started, auditMs, audit, goals };
 }

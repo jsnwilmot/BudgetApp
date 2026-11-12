@@ -22,7 +22,7 @@ export function indexBuilder(root, m) {
     need(n.tag === 'branch', 'INVALID_GRAPH');
     if (!owned.has(n)) n = branch(n.prefix, [...n.children]);
     const digit = id[n.prefix.length], at = n.children.findIndex(([d]) => d === digit);
-    if (at < 0) { n.children.push([digit, make({ tag: 'leaf', id, record })]); n.children.sort(([a], [b]) => a < b ? -1 : 1); }
+    if (at < 0) { m.reserve(8); n.children.push([digit, make({ tag: 'leaf', id, record })]); n.children.sort(([a], [b]) => a < b ? -1 : 1); }
     else n.children[at] = [digit, insert(n.children[at][1], id, record)];
     return n;
   }

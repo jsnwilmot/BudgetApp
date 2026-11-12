@@ -11,8 +11,10 @@ import { requestFor } from './writerCompletion.js';
 
 const years = Number(process.argv[2]), variant = process.argv[3];
 if (![1, 3, 5].includes(years) || !['low', 'medium', 'high'].includes(variant)) throw Error('Invalid synthetic oracle workload');
+const crypto = observeCrypto(), bootstrapStarted = performance.now();
 const fixture = await modelFixture(), initial = goodModel(inspectHistoryModel(fixture.model)).stats;
-let model = fixture.model; const roots = [], times = [], observed = { calls: 0, bytes: 0, maps: 0 }, crypto = observeCrypto();
+const bootstrap = { elapsedMs: performance.now() - bootstrapStarted, observedCrypto: crypto.read() };
+let model = fixture.model; const roots = [], times = [], observed = { calls: 0, bytes: 0, maps: 0 };
 try {
   for (let op = 0; op < years * 370; op++) {
     const changes = workloadChanges(op, years, variant); crypto.reset(); const start = performance.now();
@@ -23,5 +25,5 @@ try {
 } finally { crypto.close(); }
 const facts = [];
 for (const r of inventory(model).values()) if (r.kind !== 'map') facts.push([r.id, r.kind, createHash('sha256').update(canonical(r.body)).digest('hex')]);
-process.stdout.write(JSON.stringify({ initial, final: goodModel(inspectHistoryModel(model)).stats, roots, times, observed, facts,
+process.stdout.write(JSON.stringify({ initial, final: goodModel(inspectHistoryModel(model)).stats, roots, times, observed, bootstrap, facts,
   sourceBytes: Buffer.from(fixture.bytes).toString('base64') }) + '\n');
