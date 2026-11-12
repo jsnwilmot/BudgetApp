@@ -72,7 +72,10 @@ export async function runWriterWorkload(years, variant) {
   const reference = goodModel(inspectHistoryModel(f.model)), expected = COMPARISONS[`${years}-${variant}`];
   assert.deepEqual([reference.stats.retainedBytes, reference.stats.kindBytes.map], expected.slice(0, 2));
   const metrics = goodModel(writer.inspectWriter(f.snapshot, runtime())), io = goodModel(writer.createWriterSource(f.snapshot, runtime()));
-  const auditStarted = performance.now(), audit = goodModel(await writer.verifyWriterInventory(f.snapshot, io.source, runtime())).proof;
+  const auditStarted = performance.now(), audited = await writer.verifyWriterInventory(f.snapshot, io.source, runtime());
+  if (!audited.ok) throw Error('synthetic whole inventory refusal: ' + JSON.stringify({ years, variant, committedRootsCompared: roots.length,
+    physicalBytes: metrics.physicalBytes, diagnostics: audited.diagnostics, work: audited.work }));
+  const audit = audited.proof;
   const auditMs = performance.now() - auditStarted;
   const records = readPhysicalPages(goodModel(writer.createWriterSource(f.snapshot, runtime())).source).records, old = inventory(f.model);
   for (const r of old.values()) if (r.kind !== 'map') { const actual = records.get(r.id); assert.ok(actual, 'missing original non-map fact'); assert.equal(actual.kind, r.kind); assert.equal(canonical(actual.body), canonical(r.body)); }

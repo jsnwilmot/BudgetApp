@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { Buffer } from 'node:buffer';
-import { limits, LIMITS, meter, CAPS, D, P } from '../experimental/checkpoint/writerFormat.js';
+import { limits, LIMITS, meter, CAPS, D, P, failure } from '../experimental/checkpoint/writerFormat.js';
 import { encodePage, decodePage, checkLogical, valueShape, refs } from '../experimental/checkpoint/writerWire.js';
 import { parseCanonical } from '../experimental/checkpoint/writerCanonical.js';
 import { graphBuilder } from '../experimental/checkpoint/writerValue.js';
@@ -59,6 +59,15 @@ test('W11/W12: strict canonical duplicate-key/escape/number/depth and typed-valu
   assert.throws(() => refs(bad, met()));
   const wrong = { ...golden.records[1], body: { originsRoot: 'a'.repeat(64), datasetsRoot: 'a'.repeat(64) } };
   await assert.rejects(checkLogical(wrong, () => ({ kind: 'chunk', body: { data: 'x' } }), met()), { code: 'INVALID_GRAPH' });
+});
+
+test('W09/W15: identical FP value identity does not authorize a different physical chunk layout', async () => {
+  const text = '["s","synthetic"]', id = sha('FinPath/FP-TV-1/node', text), chunks = new Map();
+  const chunk = data => { const id = sha(P + 'chunk/1', data); chunks.set(id, { kind: 'chunk', id, body: { data } }); return id; };
+  const original = { kind: 'value', id, body: { logicalBytes: text.length, chunks: [chunk(text)], children: [] } };
+  await checkLogical(original, id => chunks.get(id), met());
+  const foreign = { ...original, body: { ...original.body, chunks: [chunk(text.slice(0, 5)), chunk(text.slice(5))] } };
+  await assert.rejects(checkLogical(foreign, id => chunks.get(id), met()), { code: 'INVALID_GRAPH' });
 });
 
 // This harness uses the candidate transient editor and FP value encoder, but
@@ -125,6 +134,8 @@ test('W12: every fixed numeric cap rejects raising; deep helper exact/over limit
 });
 
 test('W12: logical-record, dirty-map, reference, old-lookup and value-expansion limits refuse in deep helpers', async () => {
+  const hostile = new Proxy({}, { getOwnPropertyDescriptor() { throw Error('synthetic-private'); } });
+  assert.deepEqual(failure(hostile), { ok: false, diagnostics: [{ code: 'INVALID_INPUT' }] });
   const graph = graphBuilder(met({ stagedRecords: 1 })); await graph.value('first');
   await assert.rejects(graph.value('second'), { code: 'RESOURCE_LIMIT' });
   const h = met({ dirtyMaps: 1 }), editor = mapEditor({}, h); editor.empty(); assert.throws(() => editor.empty(), { code: 'RESOURCE_LIMIT' });

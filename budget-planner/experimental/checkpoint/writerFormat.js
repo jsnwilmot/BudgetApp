@@ -22,7 +22,8 @@ const errors = new Set(['INVALID_INPUT', 'INVALID_FIELDS', 'UNSUPPORTED_TYPE', '
 export const isHash = v => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
 export const integer = v => Number.isSafeInteger(v) && v >= 0;
 export function failure(e) {
-  const d = e && typeof e === 'object' ? Object.getOwnPropertyDescriptor(e, 'code') : null;
+  let d = null;
+  try { d = e && typeof e === 'object' ? Object.getOwnPropertyDescriptor(e, 'code') : null; } catch { /* Untrusted thrown proxy; return only a fixed code. */ }
   return freeze({ ok: false, diagnostics: [{ code: d && 'value' in d && errors.has(d.value) ? d.value : 'INVALID_INPUT' }] });
 }
 export function limits(input = {}) {

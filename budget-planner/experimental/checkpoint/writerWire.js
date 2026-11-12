@@ -81,7 +81,12 @@ export function valueShape(node, getInfo, m) {
 }
 export async function checkLogical(record, get, m, options) {
   const edges = refs(record, m), { kind, id, body } = record; need(isHash(id), 'INVALID_GRAPH');
-  const resolved = new Map(); for (const ref of edges) if (!resolved.has(ref)) { const child = get(ref); need(child, 'MISSING_OBJECT'); resolved.set(ref, child); }
+  // A full audit already owns an authenticated, child-before-parent registry.
+  // Resolve directly against it instead of allocating/populating a second Map
+  // per record. refs() still meters every edge and every role is checked below.
+  const resolved = options?.verifiedRecords ?? new Map();
+  if (options?.verifiedRecords) { for (const ref of edges) need(resolved.has(ref), 'MISSING_OBJECT'); }
+  else for (const ref of edges) if (!resolved.has(ref)) { const child = get(ref); need(child, 'MISSING_OBJECT'); resolved.set(ref, child); }
   const role = (ref, allowed) => { if (ref !== null) need(resolved.has(ref) && allowed.includes(resolved.get(ref).kind), 'INVALID_GRAPH'); };
   if (kind === 'value') { for (const r of body.chunks) role(r, ['chunk']); for (const r of body.children) role(r, ['value']); }
   if (kind === 'map') for (const row of body.entries ?? body.children) {
@@ -99,7 +104,9 @@ export async function checkLogical(record, get, m, options) {
   else if (kind === 'value') {
     const mark = m.stats.stageBytes;
     try {
-    let n = 0; const parts = []; for (const c of body.chunks) { const r = resolved.get(c); need(r.kind === 'chunk', 'INVALID_GRAPH'); n += r.body.data.length; need(n <= 33554432, 'RESOURCE_LIMIT'); parts.push(r.body.data); }
+    need(body.chunks.length === Math.ceil(body.logicalBytes / 61440), 'INVALID_GRAPH');
+    let n = 0; const parts = []; for (const c of body.chunks) { const r = resolved.get(c); need(r.kind === 'chunk' &&
+      r.body.data.length === Math.min(61440, body.logicalBytes - n), 'INVALID_GRAPH'); n += r.body.data.length; need(n <= 33554432, 'RESOURCE_LIMIT'); parts.push(r.body.data); }
     need(n === body.logicalBytes, 'INVALID_GRAPH'); m.reserve(n * 3 + 256); m.tick(n); const encoded = parts.join(''), node = parseCanonical(encoded, m);
     need(await m.digest('FinPath/FP-TV-1/node', encoded) === id, 'INTEGRITY_MISMATCH');
     const info = valueShape(node, options?.getValueInfo, m), actual = info.children;

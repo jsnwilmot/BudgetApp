@@ -22,7 +22,9 @@ function result(raw, names) {
   return Object.fromEntries(names.map(k => [k, ds[k].value]));
 }
 export async function verifyInventory(expected, supplied, runtime) {
-  const m = meter(expected.limits, runtime, false, true), source = methods(supplied), records = new Map(), values = new Map(), metas = new Map();
+  const m = meter(expected.limits, runtime, false, true);
+  try {
+  const source = methods(supplied), records = new Map(), values = new Map(), metas = new Map();
   const pageRows = [], states = [], revisionBytes = new Map(); let retained = 0, physicalBytes = 0;
   const capabilityDigest = await m.hash(D + 'capabilities/1', CAPS);
   const charge = bytes => { need(integer(bytes) && retained + bytes <= m.bound.retainedBytes, 'RESOURCE_LIMIT'); retained += bytes; };
@@ -105,7 +107,7 @@ export async function verifyInventory(expected, supplied, runtime) {
       need(parsed.length === page.frames && parsed[0].sequence === page.first, 'INVALID_PAGE');
       for (let slot = 0; slot < parsed.length; slot++) {
         const r = parsed[slot]; need(r.sequence === nextSequence++ && !records.has(r.id) && !metas.has(r.id) && !pageIds.has(r.id), 'INVALID_GRAPH');
-        await checkLogical(r, get, m, { getValueInfo: id => values.get(id), onValue: (node, record, info) => {
+        await checkLogical(r, get, m, { verifiedRecords: records, getValueInfo: id => values.get(id), onValue: (node, record, info) => {
           charge(80); values.set(record.id, { ...info, scalar: node[0] === 's' ? node[1] : null }); } });
         charge(r.bodyBytes * 2 + 192); records.set(r.id, freeze({ ...r, locator: { page: page.id, slot, sequence: r.sequence } }));
         byKind[r.kind] = (byKind[r.kind] ?? 0) + 1; frameBytes[r.kind] = (frameBytes[r.kind] ?? 0) + r.bodyBytes + 38;
@@ -180,4 +182,5 @@ export async function verifyInventory(expected, supplied, runtime) {
       return freeze({ ok: true, record: read.copy(records.get(id)) }); } catch (e) { return failure(e); } finally { read.release(read.stats.stageBytes - mark); } }
   }); } });
   return { ok: true, proof, rebuilt };
+  } catch (e) { return { ...failure(e), work: m.report() }; }
 }
