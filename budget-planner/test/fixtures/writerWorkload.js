@@ -1,11 +1,15 @@
-// Exact accepted nine workloads. Every command runs an UNMODIFIED P1 oracle.
+// Exact accepted nine workloads. The UNMODIFIED P1 oracle uses a separate heap.
 import assert from 'node:assert/strict';
-import { pairedFixture, requestFor, stage } from './writerCompletion.js';
-import { goodModel } from './historyModel.js';
-import { inventory, referenceReader, proveOriginal17, exact } from './retention.js';
-import { runtime, equalHash, readPhysicalPages } from './writerParity.js';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import process from 'node:process';
+import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
+import { requestFor, stage } from './writerCompletion.js';
+import { historicalSource, goodModel } from './historyModel.js';
+import { referenceReader, proveOriginal17, exact } from './retention.js';
+import { runtime, equalHash, readPhysicalPages, writerOptions, ORIGINAL_ROOTS } from './writerParity.js';
 import * as writer from '../../experimental/checkpoint/writer.js';
-import { changeHistory, inspectHistoryModel } from '../../experimental/checkpoint/historyModel.js';
 import { canonical } from '../../experimental/checkpoint/backupFormat.js';
 
 export const COMPARISONS = Object.freeze({
@@ -26,7 +30,7 @@ export function workloadChanges(op, years, variant) {
   }
   return changes;
 }
-function observer() {
+export function observeCrypto() {
   const target = globalThis.crypto.subtle, own = Object.getOwnPropertyDescriptor(target, 'digest'), original = target.digest;
   let calls = 0, bytes = 0, maps = 0; const mapPrefix = new TextEncoder().encode('FinPath/P1/map/1\n');
   Object.defineProperty(target, 'digest', { configurable: true, value: function (algorithm, input) {
@@ -40,45 +44,56 @@ function observer() {
 const percentile = (values, p) => [...values].sort((a, b) => a - b)[Math.max(0, Math.ceil(values.length * p) - 1)];
 const decrease = (before, after) => (before - after) * 100 / before;
 export async function runWriterWorkload(years, variant) {
-  const f = await pairedFixture(), c = config[variant], commands = years * 370, roots = [...f.candidate.bootstrapRoots], changesByCommand = [];
+  const reference = await new Promise((resolve, reject) => execFile(process.execPath,
+    ['--import', new URL('../register.mjs', import.meta.url).href, fileURLToPath(new URL('./writerOracleWorker.mjs', import.meta.url)), String(years), variant],
+    { encoding: 'utf8', maxBuffer: 50331648 }, (error, stdout, stderr) => {
+      if (error) reject(Error(stderr || error.message)); else { try { resolve(JSON.parse(stdout)); } catch (e) { reject(e); } }
+    }));
+  const source = historicalSource(), c = config[variant], commands = years * 370, changesByCommand = [];
+  let f, roots;
+  { // Do not retain a second, obsolete private-index handle.
+    const candidate = goodModel(await writer.createWriter(writerOptions(source), runtime()));
+    assert.deepEqual(candidate.bootstrapRoots, ORIGINAL_ROOTS);
+    f = { source, candidate: { controller: candidate.controller }, snapshot: candidate.snapshot }; roots = [...candidate.bootstrapRoots];
+  }
   // Only current lookup handles are required here; every historical LOGICAL
   // root remains in the append-only ledger. All-handles costs are also reported.
-  const sourceFixture = { source: f.source, bytes: f.reference.bytes };
-  f.reference = null; f.candidate = { controller: f.candidate.controller };
-  const initialP1 = goodModel(inspectHistoryModel(f.model)).stats;
-  const times = [], referenceTimes = [], work = {}, observed = { candidateCalls: 0, candidateBytes: 0, candidateMapCalls: 0, p1Calls: 0, p1Bytes: 0, p1MapCalls: 0 }, crypto = observer();
+  const sourceFixture = { source: f.source, bytes: new Uint8Array(Buffer.from(reference.sourceBytes, 'base64')) };
+  delete reference.sourceBytes;
+  const initialP1 = reference.initial, referenceTimes = reference.times;
+  const times = [], work = {}, observed = { candidateCalls: 0, candidateBytes: 0, candidateMapCalls: 0,
+    p1Calls: reference.observed.calls, p1Bytes: reference.observed.bytes, p1MapCalls: reference.observed.maps }, crypto = observeCrypto();
   const started = performance.now();
   try {
     for (let op = 0; op < commands; op++) {
       const changes = workloadChanges(op, years, variant); changesByCommand.push(changes);
       const request = requestFor(f.snapshot, 'work-' + op, changes); crypto.reset(); const start = performance.now();
-      let staged, sealed;
-      try { staged = await stage(f, request); sealed = goodModel(await writer.sealCommand(staged.command)); }
-      catch (e) { throw Error(`synthetic writer operation ${op}, before publication, elapsed ${performance.now() - start}ms: ${e.message}`, { cause: e }); }
-      goodModel(await writer.validateCandidate(sealed.candidate)); const committed = goodModel(writer.publishCandidate(f.candidate.controller, sealed.candidate));
+      let staged, sealed, committed;
+      try {
+        staged = await stage(f, request); sealed = goodModel(await writer.sealCommand(staged.command));
+        goodModel(await writer.validateCandidate(sealed.candidate)); committed = goodModel(writer.publishCandidate(f.candidate.controller, sealed.candidate));
+      } catch (e) { throw Error(`synthetic writer operation ${op}, elapsed ${performance.now() - start}ms: ${e.message}`, { cause: e }); }
       times.push(performance.now() - start); const measured = crypto.read(); observed.candidateCalls += measured.calls; observed.candidateBytes += measured.bytes; observed.candidateMapCalls += measured.maps;
       assert.equal(committed.work.hashCalls, measured.calls); assert.equal(committed.work.hashedBytes, measured.bytes);
       for (const [key, n] of Object.entries(committed.work)) if (typeof n === 'number') {
         if (key === 'peakStageBytes') work[key] = Math.max(work[key] ?? 0, n); else work[key] = (work[key] ?? 0) + n;
       }
-      crypto.reset(); const refStart = performance.now();
-      const reference = goodModel(await changeHistory(f.model, requestFor(f.model, 'work-' + op, changes))); referenceTimes.push(performance.now() - refStart);
-      const measuredRef = crypto.read(); observed.p1Calls += measuredRef.calls; observed.p1Bytes += measuredRef.bytes; observed.p1MapCalls += measuredRef.maps;
-      equalHash('model-root', committed.snapshot.root, 'work-' + op, reference.model.root, committed.snapshot.root);
-      equalHash('data-root', committed.snapshot.dataRoot, 'work-' + op, reference.model.dataRoot, committed.snapshot.dataRoot);
-      f.snapshot = committed.snapshot; f.model = reference.model; roots.push(f.snapshot.root);
+      equalHash('model-root', committed.snapshot.root, 'work-' + op, reference.roots[op][0], committed.snapshot.root);
+      equalHash('data-root', committed.snapshot.dataRoot, 'work-' + op, reference.roots[op][1], committed.snapshot.dataRoot);
+      f.snapshot = committed.snapshot; roots.push(f.snapshot.root);
     }
   } finally { crypto.close(); }
-  const reference = goodModel(inspectHistoryModel(f.model)), expected = COMPARISONS[`${years}-${variant}`];
-  assert.deepEqual([reference.stats.retainedBytes, reference.stats.kindBytes.map], expected.slice(0, 2));
+  const expected = COMPARISONS[`${years}-${variant}`];
+  assert.deepEqual([reference.final.retainedBytes, reference.final.kindBytes.map], expected.slice(0, 2));
   const metrics = goodModel(writer.inspectWriter(f.snapshot, runtime())), io = goodModel(writer.createWriterSource(f.snapshot, runtime()));
   const auditStarted = performance.now(), audited = await writer.verifyWriterInventory(f.snapshot, io.source, runtime());
   if (!audited.ok) throw Error('synthetic whole inventory refusal: ' + JSON.stringify({ years, variant, committedRootsCompared: roots.length,
     physicalBytes: metrics.physicalBytes, diagnostics: audited.diagnostics, work: audited.work }));
   const audit = audited.proof;
   const auditMs = performance.now() - auditStarted;
-  const records = readPhysicalPages(goodModel(writer.createWriterSource(f.snapshot, runtime())).source).records, old = inventory(f.model);
-  for (const r of old.values()) if (r.kind !== 'map') { const actual = records.get(r.id); assert.ok(actual, 'missing original non-map fact'); assert.equal(actual.kind, r.kind); assert.equal(canonical(actual.body), canonical(r.body)); }
+  const records = readPhysicalPages(goodModel(writer.createWriterSource(f.snapshot, runtime())).source).records;
+  for (const [id, kind, digest] of reference.facts) { const actual = records.get(id); assert.ok(actual, 'missing original non-map fact'); assert.equal(actual.kind, kind);
+    assert.equal(createHash('sha256').update(canonical(actual.body)).digest('hex'), digest, 'independent original fact body'); }
   // Native FP-TV own order/bits live inside the typed nodes, not CJ wrapper order.
   proveOriginal17(sourceFixture, records); const read = referenceReader(records), heads = new Map(); let comparedVersions = 0;
   for (let at = 0; at < roots.length; at++) {
@@ -100,14 +115,15 @@ export async function runWriterWorkload(years, variant) {
   const netMap = mapFrames + overhead, goals = { noRequiredCurrentRegression: required <= expected[0],
     highFiveMap20: decrease(expected[1], netMap) >= 20, highFiveTotal10: decrease(expected[0], required) >= 10,
     mapHashes20: observed.candidateMapCalls <= observed.p1MapCalls * 0.8,
-    mapAllocations20: work.finalizedMaps <= (reference.stats.kinds.map - initialP1.kinds.map) * 0.8,
+    mapAllocations20: work.finalizedMaps <= (reference.final.kinds.map - initialP1.kinds.map) * 0.8,
     hashCallsNonRegression: observed.candidateCalls <= observed.p1Calls, hashedInputBytesNonRegression: observed.candidateBytes <= observed.p1Bytes,
-    lookup125: work.logicalLookups <= (reference.stats.lookupVisits - initialP1.lookupVisits) * 1.25,
+    lookup125: work.logicalLookups <= (reference.final.lookupVisits - initialP1.lookupVisits) * 1.25,
     median50ms: percentile(times, 0.5) <= 50, p95_150ms: percentile(times, 0.95) <= 150,
     stretchMap65: decrease(expected[1], netMap) >= 65, stretch120MiB: required <= 120 * 1024 * 1024, stretchMapShare50: netMap / required <= 0.5 };
   return { years, variant, operations: commands, periodsPerYear: c.periods, rowsPerOperation: c.changes, noteUnits: c.notes,
     repetitions: 1, comparedVersions, committedRootsCompared: roots.length, original17: true,
-    baselineP1: reference.stats, p11aCounterfactualBytes: expected[2], writerPhysicalBytes: physical,
+    oracleIsolation: 'sequential separate process; expected roots/facts never supplied to writer',
+    baselineP1: reference.final, p11aCounterfactualBytes: expected[2], writerPhysicalBytes: physical,
     requiredCurrentBytes: required, allHandlesConservativeBytes: allHandles,
     totalDecreasePercent: decrease(expected[0], required), physicalDecreasePercent: decrease(expected[0], physical),
     allHandlesDecreasePercent: decrease(expected[0], allHandles), netMapBytes: netMap, netMapDecreasePercent: decrease(expected[1], netMap),

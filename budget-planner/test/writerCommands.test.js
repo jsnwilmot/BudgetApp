@@ -10,6 +10,7 @@ import { inventory, referenceReader, proveOriginal17 } from './fixtures/retentio
 import { readPhysicalPages } from './fixtures/writerParity.js';
 import { writerOptions } from './fixtures/writerParity.js';
 import { readFileSync, readdirSync } from 'node:fs';
+import { canonical } from '../experimental/checkpoint/backupFormat.js';
 
 let fixture;
 const shared = () => fixture ??= pairedFixture();
@@ -26,9 +27,19 @@ test('W11: full authoritative ledger/index closure verifies and rebuilds an inde
   const f = await shared(), source = goodModel(api.createWriterSource(f.snapshot, runtime())).source;
   const audit = goodModel(await api.verifyWriterInventory(f.snapshot, source, runtime()));
   assert.equal(audit.proof.status, 'VERIFIED_WRITER_INVENTORY_MODEL');
-  assert.equal(audit.proof.byKind['model-root'], 4);
+  assert.equal(audit.proof.byKind['model-root'], Number(f.snapshot.revision) + 1);
   const rebuilt = audit.rebuilt.open(runtime());
   assert.equal(goodModel(rebuilt.readLogical(f.snapshot.root)).record.body.revision, f.snapshot.revision);
+  let count = 0, exhausted = false; const cursor = source.beginIndex();
+  while (!exhausted) {
+    const page = goodModel(source.readIndex(cursor));
+    for (const row of page.rows) if (row.type === 'logical') {
+      assert.equal(canonical(goodModel(rebuilt.readLogical(row.id)).record), canonical(goodModel(source.readLogical(row.id)).record)); count++;
+    }
+    exhausted = page.exhausted;
+  }
+  assert.equal(count, audit.proof.records);
+  assert.equal(audit.rebuilt.open({ now: () => -1, cancelled: () => false }).diagnostics[0].code, 'INVALID_CLOCK');
   t.diagnostic(JSON.stringify(audit.proof));
 });
 
@@ -247,14 +258,19 @@ test('W11: independent audit rejects forged metadata/context/index/bytes without
   const f = await shared(), source = () => goodModel(api.createWriterSource(f.snapshot, { now: () => 0, cancelled: () => false })).source;
   const good = { ...source(), readLogical() { throw Error('must not consult producer logical lookup'); } };
   goodModel(await api.verifyWriterInventory(f.snapshot, good, { now: () => 0, cancelled: () => false }));
+  let indexGetters = 0;
   for (const mutate of [s => ({ ...s, context: { ...s.context, generation: 'foreign' } }),
     s => ({ ...s, readMetadata(id) { const r = s.readMetadata(id); return { ok: true, record: { ...r.record, body: { ...r.record.body, revision: 999 } } }; } }),
     s => ({ ...s, readPage(id) { const b = s.readPage(id).bytes; b[b.length - 1] ^= 1; return { ok: true, bytes: b }; } }),
     s => ({ ...s, readIndex(c) { const r = s.readIndex(c); return { ...r, rows: r.rows.length ? [r.rows[0], r.rows[0]] : r.rows }; } }),
     s => ({ ...s, readIndex(c) { const r = s.readIndex(c); return { ...r, rows: r.rows.filter((_, i) => i !== 0) }; } }),
-    s => ({ ...s, readIndex(c) { const r = s.readIndex(c); return { ...r, rows: [{ id: '0'.repeat(64), type: 'logical' }, ...r.rows.slice(1)] }; } })]) {
+    s => ({ ...s, readIndex(c) { const r = s.readIndex(c); return { ...r, rows: [{ id: '0'.repeat(64), type: 'logical' }, ...r.rows.slice(1)] }; } }),
+    s => ({ ...s, readIndex() { return { ok: true, rows: new Array(1000001), exhausted: false }; } }),
+    s => ({ ...s, readIndex() { const row = { type: 'logical' }; Object.defineProperty(row, 'id', { enumerable: true, get() { indexGetters++; throw Error('must never invoke index getter'); } });
+      return { ok: true, rows: [row], exhausted: true }; } })]) {
     const result = await api.verifyWriterInventory(f.snapshot, mutate(source()), { now: () => 0, cancelled: () => false }); assert.equal(result.ok, false);
   }
+  assert.equal(indexGetters, 0);
   let getters = 0; const unsafe = { ...source() }; Object.defineProperty(unsafe, 'readPage', { enumerable: true, get() { getters++; throw Error('private'); } });
   assert.equal((await api.verifyWriterInventory(f.snapshot, unsafe, runtime())).ok, false); assert.equal(getters, 0);
   assert.equal(goodModel(api.currentSnapshot(f.candidate.controller)).snapshot, f.snapshot);

@@ -21,9 +21,34 @@ function result(raw, names) {
   need(Object.keys(ds).length === names.length + 1 && names.every(k => ds[k] && 'value' in ds[k]), 'UNSUPPORTED_TYPE');
   return Object.fromEntries(names.map(k => [k, ds[k].value]));
 }
+function indexRows(raw, m, visit) {
+  need(Array.isArray(raw) && Object.getPrototypeOf(raw) === Array.prototype, 'INVALID_PAGE');
+  const length = Object.getOwnPropertyDescriptor(raw, 'length');
+  need(length && 'value' in length && integer(length.value) && length.value <= 128, 'INVALID_PAGE');
+  const keys = Reflect.ownKeys(raw); need(keys.length === length.value + 1 && keys.every(k => typeof k === 'string'), 'INVALID_PAGE');
+  m.reserve(keys.length * 16); m.tick(0, keys.length);
+  for (let i = 0; i < length.value; i++) {
+    m.reserve(256);
+    try {
+      const d = Object.getOwnPropertyDescriptor(raw, String(i)); need(d && 'value' in d && d.enumerable, 'UNSUPPORTED_TYPE');
+      const row = d.value; need(plain(row) && !Object.getOwnPropertySymbols(row).length, 'UNSUPPORTED_TYPE');
+      const ds = Object.getOwnPropertyDescriptors(row);
+      need(Object.keys(ds).length === 2 && ['id', 'type'].every(k => ds[k] && 'value' in ds[k] && ds[k].enumerable), 'INVALID_FIELDS');
+      const id = ds.id.value, type = ds.type.value;
+      need(isHash(id) && typeof type === 'string' && ['logical', 'page', 'delta', 'pins', 'seal', 'state'].includes(type), 'INVALID_GRAPH');
+      // Closed immutable scalar fields need no recursive DTO copy or quote cache.
+      // Meter every row/byte; descriptor validation rejects getters and extras.
+      m.tick(19 + id.length + type.length); visit(id, type);
+    } finally { m.release(256); }
+  }
+  return length.value;
+}
 export async function verifyInventory(expected, supplied, runtime) {
   const m = meter(expected.limits, runtime, false, true);
-  try {
+  try { return await auditInventory(expected, supplied, m); }
+  catch (e) { return { ...failure(e), work: m.report() }; }
+}
+async function auditInventory(expected, supplied, m) {
   const source = methods(supplied), records = new Map(), values = new Map(), metas = new Map();
   const pageRows = [], states = [], revisionBytes = new Map(); let retained = 0, physicalBytes = 0;
   const capabilityDigest = await m.hash(D + 'capabilities/1', CAPS);
@@ -164,10 +189,12 @@ export async function verifyInventory(expected, supplied, runtime) {
     const mark = m.stats.stageBytes;
     try {
       const received = result(await source.readIndex(cursor), ['rows', 'exhausted']); m.tick(); need(typeof received.exhausted === 'boolean', 'INVALID_PAGE');
-      const rows = m.copy(received.rows); need(Array.isArray(rows) && rows.length <= 128 && (rows.length || received.exhausted), 'INVALID_PAGE');
-      for (const row of rows) { fields(row, ['id', 'type']); need(isHash(row.id) && !enumerated.has(row.id), 'INVALID_GRAPH');
-        const type = records.has(row.id) ? 'logical' : pageIds.has(row.id) ? 'page' : metas.get(row.id)?.physicalType;
-        need(type && row.type === type, 'INTEGRITY_MISMATCH'); enumerated.add(row.id); }
+      const count = indexRows(received.rows, m, (id, suppliedType) => {
+        need(!enumerated.has(id), 'INVALID_GRAPH');
+        const type = records.has(id) ? 'logical' : pageIds.has(id) ? 'page' : metas.get(id)?.physicalType;
+        need(type && suppliedType === type, 'INTEGRITY_MISMATCH'); enumerated.add(id);
+      });
+      need(count > 0 || received.exhausted, 'INVALID_PAGE');
       exhausted = received.exhausted;
     } finally { m.release(m.stats.stageBytes - mark); }
   }
@@ -177,10 +204,10 @@ export async function verifyInventory(expected, supplied, runtime) {
     physicalBytes, byKind, frameBytes, retainedVerificationBytes: retained, work: m.report() });
   // Rebuilt read-only lookup comes only from authenticated ledger frames, not
   // the writer's private accelerator or source.readLogical. No write authority.
-  const rebuilt = Object.freeze({ open(rt) { const read = meter(expected.limits, rt, false, true); return Object.freeze({
+  const rebuilt = Object.freeze({ open(rt) { try { const read = meter(expected.limits, rt, false, true); return Object.freeze({
     readLogical(id) { const mark = read.stats.stageBytes; try { need(isHash(id) && records.has(id), 'MISSING_OBJECT');
-      return freeze({ ok: true, record: read.copy(records.get(id)) }); } catch (e) { return failure(e); } finally { read.release(read.stats.stageBytes - mark); } }
-  }); } });
+      const r = records.get(id); return freeze({ ok: true, record: read.copy({ id: r.id, kind: r.kind, body: r.body, sequence: r.sequence, locator: r.locator }) });
+    } catch (e) { return failure(e); } finally { read.release(read.stats.stageBytes - mark); } }
+  }); } catch (e) { return failure(e); } } });
   return { ok: true, proof, rebuilt };
-  } catch (e) { return { ...failure(e), work: m.report() }; }
 }
