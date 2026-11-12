@@ -1,0 +1,177 @@
+{
+  "reference": "independent Python before writer implementation",
+  "kinds": [
+    "chunk",
+    "value",
+    "map",
+    "version",
+    "origin",
+    "dataset",
+    "data-root",
+    "journal",
+    "event",
+    "model-root"
+  ],
+  "capabilities": [
+    "command-transients-v1",
+    "logical-fp-map1-v1",
+    "committed-sequence-v1",
+    "bounded-batch-pages-v1",
+    "append-inventory-v1"
+  ],
+  "records": [
+    {
+      "kind": "map",
+      "id": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+      "body": {
+        "tag": "leaf",
+        "entries": [],
+        "total": 0,
+        "live": 0
+      }
+    },
+    {
+      "kind": "data-root",
+      "id": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+      "body": {
+        "originsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+        "datasetsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9"
+      }
+    },
+    {
+      "kind": "model-root",
+      "id": "822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53",
+      "body": {
+        "instanceId": "p1-instance",
+        "generation": "local-generation",
+        "revision": "0",
+        "dataRoot": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+        "operationsRoot": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9",
+        "journal": null
+      }
+    }
+  ],
+  "pageHex": "4650573101000018000000000000000100030000000002400301dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b90000002e7b22656e7472696573223a5b5d2c226c697665223a302c22746167223a226c656166222c22746f74616c223a307d07012661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437000000a47b226461746173657473526f6f74223a2264643630326236643936303834623265333135393164353031666139373933336635653536306463333233656161636637353739613335336464383735336239222c226f726967696e73526f6f74223a2264643630326236643936303834623265333135393164353031666139373933336635653536306463333233656161636637353739613335336464383735336239227d0a01822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53000000fc7b2264617461526f6f74223a2232363631633338393362326239373339383564653261313264323334333163363663333732326439333134633930313934386461656364646661383766343337222c2267656e65726174696f6e223a226c6f63616c2d67656e65726174696f6e222c22696e7374616e63654964223a2270312d696e7374616e6365222c226a6f75726e616c223a6e756c6c2c226f7065726174696f6e73526f6f74223a2264643630326236643936303834623265333135393164353031666139373933336635653536306463333233656161636637353739613335336464383735336239222c227265766973696f6e223a2230227d",
+  "pageHash": "38e9575aeee52cef2685e418ca26c69b54a467d2e5b6e0578067e838016ac198",
+  "delta": {
+    "body": {
+      "profile": "FP-WRITER-INVENTORY-1",
+      "physicalInstance": "writer-vector",
+      "generation": "local-generation",
+      "revision": 0,
+      "previous": null,
+      "firstSequence": 1,
+      "objects": 3,
+      "pages": [
+        [
+          "38e9575aeee52cef2685e418ca26c69b54a467d2e5b6e0578067e838016ac198",
+          600,
+          3
+        ]
+      ],
+      "logicalRoot": "822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53"
+    },
+    "hash": "aad1ce7c80452a7b3b1c694b5b4ec4f906e9ba576d47ef6913ae4dedb5307109"
+  },
+  "seal": {
+    "body": {
+      "profile": "FP-WRITER-SEAL-1",
+      "physicalInstance": "writer-vector",
+      "generation": "local-generation",
+      "revision": 0,
+      "baseState": null,
+      "logicalRoot": "822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53",
+      "inventoryRoot": "aad1ce7c80452a7b3b1c694b5b4ec4f906e9ba576d47ef6913ae4dedb5307109",
+      "previous": null,
+      "operationId": null,
+      "semanticDigest": null,
+      "requestFingerprint": null,
+      "pinRoot": null,
+      "effects": {
+        "versions": 0,
+        "newObjects": 3
+      }
+    },
+    "hash": "dbd0f9e4b55059b89f0a2ea9578ea61595c07481b71164d217e190aed2149f65"
+  },
+  "state": {
+    "body": {
+      "profile": "P1.1b-WRITER-MODEL-1",
+      "capabilities": [
+        "command-transients-v1",
+        "logical-fp-map1-v1",
+        "committed-sequence-v1",
+        "bounded-batch-pages-v1",
+        "append-inventory-v1"
+      ],
+      "layout": "fp-tv-chunk61440-cj1",
+      "physicalInstance": "writer-vector",
+      "generation": "local-generation",
+      "revision": 0,
+      "logicalRoot": "822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53",
+      "dataRoot": "2661c3893b2b973985de2a12d23431c66c3722d9314c901948daecddfa87f437",
+      "inventoryRoot": "aad1ce7c80452a7b3b1c694b5b4ec4f906e9ba576d47ef6913ae4dedb5307109",
+      "sealRoot": "dbd0f9e4b55059b89f0a2ea9578ea61595c07481b71164d217e190aed2149f65",
+      "pinRoot": null,
+      "sequence": 3,
+      "objects": 6,
+      "payloadBytes": 2143
+    },
+    "hash": "9af11278eea570580cd167694c86c47c7aebff2068b6fbe1fa02b81309dfa36e"
+  },
+  "guard": {
+    "physicalInstance": "writer-vector",
+    "generation": "local-generation",
+    "revision": 0,
+    "stateRoot": "9af11278eea570580cd167694c86c47c7aebff2068b6fbe1fa02b81309dfa36e",
+    "logicalRoot": "822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53",
+    "inventoryRoot": "aad1ce7c80452a7b3b1c694b5b4ec4f906e9ba576d47ef6913ae4dedb5307109",
+    "capabilityDigest": "b91e1eb62d808fc176e457c9be136800f7fdf85ec1b524b2369b5e75edfbecf3"
+  },
+  "pin": {
+    "body": {
+      "profile": "FP-WRITER-PINS-1",
+      "physicalInstance": "writer-vector",
+      "generation": "local-generation",
+      "revision": 1,
+      "previous": null,
+      "pins": [
+        {
+          "kind": "object",
+          "id": "dd602b6d96084b2e31591d501fa97933f5e560dc323eaacf7579a353dd8753b9"
+        }
+      ]
+    },
+    "hash": "cde5632fa002929539e2ec22b141390699519e08e681860a0f2c2f127793757b"
+  },
+  "physicalRequest": {
+    "body": {
+      "guard": {
+        "physicalInstance": "writer-vector",
+        "generation": "local-generation",
+        "revision": 0,
+        "stateRoot": "9af11278eea570580cd167694c86c47c7aebff2068b6fbe1fa02b81309dfa36e",
+        "logicalRoot": "822d9bbf21a3a40599cccec3dfd7007e09f964ea80fe853b11fdcf30c9ae8e53",
+        "inventoryRoot": "aad1ce7c80452a7b3b1c694b5b4ec4f906e9ba576d47ef6913ae4dedb5307109",
+        "capabilityDigest": "b91e1eb62d808fc176e457c9be136800f7fdf85ec1b524b2369b5e75edfbecf3"
+      },
+      "semanticDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "hash": "a8244e12630d9ff29a3b1f9252fff9f9c712451d3b53c5f86f4f46f922e31f21"
+  },
+  "chunk": {
+    "record": {
+      "kind": "chunk",
+      "id": "ecd1f429f14d7486dcc5d9d5224593bf128e1e0c4dcad02caf0879abda1a80a6",
+      "body": {
+        "data": "\"\\\n\""
+      }
+    },
+    "pageHex": "46505731010000180000000000000004000100000000002a0102ecd1f429f14d7486dcc5d9d5224593bf128e1e0c4dcad02caf0879abda1a80a600000004225c0a22",
+    "hash": "a7e7c435f8a6bf3dd23a52167fa115b1bc731a81814087bfaa0316f992f0fc03"
+  },
+  "fpBits": {
+    "negativeZero": "8000000000000000",
+    "subnormal": "0000000000000001"
+  }
+}
