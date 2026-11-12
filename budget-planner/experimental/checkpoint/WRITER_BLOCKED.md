@@ -1,5 +1,13 @@
 # Issue #34 — B2 PARITY-ONLY PASS; independent review required
 
+**Subsequent owner authorization:** Issue #32 completion resumed from accepted
+`8e55c86dc7cb2e9617597f218d431e5b09314885` on this same draft PR. See
+[WRITER_COMPLETION.md](WRITER_COMPLETION.md) for the new implementation and
+acceptance map, and PR #33 for exact-head results. The parity-only record below
+is retained as historical evidence; its original scope/authorization statement
+does not describe the later owner-approved work. Full writer acceptance still
+requires a new independent Architect review and owner decision.
+
 **The limited bootstrap-parity milestone passes. PR #33 and the general writer
 remain INCOMPLETE / NOT ACCEPTED. No efficiency verdict or broader authorization.**
 

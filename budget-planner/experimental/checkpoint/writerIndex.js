@@ -3,7 +3,7 @@ import { need, isHash } from './writerFormat.js';
 export function lookup(root, id, m) {
   need(isHash(id), 'MISSING_OBJECT'); let n = root;
   while (n) {
-    m.tick(); if (n.tag === 'leaf') return n.id === id ? n.record : null;
+    m.tick(); m.stats.indexVisits++; if (n.tag === 'leaf') return n.id === id ? n.record : null;
     if (!id.startsWith(n.prefix)) return null;
     n = n.children.find(([digit]) => digit === id[n.prefix.length])?.[1];
   } return null;
@@ -35,9 +35,9 @@ export function indexBuilder(root, m) {
     } };
 }
 export function indexInventory(root, m) {
-  const records = [], queue = root ? [root] : []; let nodes = 0, bytes = 0;
+  const queue = root ? [root] : []; let nodes = 0, bytes = 0;
   while (queue.length) { m.tick(); const n = queue.pop(); nodes++;
     bytes += n.tag === 'leaf' ? n.record.lookupBytes ?? 96 : 24 + n.prefix.length + n.children.length * 8;
-    if (n.tag === 'leaf') records.push(n.record); else for (const [, child] of n.children) queue.push(child);
-  } return { records, nodes, bytes };
+    if (n.tag === 'branch') for (const [, child] of n.children) queue.push(child);
+  } return { nodes, bytes };
 }

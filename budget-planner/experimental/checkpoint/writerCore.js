@@ -8,7 +8,7 @@ import { mapEditor } from './writerMap.js';
 export function logicalBuilder(base, m) {
   const staged = new Map(), encodings = new Map(), graph = graphBuilder(m), pins = [];
   const stageStart = m.stats.stageBytes;
-  function maybe(id) { m.tick(); if (staged.has(id)) return staged.get(id);
+  function maybe(id) { m.tick(); m.stats.logicalLookups++; if (staged.has(id)) return staged.get(id);
     need(++m.stats.oldLookups <= m.bound.oldLookups, 'RESOURCE_LIMIT'); const r = lookup(base.pool, id, m);
     need(!r || !r.physicalType, 'INVALID_GRAPH'); return r;
   }

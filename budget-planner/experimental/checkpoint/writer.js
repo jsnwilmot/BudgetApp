@@ -5,6 +5,7 @@ import { logicalBuilder, materialize } from './writerCore.js';
 import { source17 } from './writerSource.js';
 import { lookup, indexInventory } from './writerIndex.js';
 import { verifyDelta } from './writerVerify.js';
+import { verifyInventory } from './writerAudit.js';
 
 const controllers = new WeakMap(), snapshots = new WeakMap(), commands = new WeakMap(), candidates = new WeakMap();
 const text = v => typeof v === 'string' && v.trim().length > 0;
@@ -134,9 +135,18 @@ export async function beginCommand(controller, input, runtime) {
   try {
     const owner = control(controller), r = ownData(input, ['kind', 'snapshot', 'guard', 'request']), base = state(r.snapshot);
     need(base.physicalInstance === controller.physicalInstance && r.snapshot === owner.snapshot, 'STALE_REVISION');
-    need(['change-history', 'create-dataset'].includes(r.kind), 'INVALID_FIELDS'); const m = meter(owner.limits, runtime), request = m.copy(r.request), guard = m.copy(r.guard);
+    need(['change-history', 'create-dataset'].includes(r.kind), 'INVALID_FIELDS');
+    const rt = ownData(runtime, ['now', 'cancelled']); need(typeof rt.now === 'function' && typeof rt.cancelled === 'function', 'UNSUPPORTED_TYPE');
+    let revoked = false;
+    const m = meter(owner.limits, { now: rt.now, cancelled: () => revoked || rt.cancelled() }), request = m.copy(r.request), guard = m.copy(r.guard);
     need(m.stats.copiedBytes <= m.bound.requestBytes, 'RESOURCE_LIMIT');
     fields(guard, ['physicalInstance', 'generation', 'revision', 'stateRoot', 'logicalRoot', 'inventoryRoot', 'capabilityDigest']);
+    // Native keys must be bounded before request FP encoding or hashing.
+    m.key(request.operationId);
+    if (r.kind === 'change-history') {
+      need(Array.isArray(request.changes) && request.changes.length > 0 && request.changes.length <= m.bound.changes, 'RESOURCE_LIMIT');
+      for (const change of request.changes) { m.tick(); need(plain(change) && typeof change.key === 'string', 'INVALID_KEY'); m.key(change.key); }
+    } else m.key(request.datasetId);
     const b = logicalBuilder(base, m), digest = await semantic(base, b, r.kind, request, m);
     const fingerprint = await m.hash(D + 'physical-request/1', { guard, semanticDigest: digest });
     const old = await b.maps.find(base.operationsRoot, request.operationId);
@@ -146,24 +156,25 @@ export async function beginCommand(controller, input, runtime) {
       return freeze({ ok: true, replayed: true, snapshot: owner.snapshot, receipt: { status: 'MODEL_COMMITTED', sealRoot: receipt.sealRoot, operationId: receipt.operationId } });
     }
     need(m.canonical(guard) === m.canonical(guardOf(base)) && request.expectedRoot === base.root, 'STALE_REVISION');
-    const ctx = { owner, controller, base, snapshot: r.snapshot, b, m, request, kind: r.kind, digest, fingerprint, at: 0, phase: 'open', seen: new Set() };
+    const ctx = { owner, controller, base, snapshot: r.snapshot, b, m, request, kind: r.kind, digest, fingerprint, at: 0, phase: 'open', seen: new Set(), revoke: () => { revoked = true; } };
     if (r.kind === 'change-history') {
       need(request.expectedRevision === String(base.revision), 'STALE_REVISION');
       need(Array.isArray(request.changes) && request.changes.length > 0 && request.changes.length <= m.bound.changes, 'RESOURCE_LIMIT');
       ctx.current = b.get(base.dataRoot).body; const found = await b.maps.find(ctx.current.datasetsRoot, request.datasetId); need(found, 'INVALID_DATASET');
       ctx.dataset = b.get(found.valueRef).body; ctx.collections = ctx.dataset.collections.map(c => ({ ...c }));
     }
-    const command = freeze({ profile: PROFILE, stage: 'COMMAND' }); commands.set(command, ctx); return freeze({ ok: true, command, replayed: false });
+    const command = freeze({ profile: PROFILE, stage: 'COMMAND' }); ctx.command = command; commands.set(command, ctx); return freeze({ ok: true, command, replayed: false });
   } catch (e) { return failure(e); }
 }
 function open(command) { const c = commands.get(command); need(c?.phase === 'open', 'INVALID_CANDIDATE'); return c; }
+function failed(c) { if (c && !['published', 'discarded'].includes(c.phase)) { c.phase = 'failed'; c.revoke(); } }
 function minorStrings(v, m, depth = 0) {
   m.tick(); need(depth <= m.bound.depth, 'RESOURCE_LIMIT'); if (!v || typeof v !== 'object') return;
   for (const [k, x] of Object.entries(v)) { if (k.endsWith('Minor')) need(typeof x === 'string' && /^(0|-?[1-9]\d*)$/.test(x), 'UNSAFE_NUMBER'); minorStrings(x, m, depth + 1); }
 }
 export async function stageNext(command) {
   try {
-    const c = open(command), { b, m, request, base } = c; need(c.kind === 'change-history' && c.at < request.changes.length, 'INVALID_CANDIDATE'); m.tick();
+    const c = open(command), { b, m, request, base } = c; need(c.kind === 'change-history' && c.at < request.changes.length, 'INVALID_CANDIDATE'); c.phase = 'staging'; m.tick();
     const change = request.changes[c.at]; need(plain(change) && Object.keys(change).every(k => ['store', 'key', 'value', 'deleted'].includes(k)), 'INVALID_FIELDS');
     need(RAW.includes(change.store) && text(change.key), 'INVALID_KEY'); m.key(change.key);
     const identity = m.canonical([change.store, m.key(change.key)]); need(!c.seen.has(identity), 'INVALID_IDENTITY'); c.seen.add(identity);
@@ -183,27 +194,30 @@ export async function stageNext(command) {
     }
     const versionRef = await b.intern('version', { datasetId: request.datasetId, store: change.store, keyRef, valueRef,
       deleted: change.deleted === true, previous: previous?.versionRef ?? null, sourceVersionRef: null, localRevision: String(base.revision + 1) });
-    collection.root = await b.maps.put(collection.root, change.key, { valueRef, versionRef, deleted: change.deleted === true }); c.at++;
+    collection.root = await b.maps.put(collection.root, change.key, { valueRef, versionRef, deleted: change.deleted === true });
+    need(c.phase === 'staging', 'INVALID_CANDIDATE'); c.at++; c.phase = 'open';
     return freeze({ ok: true, staged: c.at });
-  } catch (e) { const c = commands.get(command); if (c) c.phase = 'failed'; return failure(e); }
+  } catch (e) { failed(commands.get(command)); return failure(e); }
 }
 export async function pinStagedRoot(command, store) {
   try { const c = open(command); need(c.kind === 'change-history' && c.at > 0, 'UNRESOLVED_PIN');
-    const row = c.collections.find(r => r.store === store); need(row, 'UNRESOLVED_PIN'); const id = await c.b.maps.finish(row.root);
-    need(c.b.pins.length < c.m.bound.pins, 'RESOURCE_LIMIT'); if (!c.b.pins.some(p => p.kind === 'object' && p.id === id)) c.b.pins.push({ kind: 'object', id }); return freeze({ ok: true, id });
-  } catch (e) { const c = commands.get(command); if (c) c.phase = 'failed'; return failure(e); }
+    const row = c.collections.find(r => r.store === store); need(row, 'UNRESOLVED_PIN'); c.phase = 'pinning'; const id = await c.b.maps.finish(row.root);
+    need(c.phase === 'pinning', 'INVALID_CANDIDATE');
+    if (!c.b.pins.some(p => p.kind === 'object' && p.id === id)) { need(c.b.pins.length < c.m.bound.pins, 'RESOURCE_LIMIT'); c.b.pins.push({ kind: 'object', id }); }
+    c.phase = 'open'; return freeze({ ok: true, id });
+  } catch (e) { failed(commands.get(command)); return failure(e); }
 }
 export function pinPublished(command, input) {
   try { const c = open(command), p = c.m.copy(input); fields(p, ['kind', 'id']); need(isHash(p.id), 'UNRESOLVED_PIN');
-    if (p.kind === 'object') { try { c.b.get(p.id); } catch { need(false, 'UNRESOLVED_PIN'); } }
+    if (p.kind === 'object') { try { c.b.get(p.id); } catch (e) { if (e.code !== 'MISSING_OBJECT') throw e; need(false, 'UNRESOLVED_PIN'); } }
     else need(p.kind === 'full-inventory' && p.id === c.base.inventoryRoot, 'UNRESOLVED_PIN');
-    need(c.b.pins.length < c.m.bound.pins, 'RESOURCE_LIMIT'); if (!c.b.pins.some(x => x.kind === p.kind && x.id === p.id)) c.b.pins.push(p);
+    if (!c.b.pins.some(x => x.kind === p.kind && x.id === p.id)) { need(c.b.pins.length < c.m.bound.pins, 'RESOURCE_LIMIT'); c.b.pins.push(p); }
     return freeze({ ok: true });
-  } catch (e) { const c = commands.get(command); if (c) c.phase = 'failed'; return failure(e); }
+  } catch (e) { failed(commands.get(command)); return failure(e); }
 }
 export async function sealCommand(command) {
   try {
-    const c = open(command), { b, m, request, base } = c; let logical;
+    const c = open(command), { b, m, request, base } = c; c.phase = 'sealing'; let logical;
     if (c.kind === 'change-history') {
       need(c.at === request.changes.length, 'INVALID_CANDIDATE');
       for (const row of c.collections) row.root = await b.maps.finish(row.root);
@@ -212,31 +226,33 @@ export async function sealCommand(command) {
       const dataRoot = await b.intern('data-root', { ...c.current, datasetsRoot });
       logical = await completeLogical(base, b, request, c.digest, dataRoot, { datasetId: request.datasetId }, m);
     } else logical = await buildDataset(base, b, request, c.digest, m);
-    c.phase = 'sealed';
     const next = await materialize(base, b, logical, { physicalInstance: base.physicalInstance, generation: base.generation, revision: base.revision + 1,
       operationId: request.operationId, semanticDigest: c.digest, requestFingerprint: c.fingerprint }, m);
-    const candidate = freeze({ profile: PROFILE, stage: 'CANDIDATE' }); candidates.set(candidate, { c, next, verified: false });
+    need(c.phase === 'sealing', 'INVALID_CANDIDATE'); c.phase = 'sealed';
+    const candidate = freeze({ profile: PROFILE, stage: 'CANDIDATE' }); c.candidate = candidate; candidates.set(candidate, { c, next, verified: false });
     return freeze({ ok: true, candidate });
-  } catch (e) { const c = commands.get(command); if (c) c.phase = 'failed'; return failure(e); }
+  } catch (e) { failed(commands.get(command)); return failure(e); }
 }
 export async function validateCandidate(candidate) {
   try { const entry = candidates.get(candidate); need(entry && entry.c.phase === 'sealed', 'INVALID_CANDIDATE');
-    const proof = await verifyDelta(entry.c.base, entry.next, entry.c.m); entry.verified = true; return freeze({ ok: true, proof });
-  } catch (e) { const entry = candidates.get(candidate); if (entry) entry.c.phase = 'failed'; return failure(e); }
+    if (entry.verified) return freeze({ ok: true, proof: entry.proof });
+    entry.c.phase = 'validating'; const proof = await verifyDelta(entry.c.base, entry.next, entry.c.m);
+    need(entry.c.phase === 'validating', 'INVALID_CANDIDATE'); entry.c.phase = 'sealed'; entry.proof = proof; entry.verified = true; return freeze({ ok: true, proof });
+  } catch (e) { failed(candidates.get(candidate)?.c); return failure(e); }
 }
 export function publishCandidate(controller, candidate) {
   try {
     const owner = control(controller), entry = candidates.get(candidate); need(entry && entry.verified && entry.c.phase === 'sealed' && entry.c.owner === owner, 'INVALID_CANDIDATE');
-    entry.c.m.tick(); need(owner.snapshot === entry.c.snapshot, 'STALE_REVISION');
+    entry.c.phase = 'publishing'; entry.c.m.tick(); need(entry.c.phase === 'publishing', 'INVALID_CANDIDATE'); need(owner.snapshot === entry.c.snapshot, 'STALE_REVISION');
     const next = entry.next; next.work = entry.c.m.report(); delete next.candidate;
     const snapshot = handle(next); owner.snapshot = snapshot; entry.c.phase = 'published'; candidates.delete(candidate);
-    entry.c.b.cleanup(); entry.c.b = null; entry.c.request = null;
+    entry.c.b.cleanup(); entry.c.b = null; entry.c.request = null; commands.delete(entry.c.command);
     return freeze({ ok: true, snapshot, receipt: { status: 'MODEL_COMMITTED', sealRoot: next.sealRoot, operationId: next.operationId }, work: next.work });
-  } catch (e) { const entry = candidates.get(candidate); if (entry) entry.c.phase = 'failed'; return failure(e); }
+  } catch (e) { failed(candidates.get(candidate)?.c); return failure(e); }
 }
 export function discardCommand(command) {
   const c = commands.get(command); if (!c || c.phase === 'published') return failure({ code: 'INVALID_CANDIDATE' });
-  c.phase = 'discarded'; c.b = null; c.request = null; commands.delete(command); return freeze({ ok: true });
+  c.revoke(); c.phase = 'discarded'; c.b = null; c.request = null; if (c.candidate) candidates.delete(c.candidate); commands.delete(command); return freeze({ ok: true });
 }
 export function currentSnapshot(controller) { try { return freeze({ ok: true, snapshot: control(controller).snapshot }); } catch (e) { return failure(e); } }
 export function inspectWriter(snapshot, runtime) {
@@ -245,8 +261,14 @@ export function inspectWriter(snapshot, runtime) {
       pages: s.pageCount, physicalBytes: s.payloadBytes, conservativeTotalBytes: s.payloadBytes + s.lookupBytes,
       cumulativeLookupBytes: s.lookupBytes, cumulativeLookupAllocations: s.lookupAllocations,
       liveLookupNodes: live.nodes + replay.nodes, liveLookupBytes: live.bytes + replay.bytes,
+      requiredCurrentTotalBytes: s.payloadBytes + live.bytes + replay.bytes,
       nativeIndexBytes: 'UNKNOWN', peakJSHeap: 'UNKNOWN' });
   } catch (e) { return failure(e); }
+}
+export async function verifyWriterInventory(snapshot, source, runtime) {
+  try { const s = state(snapshot); return await verifyInventory({ state: s.state, stateRoot: s.stateRoot, physicalInstance: s.physicalInstance,
+    generation: s.generation, logicalInstance: s.logicalInstance, logicalGeneration: s.logicalGeneration, revision: s.revision, limits: s.limits }, source, runtime); }
+  catch (e) { return failure(e); }
 }
 // Bounded snapshot-qualified reader. An explicit full audit may enumerate history;
 // no constructor, staging, verification or publication invokes that full scan.
@@ -272,15 +294,17 @@ export function createWriterSource(snapshot, runtime) {
         sequence: r.sequence, locator: r.locator }) }); }); },
       beginIndex() { const reader = Object.freeze({ profile: PROFILE }); reads.set(reader, { queue: s.pool ? [s.pool] : [], done: false }); return reader; },
       readIndex(reader) {
-        try { const r = reads.get(reader); need(r && !r.done, 'INVALID_MODEL'); const rows = []; let bytes = 0;
+        return copiedRead(() => { const r = reads.get(reader); need(r && !r.done, 'INVALID_MODEL'); const rows = []; let bytes = 0;
           while (r.queue.length && rows.length < 128) {
             m.tick(); const n = r.queue.pop();
             if (n.tag === 'branch') { for (let i = n.children.length - 1; i >= 0; i--) r.queue.push(n.children[i][1]); continue; }
-            const row = { id: n.id, type: n.record.physicalType ?? 'logical' }, size = m.canonical(row).length;
-            need(bytes + size <= 262144, 'RESOURCE_LIMIT'); rows.push(row); bytes += size;
+            const row = { id: n.id, type: n.record.physicalType ?? 'logical' };
+            need(['logical', 'page', 'delta', 'pins', 'seal', 'state'].includes(row.type), 'INVALID_GRAPH');
+            const size = 19 + row.id.length + row.type.length; // Exact closed ASCII {id,type} CJ framing.
+            need(bytes + size <= 262144, 'RESOURCE_LIMIT'); m.tick(size); m.reserve(size); rows.push(row); bytes += size;
           }
           r.done = r.queue.length === 0; return freeze({ ok: true, rows, exhausted: r.done });
-        } catch (e) { return failure(e); }
+        });
       } };
     return freeze({ ok: true, source: Object.freeze(source), state: s.state, stateRoot: s.stateRoot });
   } catch (e) { return failure(e); }

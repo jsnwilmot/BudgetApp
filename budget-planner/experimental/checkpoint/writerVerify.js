@@ -31,12 +31,13 @@ function appendIndex(before, after, expected, m) {
 }
 export async function verifyDelta(base, next, m) {
   const c = next.candidate, seen = new Map(), membership = new Map(), pageIds = new Set(); let seq = base.sequence, bytes = base.payloadBytes;
-  const get = id => { m.tick(); if (seen.has(id)) return seen.get(id);
+  const get = id => { m.tick(); m.stats.logicalLookups++; if (seen.has(id)) return seen.get(id);
     need(++m.stats.oldLookups <= m.bound.oldLookups, 'RESOURCE_LIMIT'); const r = lookup(base.pool, id, m); need(r && !r.physicalType, 'MISSING_OBJECT'); return r; };
   for (const page of c.pages) {
     need(!pageIds.has(page.id) && !lookup(base.pool, page.id, m), 'INVALID_PAGE'); pageIds.add(page.id);
     const parsed = await decodePage(page.bytes, page.id, m); need(parsed.length === page.frames && page.first === seq + 1, 'INVALID_PAGE');
     for (const record of parsed) {
+      m.stats.logicalLookups += 2;
       need(record.sequence === ++seq && !seen.has(record.id) && !lookup(base.pool, record.id, m), 'INVALID_PAGE');
       await checkLogical(record, get, m); seen.set(record.id, record);
       const stored = lookup(next.pool, record.id, m); need(stored && !stored.physicalType && stored.sequence === record.sequence &&

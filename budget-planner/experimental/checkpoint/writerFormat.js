@@ -43,7 +43,7 @@ export function meter(l, runtime, bootstrap = false, audit = false) {
     workBytes: Math.min(l.workBytes * 2, 134217728), durationMs: Math.min(l.durationMs * 30, 60000) } : {}),
   ...(audit ? { visits: 4000000, oldLookups: 4000000, workBytes: 2147483648, durationMs: 60000 } : {}) };
   const stats = { visits: 0, workBytes: 0, copiedBytes: 0, encodedBytes: 0, hashCalls: 0, hashedBytes: 0,
-    oldLookups: 0, comparedUnits: 0, transientMaps: 0, finalizedMaps: 0, mapHashCalls: 0,
+    oldLookups: 0, logicalLookups: 0, indexVisits: 0, comparedUnits: 0, transientMaps: 0, finalizedMaps: 0, mapHashCalls: 0,
     stagedRecords: 0, indexAllocations: 0, indexBytes: 0, stageBytes: 0, peakStageBytes: 0 };
   const canonicalCache = new WeakMap(), quoted = new Map();
   function tick(bytes = 0, visits = 1) {
@@ -80,13 +80,15 @@ export function meter(l, runtime, bootstrap = false, audit = false) {
   }
   function quote(v) {
     if (quoted.has(v)) { tick(0, 0); return quoted.get(v); }
-    tick(v.length, 0); const parts = []; let len = 2;
+    const scratch = 6 * v.length + 2; reserve(scratch);
+    tick(v.length, 0); const parts = []; let len = 2, chunk = '';
     for (let i = 0; i < v.length; i++) {
       if (i % 1024 === 0) tick(0, 0); const c = v.charCodeAt(i);
       const s = c === 34 ? '\\"' : c === 92 ? '\\\\' : c < 32 || c > 126 ? `\\u${c.toString(16).padStart(4, '0')}` : v[i];
-      len += s.length; need(len <= bound.workBytes - stats.workBytes, 'RESOURCE_LIMIT'); parts.push(s);
+      len += s.length; need(len <= bound.workBytes - stats.workBytes, 'RESOURCE_LIMIT'); chunk += s;
+      if (chunk.length >= 4096) { parts.push(chunk); chunk = ''; }
     }
-    tick(len, 0); const out = '"' + parts.join('') + '"'; reserve(len + 16); quoted.set(v, out); return out;
+    if (chunk) parts.push(chunk); tick(len, 0); const out = '"' + parts.join('') + '"'; release(scratch); reserve(len + 16); quoted.set(v, out); return out;
   }
   function canonical(v, depth = 0) {
     tick(); need(depth <= bound.depth + 8, 'RESOURCE_LIMIT'); if (v && typeof v === 'object' && canonicalCache.has(v)) return canonicalCache.get(v); let out;
