@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { extname } from 'node:path';
 import test from 'node:test';
-import { addMonths, formatDateKey, getPlannerPeriods } from '../src/logic/dateLogic.js';
+import { addMonths, formatDateKey, getPayPeriodsForYear, getPlannerPeriods } from '../src/logic/dateLogic.js';
 
 const hooks = registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -12,6 +12,7 @@ const hooks = registerHooks({
 const { buildPlannerRows, buildSavingsBucketProjection, getDashboardSummary } =
   await import('../src/logic/projectionLogic.js');
 const { getLowBalanceAlerts } = await import('../src/logic/alertLogic.js');
+const { buildReportRowsFromPlannerData } = await import('../src/logic/reportLogic.js');
 hooks.deregister();
 
 const anchor = '2026-06-03';
@@ -89,6 +90,36 @@ test('CP-18: weekly, biweekly, 28- and 30-day starts keep the anchored cadence a
   }
 });
 
+test('CP-14–17 and CP-22: on-demand years do not change the regular forecast or duplicate dates', () => {
+  for (const months of [3, 6, 12, 18, 24]) {
+    for (const stride of [7, 14, 28, 30]) {
+      for (const today of boundaries) {
+        const base = getPlannerPeriods(anchor, stride, months, today);
+        const preview = getPlannerPeriods(anchor, stride, months, today, 2030);
+        assert.deepEqual(preview.forecastPayPeriods, base.forecastPayPeriods);
+        assert.deepEqual(preview.currentPayPeriod, base.currentPayPeriod);
+        assert.deepEqual(preview.payPeriods.slice(0, base.payPeriods.length), base.payPeriods);
+        assert.deepEqual(preview.payPeriods.map(({ date }) => date), referenceDates(anchor, '2030-12-31', stride));
+        const years = [2026, 2027, 2028, 2029, 2030];
+        const byYear = years.map((year) => getPayPeriodsForYear(preview.payPeriods, year));
+        assert.deepEqual(byYear.flat(), preview.payPeriods);
+        assert.equal(new Set(byYear.flat().map(({ date }) => date)).size, preview.payPeriods.length);
+        assert.deepEqual(getPayPeriodsForYear(preview.payPeriods, 2025), []);
+      }
+    }
+  }
+});
+
+test('a selected leap year can include February 29, with no starts before a future anchor', () => {
+  const leapAnchor = '2028-02-29';
+  const data = getPlannerPeriods(leapAnchor, 28, 3, '2026-11-30', 2028);
+  assert.equal(data.currentPayPeriod, null);
+  assert.deepEqual(getPayPeriodsForYear(data.payPeriods, 2027), []);
+  assert.deepEqual(getPayPeriodsForYear(data.payPeriods, 2028).map(({ date }) => date),
+    referenceDates(leapAnchor, '2028-12-31', 28));
+  assert.equal(data.forecastPayPeriods[0].date, leapAnchor);
+});
+
 const settings = { payPeriodAnchorDate: anchor, payFrequencyDays: 14, projectionMonths: 3 };
 const chequing = { id: 'cash', type: 'chequing', startingBalance: 1265 };
 const savings = { id: 'bank', type: 'savings', startingBalance: 75 };
@@ -164,16 +195,30 @@ test('CP-21: December to January carries each balance and movement once', () => 
   const original = structuredClone(inputs);
   for (const today of boundaries) {
     const data = buildPlannerRows({ ...inputs, today });
+    const future = buildPlannerRows({ ...inputs, today, throughYear: 2030 });
+    assert.deepEqual(getDashboardSummary(future), getDashboardSummary(data));
+    assert.deepEqual(getLowBalanceAlerts({ plannerData: future, settings }),
+      getLowBalanceAlerts({ plannerData: data, settings }));
+    assert.deepEqual(getPayPeriodsForYear(future.payPeriods, 2026),
+      getPayPeriodsForYear(data.payPeriods, 2026));
     for (const id of ['projected-chequing', 'validated-chequing']) {
       assert.equal(balance(data, id, anchor), 65);
       assert.equal(balance(data, id, december), 415);
       assert.equal(balance(data, id, january), 535);
+      assert.equal(balance(future, id, december), 415);
+      assert.equal(balance(future, id, january), 535);
     }
     assert.equal(balance(data, 'projected-savings', december), 218);
     assert.equal(balance(data, 'projected-savings', january), 203);
     const [projection] = buildSavingsBucketProjection({ ...inputs, ...data });
+    const [futureProjection] = buildSavingsBucketProjection({ ...inputs, ...future });
     assert.equal(projection.validatedBalanceByPeriod[december], 163);
     assert.equal(projection.validatedBalanceByPeriod[january], 148);
+    assert.equal(futureProjection.validatedBalanceByPeriod[december], 163);
+    assert.equal(futureProjection.validatedBalanceByPeriod[january], 148);
+    const reports = buildReportRowsFromPlannerData(future);
+    assert.equal(reports.find((row) => row.date === december).remainingBalance, 415);
+    assert.equal(reports.find((row) => row.date === january).remainingBalance, 535);
     assert.equal(data.rows[0].amountsByPeriod[january], 0);
     assert.equal(data.rows[2].amountsByPeriod[january], 0);
     assert.deepEqual(inputs, original);

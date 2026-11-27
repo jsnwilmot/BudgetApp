@@ -93,7 +93,7 @@ function generatePayPeriods(anchorDate, frequencyDays, endDate) {
   return payPeriods;
 }
 
-export function getPlannerPeriods(anchorDateString, frequencyDays, forecastMonths, today) {
+export function getPlannerPeriods(anchorDateString, frequencyDays, forecastMonths, today, throughYear) {
   const anchor = parseLocalDate(anchorDateString);
   const localDate = parseLocalDate(today);
   if (!Number.isFinite(anchor.getTime()) || !Number.isFinite(localDate.getTime()) ||
@@ -111,7 +111,10 @@ export function getPlannerPeriods(anchorDateString, frequencyDays, forecastMonth
   // December's next-year coverage becomes the current-year coverage in January.
   const coverageYear = localDate.getFullYear() + (localDate.getMonth() === 11 ? 1 : 0);
   const calendarEnd = new Date(coverageYear, 11, 31);
-  const calculationEnd = forecastEnd > calendarEnd ? forecastEnd : calendarEnd;
+  const requestedEnd = Number.isInteger(throughYear) && throughYear >= 1000 && throughYear <= 9999
+    ? new Date(throughYear, 11, 31)
+    : calendarEnd;
+  const calculationEnd = new Date(Math.max(forecastEnd, calendarEnd, requestedEnd));
   const payPeriods = generatePayPeriods(anchor, frequencyDays, calculationEnd);
   const forecastEndDate = formatDateKey(forecastEnd);
   const forecastPayPeriods = payPeriods.slice(Math.max(0, offset))
@@ -123,6 +126,10 @@ export function getPlannerPeriods(anchorDateString, frequencyDays, forecastMonth
     calculationEndDate: formatDateKey(calculationEnd),
     forecastEndDate,
   };
+}
+
+export function getPayPeriodsForYear(payPeriods, year) {
+  return payPeriods.filter(({ date }) => date.startsWith(`${year}-`));
 }
 
 export function getMonthDate(year, monthIndex, day) {

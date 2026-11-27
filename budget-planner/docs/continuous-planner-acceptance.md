@@ -1,6 +1,6 @@
 # Continuous Planner Acceptance Matrix
 
-**Status:** Planned test cases only. None are marked PASS. Do not claim this feature is implemented.
+**Status:** The tables define acceptance requirements. Phase D synthetic evidence is recorded below. Production and independent review acceptance remain separate.
 **Parent:** [#3](https://github.com/jsnwilmot/BudgetApp/issues/3). **Execution phases:** [#4](https://github.com/jsnwilmot/BudgetApp/issues/4), [#5](https://github.com/jsnwilmot/BudgetApp/issues/5), [#6](https://github.com/jsnwilmot/BudgetApp/issues/6), [#7](https://github.com/jsnwilmot/BudgetApp/issues/7).
 **Acceptance target:** Full **2027** selectable on **December 1, 2026** without losing or changing validated **2026** data.
 
@@ -95,6 +95,35 @@ For each implementation PR, record:
 - **Risks / blockers / deviations:** [with mitigation]
 - **Architect review decision:** [pending/approved/changes requested]
 - **Owner approval:** [pending/approved]
+
+## Phase D synthetic evidence
+
+The Planner displays one selected start-date year and keeps the normal
+forecast independent. These results apply to synthetic Node and Chromium
+scenarios. The Phase D pull request records the exact candidate SHA and
+hosted check results.
+
+| ID | Status | Evidence |
+| --- | --- | --- |
+| CP-14, CP-16 | PASS | Full 2027 with a 3-month forecast on November 30 by direct selection, at the December extension, and on January 1. January 1 Today returns to the period that started December 30. Rollover and navigation leave all 11 stores intact. |
+| CP-15 | PARTIAL | All five forecast settings passed the independent on-demand year and forecast comparisons in Node. The full browser journey used the 3-month setting. |
+| CP-17 | PASS | Partitioning by start year gives each 7-, 14-, 28-, and 30-day start one date and one year. |
+| CP-22, CP-23 | PASS | The 2029 view carries the reference balances from the original anchor. Returning to 2026 retains the $1,200 validated rent, $65 Chequing, and the marker. The weekly fixture also returns from 2026 to 2016 with at most 11 mounted columns at the sampled positions. |
+| CP-27 | PARTIAL | Desktop mouse and keyboard controls, native selector focus and keyboard changes, and emulated touch buttons. The native touch picker on a physical device was not run. |
+| CP-28, CP-29, CP-30, CP-31 | PASS | Current-period default and repeated Today positioning, exact preservation through year switches, year-labeled headers, and forecast-scope explanation. |
+| CP-32 | PASS | Chromium viewport checks at 375px, 414px, 768px, and desktop. The grid scrolls internally. |
+| CP-33 | PASS | Historical line-item editor retains amounts, validation, and source details. An explicit synthetic note edit changed only its record's note and update timestamp. |
+| CP-34 | PARTIAL | Browser focus order, accessible names, and selection state were checked. Manual screen-reader testing was not run. |
+| CP-35 | PARTIAL | Online refresh, local-day change, and offline Chromium reload under the production service worker passed. Installed-PWA and physical-device testing were not run. |
+| CP-36, CP-37 | PASS | The synthetic ledger reconciles $415/$535 Chequing, $218/$203 projected Savings, and $163/$148 validated bucket across December and January. Reports and Dashboard use the established scopes. Transactions shows one separate $15 withdrawal. |
+| CP-38 | PARTIAL | Downloaded January CSV contains the selected period and $535 balance. Chromium print media exposes the selected-period header. Printed output was not inspected. |
+| CP-39 | PASS | The current-period summary and normal forecast stay tied to today's period while viewing a different year. Node checks that on-demand extension leaves forecast alerts identical. |
+| CP-40 | PASS | Complete and legacy synthetic restores reopen both years, the marker, and the reference balances. The current archive retains exact membership and typed values. |
+| CP-41 | PARTIAL | Inherited backup, reset, settings and scheduled-item regressions passed. The complete set of maintenance journeys was not rerun manually. |
+| CP-42 | PASS | Synthetic IndexedDB journals record zero year-navigation or date-driven writes. A deliberate forecast setting change preserves all other stores. |
+| CP-43 | See PR | Exact-SHA lint, build, diff and test evidence is a publication gate. |
+| CP-44 | PASS | README, Help, release notes and checklist describe supported behavior and recovery. |
+| CP-45 | NOT RUN | Independent Architect and owner review remain pending. |
 
 ## Release blocking rules
 

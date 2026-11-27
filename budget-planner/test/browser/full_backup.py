@@ -63,8 +63,8 @@ def fingerprint(snapshot):
 
 
 def open_settings(chromium, executable, profile, origin, records=None, empty=False,
-                  *, configure_clock=None, timezone_id=None):
-    context, page = boot(chromium, executable, profile, origin, timezone_id=timezone_id)
+                  *, configure_clock=None, **browser_options):
+    context, page = boot(chromium, executable, profile, origin, **browser_options)
     try:
         if configure_clock is not None:
             configure_clock(page)

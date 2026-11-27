@@ -13,7 +13,7 @@ from playwright.sync_api import expect, sync_playwright
 
 from atomic_import import DATE, StaticHandler
 from full_backup import census, open_settings
-from historical_integrity import RENT_ID, open_planner, rent_records, rent_row
+from historical_integrity import RENT_ID, open_planner, rent_records, rent_row, select_year
 
 
 ZONE = "America/Edmonton"
@@ -58,7 +58,7 @@ def dates_on_grid(page):
 
 def expect_range(page, endpoint):
     expect(page.get_by_text(
-        f"Scroll through pay periods calculated through {endpoint}.", exact=False
+        f"Rolling calculations extend through {endpoint}.", exact=False
     )).to_be_visible()
 
 
@@ -86,15 +86,16 @@ def verify_clock(chromium, executable, profile, origin):
         open_planner(page)
         expect_range(page, "2027-02-18")
         november_dates = dates_on_grid(page)
-        assert november_dates[0] == DATE and november_dates[-1] == "2027-02-10"
+        assert november_dates[0] == DATE and november_dates[-1] == "2026-12-30"
 
         page.clock.fast_forward(120_000)
         expect_range(page, "2027-12-31")
+        assert dates_on_grid(page) == november_dates
+        select_year(page, 2027)
         december_dates = dates_on_grid(page)
         expected_2027 = [(date(2027, 1, 13) + timedelta(days=14 * index)).isoformat()
                          for index in range(26)]
-        assert [value for value in december_dates if value.startswith("2027-")] == expected_2027
-        assert december_dates[:len(november_dates)] == november_dates
+        assert december_dates == expected_2027
 
         page.get_by_role("button", name="Dashboard", exact=True).click()
         expect(page.get_by_role("heading", name="3-Month Account Projection")).to_be_visible()
@@ -114,7 +115,10 @@ def verify_clock(chromium, executable, profile, origin):
         }""")
         expect(page.get_by_text("2026-12-30", exact=True)).to_be_visible()
         expect_range(page, "2027-12-31")
+        assert dates_on_grid(page) == november_dates
+        select_year(page, 2027)
         assert dates_on_grid(page) == december_dates
+        select_year(page, 2026)
         expect(rent_row(page).get_by_role("cell").first).to_contain_text("1,200.00")
         assert census(page) == before
         assert page.evaluate("window.storageWrites") == []
@@ -129,7 +133,10 @@ def verify_clock(chromium, executable, profile, origin):
         assert census(page) == before
         open_planner(page)
         expect_range(page, "2027-12-31")
+        assert dates_on_grid(page) == november_dates
+        select_year(page, 2027)
         assert dates_on_grid(page) == december_dates
+        select_year(page, 2026)
         expect(page.get_by_role("button", name="Marked as Last Entry.", exact=False)).to_have_count(1)
         expect(rent_row(page).get_by_role("cell").first).to_contain_text("1,200.00")
         print("PASS CP-14/16/24/42: Edmonton midnight and visibility refresh, 26 starts in 2027, exact 11-store equality after reopen", flush=True)
@@ -172,14 +179,15 @@ def verify_warnings(chromium, executable, profile, origin):
 def long_records():
     records = rent_records()
     start = date(2016, 1, 6)
-    records["appSettings"][0].update(payPeriodAnchorDate=start.isoformat(), projectionMonths=3)
-    period_dates = [(start + timedelta(days=14 * i)).isoformat() for i in range(261)]
+    records["appSettings"][0].update(payPeriodAnchorDate=start.isoformat(), projectionMonths=3,
+                                    payFrequencyDays=7)
+    period_dates = [(start + timedelta(days=7 * i)).isoformat() for i in range(522)]
     records["scheduledItems"] = []
     for index in range(12):
         identifier = f"synthetic-income-{index}"
         records["scheduledItems"].append({
             "id": identifier, "name": f"Synthetic income {index}", "type": "income",
-            "frequency": "biweekly", "accountId": "Old-cash", "amount": 100,
+            "frequency": "weekly", "accountId": "Old-cash", "amount": 100,
             "startDate": start.isoformat(),
         })
         records["plannerEntries"].extend({
@@ -202,25 +210,26 @@ def verify_long_grid(chromium, executable, profile, origin):
         open_planner(page)
         table = period_table(page)
         column_count = int(table.get_attribute("aria-colcount")) - 1
-        assert column_count > 260
+        assert column_count == 52
         expect_range(page, "2027-12-31")
         grid = page.get_by_role("region", name="Scrollable pay periods")
         expect(table.locator('thead time[datetime="2026-11-25"]')).to_have_count(1)
         open_ms = (perf_counter() - started) * 1000
         counts = [len(dates_on_grid(page))]
         assert "2016-01-06" not in dates_on_grid(page)
-        grid.evaluate("(element) => { element.scrollLeft = 0; }")
+        select_year(page, 2016)
+        expect(table).to_have_attribute("aria-colcount", "53")
         expect(table.locator('thead time[datetime="2016-01-06"]')).to_have_count(1)
         counts.append(len(dates_on_grid(page)))
         grid.evaluate("(element) => { element.scrollLeft = element.scrollWidth; }")
-        final_date = date(2016, 1, 6) + timedelta(days=14 * (column_count - 1))
+        final_date = date(2016, 1, 6) + timedelta(days=7 * (column_count - 1))
         expect(table.locator(f'thead time[datetime="{final_date.isoformat()}"]')).to_have_count(1)
         counts.append(len(dates_on_grid(page)))
         assert all(0 < count <= 24 for count in counts), counts
         assert len(before["stores"]["plannerEntries"]["rows"]) == len(records["plannerEntries"])
         assert census(page) == before
         assert page.evaluate("window.storageWrites") == []
-        print(f"PASS CP-26: {column_count} periods, {len(records['plannerEntries'])} saved entries, "
+        print(f"PASS CP-26: {column_count} columns in one year, {len(records['plannerEntries'])} saved entries, "
               f"mounted columns current/start/end {counts}, Planner open {open_ms:.0f} ms", flush=True)
     finally:
         context.close()

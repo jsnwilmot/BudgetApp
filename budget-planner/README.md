@@ -86,20 +86,23 @@ Complete backups preserve optional history fields with their original keys.
 The Transactions list continues to show upcoming scheduled transactions and
 separately recorded activity.
 
-## Rolling Planner and Forecast
+## Planner Years and Forecast
 
-FinPath calculates balances from the original pay-period anchor using the
-configured cadence. The Planner grid scrolls through the available periods
-and renders a limited set of columns for longer histories. The calculation
-includes the current year and, beginning December 1, all pay periods that
-start in the following year. Coverage carries forward in January.
+Planner opens at the current pay period. Use **Previous Year**, **Planner
+year**, or **Next Year** to display a calendar year, then scroll inside the
+grid. **Today** returns to the current pay period and scrolls to its column.
+Each period belongs to its start year, so Today can return to December when
+the current period spans January 1. Years before the anchor show an empty
+state. FinPath calculates future years on demand and keeps the grid limited
+to the selected year.
 
 The 3-, 6-, 12-, 18-, or 24-month setting controls the regular forecast from
 the current pay period. The Dashboard chart and forecast alerts use that
-window. The longer Planner calculation uses the same carried-forward
-balances. FinPath checks the local date at midnight and when you return to
-the app. These checks leave saved records and the anchor intact. Dedicated
-year navigation is still planned.
+window. Selecting a year keeps the forecast setting and uses the same
+carried-forward balances from the original anchor. FinPath rolls its
+calculation forward at midnight and when you return to the app. Beginning
+December 1, the rolling range includes the following year. Viewing and
+switching years leave saved records and the Last Entry marker intact.
 
 ## Backup And Restore
 
@@ -867,7 +870,7 @@ regularly and before any browser cleanup or deployment change.
 
 ## Future Roadmap
 
-- **Priority:** Dedicated calendar-year navigation for the Continuous Planner is planned. See the [product/technical plan](docs/continuous-planner-plan.md), [acceptance matrix](docs/continuous-planner-acceptance.md), and [tracking epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3).
+- Continuous Planner review evidence is tracked in the [acceptance matrix](docs/continuous-planner-acceptance.md) and [tracking epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3).
 - Desktop SQLite storage.
 - Further performance tuning after desktop packaging.
 - More automated test coverage.

@@ -61,9 +61,19 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Open a legacy cell with a known amount and uncertain source. Confirm the
   editor explains the uncertainty. Check that the grid flags missing amounts
   and conflicting sources, and that validated totals exclude them.
-- [ ] Before the December extension, choose a marked future period beyond the
-  3-month range. Shorten the forecast to 3 months and restore the original
-  range. The same cell shows its saved marker.
+- [ ] Choose a marked future period beyond the 3-month range. Switch years,
+  shorten the normal forecast to 3 months, and select the marked year again.
+  The original cell shows its saved marker.
+- [ ] Use Previous Year, the Planner year selector, Next Year, and Today
+  with the keyboard. Confirm Today scrolls to the period containing the
+  current date. On January 1 this may be a December start.
+- [ ] With a 3-month forecast, select full 2027, then a farther year and a
+  year before the anchor. Check carry-forward, the empty state, and the
+  separate 3-month Dashboard forecast.
+- [ ] At 375px and 414px, check that year controls wrap and the table scrolls
+  inside its region. Open a marked historical cell and confirm its year,
+  validated amount, notes, and line items. A saved draft excluded from totals
+  must show that status.
 - [ ] Run `python3 test/browser/historical_integrity.py` against the production
   build. Verify schedule-edit rollback and exact history backup recovery.
 - [ ] Run `python3 test/browser/continuous_planner.py` against the production
@@ -71,8 +81,10 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
   when Planner adds the whole of 2027 at local midnight on December 1.
 - [ ] Check January 1 coverage, December-to-January carry-forward, and exact
   storage equality after a local date change and Chromium reopening.
-- [ ] Scroll the synthetic ten-year Planner to both ends and confirm old and
-  future dates remain reachable while only a window of columns is rendered.
+- [ ] Run `python3 test/browser/year_navigation.py` against the production
+  build. Verify navigation, cross-year balances, backup recovery, and no
+  writes from viewing or scrolling. In the ten-year fixture use the selector
+  to return to the first year, then scroll to both ends of that year.
 - [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.

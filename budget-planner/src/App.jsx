@@ -353,7 +353,7 @@ export default function App() {
     return () => window.clearTimeout(statusTimer);
   }, [statusMessage]);
 
-  const plannerData = useMemo(() => {
+  const buildPlannerThroughYear = useCallback((throughYear) => {
     return buildPlannerRows({
       settings,
       accounts,
@@ -363,6 +363,7 @@ export default function App() {
       transfers,
       plannerEntries,
       today,
+      throughYear,
     });
   }, [
     plannerEntries,
@@ -374,6 +375,7 @@ export default function App() {
     transfers,
     today,
   ]);
+  const plannerData = useMemo(() => buildPlannerThroughYear(), [buildPlannerThroughYear]);
 
   const alertTransactions = useMemo(
     () =>
@@ -1298,6 +1300,7 @@ export default function App() {
           {currentPage === 'planner' ? (
             <Planner
               plannerData={plannerData}
+              buildPlannerThroughYear={buildPlannerThroughYear}
               plannerEntries={plannerEntries}
               plannerLastEntryMarker={plannerLastEntryMarker}
               settings={settings}
