@@ -122,7 +122,11 @@ test('D-F1: pre-anchor records are discoverable without altering anchored financ
   assert.deepEqual(getSavedPlannerEntriesBeforeAnchor(plannerEntries, 'invalid-anchor'), []);
   assert.deepEqual(getSavedPlannerEntriesBeforeAnchor(withEntries(original), first), []);
 
-  const inputs = { ...defaults, scheduledItems: [rent], throughYear: 2025 };
+  const timestamp = '2026-06-03T12:00:00.000Z';
+  const inputs = {
+    ...defaults, scheduledItems: [{ ...rent, createdAt: timestamp, updatedAt: timestamp }],
+    throughYear: 2025,
+  };
   const current = buildPlannerRows({ ...inputs, plannerEntries: withEntries(original) });
   const withHistory = buildPlannerRows({ ...inputs, plannerEntries });
   assert.deepEqual(withHistory, current);
