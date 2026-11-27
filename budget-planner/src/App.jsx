@@ -6,10 +6,8 @@ import AppSplash from "./components/AppSplash";
 import ReleaseNotesModal, {
   RELEASE_NOTES_STORAGE_KEY,
 } from './components/ReleaseNotesModal';
-import {
-  createBackupSnapshot,
-  getBackupFileName,
-} from './services/backupService';
+import { getBackupFileName } from './services/backupService';
+import { createFullBackup } from './services/fullBackup';
 import { downloadTextFile } from './utils/downloadFile';
 import { APP_VERSION, RELEASE_NOTES } from './data/releaseNotes';
 import {
@@ -43,17 +41,11 @@ import {
   getAllSavingsBuckets,
   getAllScheduledItems,
   getAllTransfers,
-  normalizeAppSettings,
   normalizeAppMetadata,
-  replaceAccounts,
-  replaceBudgetTargets,
-  replaceCategories,
-  replaceManualAdjustments,
-  replacePlannerEntries,
-  replaceSavingsBucketAdjustments,
-  replaceSavingsBuckets,
-  replaceScheduledItems,
-  replaceTransfers,
+  importBackupData,
+  readBackupSnapshot,
+  restoreFullBackup,
+  wasDatabaseCreatedOnOpen,
   repairLocalData,
   resetAppToDemoData,
   resetAppToEmptyState,
@@ -77,7 +69,6 @@ import {
 import {
   getCurrentAppDataVersion,
   getCurrentAppVersion,
-  getSafeAppData,
   normalizePlannerEntriesRecord,
 } from './data/migrations';
 import { generateAlerts, getAlertCounts } from './logic/alertLogic';
@@ -85,7 +76,6 @@ import { calculateBudgetUsage } from './logic/budgetLogic';
 import {
   applyPlannerLastEntrySaveAction,
   isPlannerCellMarked,
-  isPlannerLastEntryMarkerValid,
   normalizePlannerLastEntryMarker,
 } from './logic/plannerLastEntryMarker';
 import { buildExportPlannerRows, buildPlannerRows } from './logic/projectionLogic';
@@ -281,7 +271,7 @@ export default function App() {
         ] = await Promise.all([
           getAppSettings(),
           getAllBudgetTargets(),
-          getAllCategories(),
+          getAllCategories({ seedDefaults: false }),
           getAllPlannerEntries(),
           getAllScheduledItems(),
           getAllAccounts(),
@@ -305,10 +295,10 @@ export default function App() {
         const hasExistingUserData =
           hasSavedRecords ||
           hasCustomSavedSettings(savedSettings) ||
-          hasCustomSavedCategories(savedCategories) ||
+          (savedCategories.length > 0 && hasCustomSavedCategories(savedCategories)) ||
           Boolean(savedAppMetadata.lastBackupAt);
 
-        if (!savedAppMetadata.dataMode && !hasExistingUserData) {
+        if (wasDatabaseCreatedOnOpen() && !savedAppMetadata.dataMode && !hasExistingUserData) {
           const demoData = await resetAppToDemoData();
           applyLoadedData(demoData);
           return;
@@ -552,30 +542,6 @@ export default function App() {
     () => normalizePlannerLastEntryMarker(appMetadata.plannerLastEntryMarker),
     [appMetadata.plannerLastEntryMarker]
   );
-
-  useEffect(() => {
-    if (
-      loading ||
-      !plannerLastEntryMarker ||
-      isPlannerLastEntryMarkerValid(plannerLastEntryMarker, plannerData)
-    ) {
-      return;
-    }
-
-    async function clearInvalidPlannerLastEntryMarker() {
-      try {
-        const savedMetadata = await saveAppMetadata({
-          ...appMetadata,
-          plannerLastEntryMarker: null,
-        });
-        setAppMetadata(savedMetadata);
-      } catch (error) {
-        console.error('Could not clear invalid planner marker.', error);
-      }
-    }
-
-    clearInvalidPlannerLastEntryMarker();
-  }, [appMetadata, loading, plannerData, plannerLastEntryMarker]);
 
   const budgetAlerts = useMemo(
     () => visibleAlerts.filter((alert) => alert.source === 'budgets'),
@@ -1182,7 +1148,7 @@ export default function App() {
   }, []);
 
   const exportCurrentBackup = useCallback(async () => {
-    const backup = createBackupSnapshot(appData);
+    const backup = await createFullBackup(await readBackupSnapshot());
 
     downloadTextFile({
       content: JSON.stringify(backup, null, 2),
@@ -1190,10 +1156,10 @@ export default function App() {
       mimeType: 'application/json;charset=utf-8',
     });
 
-    await handleBackupExported(backup.metadata.createdAt);
-    setStatusMessage('Backup exported successfully. Keep this file somewhere safe.');
+    await handleBackupExported(backup.exportedAt);
+    setStatusMessage('Complete database backup downloaded. Keep it somewhere safe.');
     return backup;
-  }, [appData, handleBackupExported]);
+  }, [handleBackupExported]);
 
   const handleCloseReleaseNotes = useCallback(() => {
     markReleaseNotesSeen();
@@ -1213,7 +1179,7 @@ export default function App() {
       setReleaseNotesSeen(true);
     } catch (error) {
       console.error(error);
-      setStatusMessage('Backup export failed.');
+      setStatusMessage(error.message || 'Backup export failed.');
     }
   }, [exportCurrentBackup]);
 
@@ -1229,63 +1195,17 @@ export default function App() {
     setSelectedCell(null);
   }, []);
 
-  const handleImportData = useCallback(async (importedData) => {
-    const safeImportedData = getSafeAppData(importedData);
-    const importedHasRecords =
-      safeImportedData.budgetTargets.length > 0 ||
-      Object.keys(safeImportedData.plannerEntries).length > 0 ||
-      safeImportedData.scheduledItems.length > 0 ||
-      safeImportedData.accounts.length > 0 ||
-      safeImportedData.manualAdjustments.length > 0 ||
-      safeImportedData.savingsBuckets.length > 0 ||
-      safeImportedData.savingsBucketAdjustments.length > 0 ||
-      safeImportedData.transfers.length > 0;
-    const importedAppMetadata = {
-      ...safeImportedData.appMetadata,
-      dataMode:
-        safeImportedData.appMetadata.dataMode ||
-        (importedHasRecords ? 'custom' : 'empty'),
-    };
+  const handleImportData = useCallback(async (importedData, fullBackup, safetyBackup) => {
+    if (fullBackup) {
+      await restoreFullBackup(importedData, safetyBackup);
+      setDismissedAlertIds([]);
+      setStatusMessage('Complete database backup restored successfully.');
+      // Data Management reloads only after commit, so regular readers derive the UI.
+      return;
+    }
 
-    const [
-      savedImportedAppMetadata,
-      savedImportedSettings,
-      savedImportedBudgetTargets,
-      savedImportedCategories,
-      savedImportedPlannerEntries,
-      savedImportedScheduledItems,
-      savedImportedAccounts,
-      savedImportedManualAdjustments,
-      savedImportedSavingsBuckets,
-      savedImportedSavingsBucketAdjustments,
-      savedImportedTransfers,
-    ] = await Promise.all([
-      saveAppMetadata(importedAppMetadata),
-      saveAppSettings(normalizeAppSettings(safeImportedData.settings)),
-      replaceBudgetTargets(safeImportedData.budgetTargets),
-      replaceCategories(safeImportedData.categories),
-      replacePlannerEntries(safeImportedData.plannerEntries),
-      replaceScheduledItems(safeImportedData.scheduledItems),
-      replaceAccounts(safeImportedData.accounts),
-      replaceManualAdjustments(safeImportedData.manualAdjustments),
-      replaceSavingsBuckets(safeImportedData.savingsBuckets),
-      replaceSavingsBucketAdjustments(safeImportedData.savingsBucketAdjustments),
-      replaceTransfers(safeImportedData.transfers),
-    ]);
-
-    applyLoadedData({
-      settings: savedImportedSettings,
-      budgetTargets: savedImportedBudgetTargets,
-      categories: savedImportedCategories,
-      appMetadata: savedImportedAppMetadata,
-      plannerEntries: savedImportedPlannerEntries,
-      scheduledItems: savedImportedScheduledItems,
-      accounts: savedImportedAccounts,
-      manualAdjustments: savedImportedManualAdjustments,
-      savingsBuckets: savedImportedSavingsBuckets,
-      savingsBucketAdjustments: savedImportedSavingsBucketAdjustments,
-      transfers: savedImportedTransfers,
-    });
+    const savedData = await importBackupData(importedData, safetyBackup);
+    applyLoadedData(savedData);
     setDismissedAlertIds([]);
     setStatusMessage('Backup imported successfully.');
   }, [applyLoadedData]);

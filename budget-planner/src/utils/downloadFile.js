@@ -3,11 +3,16 @@ export function downloadTextFile({ content, filename, mimeType }) {
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  try {
+    if (!("download" in link)) throw new Error("This browser does not support file downloads.");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    if (!link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))) {
+      throw new Error("The browser cancelled the file download request.");
+    }
+  } finally {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 }

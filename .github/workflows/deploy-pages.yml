@@ -1,28 +1,50 @@
 name: Deploy FinPath to GitHub Pages
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full SHA of the reviewed main commit selected for this run
+        required: true
+        type: string
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: github-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
-    name: Build app
+    name: Verify and build selected source
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      pages: read
     steps:
-      - name: Checkout
+      - name: Require an owner dispatch for the selected main revision
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          if [[ "$GITHUB_ACTOR" != "$REPOSITORY_OWNER" || "$GITHUB_TRIGGERING_ACTOR" != "$REPOSITORY_OWNER" ]]; then
+            echo "::error::The repository owner must dispatch or rerun a production release."
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" != 'refs/heads/main' || ! "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ || "$REQUESTED_SHA" != "$GITHUB_SHA" ]]; then
+            echo "::error::Select main and enter the full lowercase SHA of its reviewed commit. The dispatch revision must match."
+            exit 1
+          fi
+
+      - name: Checkout approved commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out revision
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -39,25 +61,27 @@ jobs:
         working-directory: budget-planner
         run: npm run lint
 
+      - name: Run Node tests
+        working-directory: budget-planner
+        run: npm test
+
       - name: Build app
         working-directory: budget-planner
         run: npm run build
 
-      - name: Add Pages debug file
+      - name: Record and verify Pages artifact
+        working-directory: budget-planner
         run: |
-          echo "FinPath GitHub Pages deploy check" > budget-planner/dist/pages-debug.txt
-          echo "Built from budget-planner/dist" >> budget-planner/dist/pages-debug.txt
-          echo "Base path: /BudgetApp/" >> budget-planner/dist/pages-debug.txt
-          echo "Commit: $GITHUB_SHA" >> budget-planner/dist/pages-debug.txt
-
-      - name: Verify build output
-        run: |
-          echo "Listing dist output"
-          ls -la budget-planner/dist
-          echo "Checking required files"
-          test -f budget-planner/dist/index.html
-          test -f budget-planner/dist/manifest.webmanifest
-          test -f budget-planner/dist/sw.js
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          {
+            echo "FinPath GitHub Pages deploy check"
+            echo "Built from budget-planner/dist"
+            echo "Base path: /BudgetApp/"
+            echo "Commit: $GITHUB_SHA"
+          } > dist/pages-debug.txt
+          echo "FinPath Pages revision: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -68,14 +92,15 @@ jobs:
           path: budget-planner/dist
 
   deploy:
-    name: Deploy to GitHub Pages
-    needs: build
+    name: Publish the verified artifact
     runs-on: ubuntu-latest
-
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

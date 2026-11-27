@@ -27,10 +27,11 @@ data.
 
 ## Backup
 
-`Export Backup` downloads a JSON file containing your local planner data, including settings, planner entries, accounts, scheduled items, categories, budget targets, savings buckets, and adjustments.
-
-Backups include app metadata such as app version, backup version, data version,
-creation date, source, and the last successful backup export timestamp.
+`Export Backup` validates and downloads a complete JSON snapshot of all 11
+IndexedDB stores. It includes original supported keys and values, soft-deleted
+records, and app metadata such as Last Entry and the saved backup timestamp.
+If an unsupported stored value prevents a complete backup, FinPath reports the
+affected store and record position when available.
 
 Recommended backup frequency:
 
@@ -39,15 +40,22 @@ Recommended backup frequency:
 - Before clearing browser or site data.
 - Before switching browsers or devices.
 - Before uninstalling the PWA.
-- Before importing another backup or resetting local data.
+- Before resetting local data.
 
 The in-app Help Guide includes the same backup guidance in a shorter format.
 
 ## Restore
 
-`Import Backup` reads a JSON backup, validates it, previews record counts, and replaces the current local data after confirmation.
+`Import Backup` validates and previews the selected file, then prepares a
+complete pre-restore backup. Download it, check that you saved it, and confirm.
+Store it somewhere you control. FinPath cannot verify that the
+browser saved the file. Cancelling or failing the safety step leaves the
+database and backup reminder unchanged.
 
-Export a fresh backup before importing another backup if you might need to undo the import.
+Restore replaces all 11 stores in one transaction. It first compares the
+current records to the safety backup to detect changes since preparation. If
+records have changed, prepare and save a fresh backup before retrying. If the
+restore transaction aborts, all previous records remain in place.
 
 ## Reset Modes
 
@@ -59,10 +67,17 @@ budgets, savings buckets, adjustments, and user/demo records from this
 browser/device. It keeps default base categories and safe settings so the app
 remains usable. It requires typing `DELETE`.
 
-Both reset modes replace local data. Export a backup first if you want to
-preserve your current data. Reset keeps the locally stored last-backup timestamp
-when it is valid because that timestamp represents your last successful backup
-export action on this browser/device.
+Both resets replace all 11 stores in a single transaction. FinPath updates the
+screen and reports success after the transaction completes. If a reset fails,
+the previous records remain in place. Reopen the app to check the existing data
+before retrying. Reset preserves the saved backup timestamp and onboarding
+completion date when valid. Export a backup before a reset if you need to keep
+the current financial records.
+
+Local synthetic Chromium checks cover reset rollback and complete-backup
+recovery across all 11 stores, including typed values, soft-deleted records and
+reopening the browser. Other browser engines, mobile, large backups, physical
+storage durability and recovery of owner financial data remain unverified.
 
 ## Repair Local Data
 
@@ -73,7 +88,6 @@ export action on this browser/device.
 - Before clearing browser data.
 - Before switching browsers or devices.
 - Before uninstalling the PWA.
-- Before importing a backup.
 - Before resetting to demo data or factory resetting to an empty app.
 - Before a major app update or deployment change.
 - After significant planner setup changes.
@@ -85,7 +99,8 @@ export action on this browser/device.
 3. Move the JSON backup file to the new device.
 4. Open the app on the new device.
 5. Choose `Import Backup`.
-6. Review the preview counts and confirm the import.
+6. Review the preview, download and save the pre-restore backup, and confirm
+   the import.
 
 If browser data is cleared and no backup exists, the app cannot recover the removed local data.
 

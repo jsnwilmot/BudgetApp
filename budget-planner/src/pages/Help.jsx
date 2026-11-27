@@ -151,7 +151,7 @@ export default function Help() {
           </p>
           <p>
             Export a backup before major updates or before clearing browser
-            data. Also export before importing another backup, changing devices,
+            data. Also export before changing devices
             or uninstalling the PWA. A future desktop version is planned with
             app-managed local database storage.
           </p>
@@ -174,15 +174,17 @@ export default function Help() {
 
       <HelpCard title="Backups and Migration">
           <p>
-            Export Backup saves a versioned JSON file with your FinPath
-            settings, accounts, categories, scheduled items, planner entries,
-            savings buckets, transfers, budgets, and local metadata. The
-            Planner Last Entry marker is included as one optional metadata
-            reference when selected.
+            Export Backup includes every IndexedDB store, including inactive
+            and soft-deleted records, original keys and Planner Last Entry
+            information. Keep the downloaded file somewhere separate from
+            browser storage.
           </p>
           <p>
-            Import Backup validates the file, shows a preview, and requires
-            confirmation before replacing local data on this device.
+            Import Backup validates the file and shows a preview. FinPath
+            prepares a complete copy of your current data before replacement.
+            Download it, check that you saved it, and keep it before confirming
+            the import. Older logical backups may omit stored records. A failed
+            import leaves your previous data in place.
           </p>
           <p>
             Backup files preserve stable record IDs so relationships can move
@@ -268,12 +270,18 @@ export default function Help() {
             categories, but clears demo/user accounts, scheduled items, budgets,
             savings buckets, adjustments, and planner entries.
           </p>
+          <p>
+            Demo and empty resets finish only after all saved data is updated.
+            If a reset fails, your previous records stay in place. Export a
+            backup before a reset if you want to keep your current records.
+          </p>
         </HelpCard>
 
         <HelpCard title="Importing a Backup">
           <p>
-            Importing a backup replaces current local data. Export the current
-            app data first if you may need to keep it.
+            Importing a backup replaces current local data. Download the safety
+            backup that FinPath prepares in the preview. FinPath asks you to confirm
+            that you saved it because the app cannot verify that the file was saved.
           </p>
           <p>
             After a backup is imported, the app reloads/restores the imported

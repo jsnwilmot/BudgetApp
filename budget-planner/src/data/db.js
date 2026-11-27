@@ -14,6 +14,7 @@ import {
   APP_DATA_VERSION,
   APP_METADATA_ID,
   getSafeAppData,
+  isPlainObject,
   normalizeAccountRecord,
   normalizeAppMetadataRecord,
   normalizeAppSettingsRecord,
@@ -25,28 +26,18 @@ import {
   sortCategories as sortCategoryRecords,
 } from './migrations';
 
+import { DB_VERSION, STORES, STORE_NAMES, getStoreKeyPath } from './databaseSchema';
+import { matchesBackupRecord, validateFullBackup } from '../services/fullBackup';
+
 const DB_NAME = 'budget-planner-db';
-const DB_VERSION = 9;
 const SETTINGS_ID = 'app-settings';
 
-const STORES = {
-  appMetadata: 'appMetadata',
-  appSettings: 'appSettings',
-  budgetTargets: 'budgetTargets',
-  categories: 'categories',
-  plannerEntries: 'plannerEntries',
-  scheduledItems: 'scheduledItems',
-  accounts: 'accounts',
-  manualAdjustments: 'manualAdjustments',
-  savingsBuckets: 'savingsBuckets',
-  savingsBucketAdjustments: 'savingsBucketAdjustments',
-  transfers: 'transfers',
-};
-
+let freshlyCreated = false;
 let databasePromise = null;
 
 function openDatabase() {
   if (!databasePromise) {
+    freshlyCreated = false;
     databasePromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -68,6 +59,7 @@ function openDatabase() {
 
       request.onupgradeneeded = (event) => {
         const db = request.result;
+        freshlyCreated = event.oldVersion === 0;
 
         // Keep creation checks compatible with every older database version.
         if (event.oldVersion >= DB_VERSION) {
@@ -144,6 +136,45 @@ function openDatabase() {
   }
 
   return databasePromise;
+}
+
+export function wasDatabaseCreatedOnOpen() {
+  return freshlyCreated;
+}
+
+function assertBackupSchema(db, transaction) {
+  if (db.version !== DB_VERSION || db.objectStoreNames.length !== STORE_NAMES.length) {
+    throw new Error('Database schema is incompatible with complete backups.');
+  }
+  for (const name of STORE_NAMES) {
+    const store = transaction.objectStore(name);
+    if (store.keyPath !== getStoreKeyPath(name) || store.autoIncrement || store.indexNames.length) {
+      throw new Error('Database store schema is incompatible with complete backups.');
+    }
+  }
+}
+
+export async function readBackupSnapshot() {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAMES, 'readonly');
+    assertBackupSchema(db, transaction);
+    const stores = STORE_NAMES.map((name) => ({
+      name, keyPath: getStoreKeyPath(name), records: [],
+    }));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Backup read aborted.'));
+    transaction.oncomplete = () => resolve({ databaseVersion: db.version, stores });
+    for (const store of stores) {
+      const request = transaction.objectStore(store.name).openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          store.records.push([cursor.primaryKey, cursor.value]);
+          cursor.continue();
+        }
+      };
+    }
+  });
 }
 
 export function validateAppSettings(settings = {}) {
@@ -366,11 +397,24 @@ export async function saveAppMetadata(metadata = {}) {
 }
 
 export async function saveLastBackupAt(lastBackupAt = new Date().toISOString()) {
-  const currentMetadata = await getAppMetadata();
-
-  return saveAppMetadata({
-    ...currentMetadata,
-    lastBackupAt,
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORES.appMetadata, 'readwrite');
+    const store = transaction.objectStore(STORES.appMetadata);
+    const request = store.get(APP_METADATA_ID);
+    let savedMetadata;
+    transaction.onabort = () => reject(transaction.error ?? new Error('Backup reminder update aborted.'));
+    transaction.oncomplete = () => resolve(savedMetadata);
+    request.onsuccess = () => {
+      // Update only the reminder fields. Keep the raw historical metadata intact.
+      savedMetadata = {
+        ...request.result,
+        id: APP_METADATA_ID,
+        lastBackupAt,
+        updatedAt: new Date().toISOString(),
+      };
+      store.put(savedMetadata);
+    };
   });
 }
 
@@ -443,80 +487,189 @@ export async function replaceTransfers(transfers = []) {
   );
 }
 
-async function replaceCompleteAppData(appData = {}) {
-  const safeData = getSafeAppData({
-    appDataVersion: APP_DATA_VERSION,
-    ...appData,
-  });
-
-  const [
-    savedAppMetadata,
-    savedSettings,
-    savedBudgetTargets,
-    savedCategories,
-    savedPlannerEntries,
-    savedScheduledItems,
-    savedAccounts,
-    savedManualAdjustments,
-    savedSavingsBuckets,
-    savedSavingsBucketAdjustments,
-    savedTransfers,
-  ] = await Promise.all([
-    saveAppMetadata(safeData.appMetadata),
-    saveAppSettings(safeData.settings),
-    replaceBudgetTargets(safeData.budgetTargets),
-    replaceCategories(safeData.categories),
-    replacePlannerEntries(safeData.plannerEntries),
-    replaceScheduledItems(safeData.scheduledItems),
-    replaceAccounts(safeData.accounts),
-    replaceManualAdjustments(safeData.manualAdjustments),
-    replaceSavingsBuckets(safeData.savingsBuckets),
-    replaceSavingsBucketAdjustments(safeData.savingsBucketAdjustments),
-    replaceTransfers(safeData.transfers),
-  ]);
-
-  return {
-    ...safeData,
-    appMetadata: savedAppMetadata,
-    settings: savedSettings,
-    budgetTargets: savedBudgetTargets,
-    categories: savedCategories,
-    plannerEntries: normalizePlannerEntriesRecord(savedPlannerEntries),
-    scheduledItems: savedScheduledItems,
-    accounts: savedAccounts,
-    manualAdjustments: savedManualAdjustments,
-    savingsBuckets: savedSavingsBuckets,
-    savingsBucketAdjustments: savedSavingsBucketAdjustments,
-    transfers: savedTransfers,
-  };
+export class PreRestoreDataChangedError extends Error {
+  constructor() {
+    super('Current data changed after the safety backup. Prepare and save a new safety backup before importing.');
+  }
 }
 
-async function getResetStateWithPreservedMetadata(resetState) {
-  const currentMetadata = await getAppMetadata();
+export async function importBackupData(importedData, safetyBackup) {
+  if (!safetyBackup) throw new Error('A saved pre-restore safety backup is required.');
+  return replaceNormalizedAppData(importedData, safetyBackup);
+}
 
-  return {
+// Legacy backup previews and reset fixtures use normalized logical data.
+// Prepare the records for both storage and React before beginning the write.
+async function replaceNormalizedAppData(importedData, safetyBackup) {
+  if (importedData?.appDataVersion !== APP_DATA_VERSION ||
+      !isPlainObject(importedData.appMetadata) || !isPlainObject(importedData.settings) ||
+      !isPlainObject(importedData.plannerEntries)) {
+    throw new Error('Invalid prepared backup data.');
+  }
+
+  const plannerRecords = Object.entries(importedData.plannerEntries).map(
+    ([entryKey, entry]) => {
+      if (entry?.entryKey !== entryKey) {
+        throw new Error('Invalid planner entry key in backup.');
+      }
+      return entry;
+    }
+  );
+  const recordsByStore = {
+    [STORES.budgetTargets]: importedData.budgetTargets,
+    [STORES.categories]: importedData.categories,
+    [STORES.plannerEntries]: plannerRecords,
+    [STORES.scheduledItems]: importedData.scheduledItems,
+    [STORES.accounts]: importedData.accounts,
+    [STORES.manualAdjustments]: importedData.manualAdjustments,
+    [STORES.savingsBuckets]: importedData.savingsBuckets,
+    [STORES.savingsBucketAdjustments]: importedData.savingsBucketAdjustments,
+    [STORES.transfers]: importedData.transfers,
+  };
+
+  for (const [storeName, records] of Object.entries(recordsByStore)) {
+    if (!Array.isArray(records)) {
+      throw new Error('Missing prepared backup records.');
+    }
+    const keyPath = storeName === STORES.plannerEntries ? 'entryKey' : 'id';
+    const keys = new Set();
+    for (const record of records) {
+      const key = record?.[keyPath];
+      const validKey = (typeof key === 'string' && key.trim()) ||
+        (keyPath === 'id' && Number.isFinite(key));
+      if (!validKey || keys.has(key)) {
+        throw new Error('Invalid or duplicate prepared backup record key.');
+      }
+      keys.add(key);
+    }
+  }
+
+  const updatedAt = new Date().toISOString();
+  const hasRecords = Object.entries(recordsByStore).some(
+    ([storeName, records]) => storeName !== STORES.categories && records.length > 0
+  );
+  const appMetadata = normalizeAppMetadata({
+    ...importedData.appMetadata,
+    id: APP_METADATA_ID,
+    dataMode: importedData.appMetadata.dataMode || (hasRecords ? 'custom' : 'empty'),
+    updatedAt,
+  });
+  const settings = {
+    ...normalizeAppSettings(importedData.settings),
+    id: SETTINGS_ID,
+    updatedAt,
+  };
+  recordsByStore[STORES.appMetadata] = [appMetadata];
+  recordsByStore[STORES.appSettings] = [settings];
+  const savedData = { ...importedData, appMetadata, settings };
+
+  await replaceBackupStores(recordsByStore, safetyBackup);
+  return savedData;
+}
+
+export async function restoreFullBackup(backup, safetyBackup) {
+  if (!safetyBackup) throw new Error('A saved pre-restore safety backup is required.');
+  const { recordsByStore } = await validateFullBackup(backup);
+  const prepared = Object.fromEntries(STORE_NAMES.map((name) => [
+    name, recordsByStore[name].map(([, record]) => record),
+  ]));
+  await replaceBackupStores(prepared, safetyBackup);
+}
+
+async function replaceBackupStores(recordsByStore, safetyBackup) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAMES, 'readwrite');
+    let queueError;
+    transaction.onabort = () => {
+      reject(queueError ?? transaction.error ?? new Error('Backup import was aborted.'));
+    };
+    transaction.oncomplete = () => resolve();
+
+    function abort(error) {
+      queueError = error;
+      transaction.abort();
+    }
+
+    function queueReplacement() {
+      for (const [storeName, records] of Object.entries(recordsByStore)) {
+        const store = transaction.objectStore(storeName);
+        store.clear();
+        for (const record of records) {
+          store.put(record);
+        }
+      }
+      // Unhandled IndexedDB request errors abort the entire transaction by default.
+    }
+
+    try {
+      assertBackupSchema(db, transaction);
+      if (!safetyBackup) {
+        queueReplacement();
+        return;
+      }
+
+      // Another tab may have written since the download. Check the exact saved
+      // inventory under the same write lock before clearing any store.
+      let remaining = STORE_NAMES.length;
+      for (const [storeIndex, name] of STORE_NAMES.entries()) {
+        const { name: archiveStore, records } = safetyBackup.stores[storeIndex];
+        if (archiveStore !== name) throw new PreRestoreDataChangedError();
+        let index = 0;
+        const request = transaction.objectStore(name).openCursor();
+        request.onsuccess = () => {
+          try {
+            const cursor = request.result;
+            if (cursor) {
+              let matches = false;
+              try {
+                matches = matchesBackupRecord(records[index], cursor.primaryKey, cursor.value);
+              } catch {
+                // A value that the backup codec cannot encode is a change too.
+              }
+              if (!matches) throw new PreRestoreDataChangedError();
+              index++;
+              cursor.continue();
+              return;
+            }
+            if (index !== records.length) throw new PreRestoreDataChangedError();
+            if (--remaining === 0) queueReplacement();
+          } catch (error) {
+            abort(error);
+          }
+        };
+      }
+    } catch (error) {
+      // A synchronous request error can occur after earlier writes were queued.
+      abort(error);
+    }
+  });
+}
+
+async function resetAppData(resetState) {
+  const currentMetadata = await getAppMetadata();
+  const safeData = getSafeAppData({
     ...resetState,
+    appDataVersion: APP_DATA_VERSION,
     appMetadata: {
       ...resetState.appMetadata,
       lastBackupAt: currentMetadata.lastBackupAt || '',
       onboardingCompletedAt: currentMetadata.onboardingCompletedAt || '',
     },
-  };
+  });
+
+  return replaceNormalizedAppData(safeData);
 }
 
 export async function resetAppToDemoData() {
-  return replaceCompleteAppData(
-    await getResetStateWithPreservedMetadata(getDemoAppState())
-  );
+  return resetAppData(getDemoAppState());
 }
 
 export async function resetAppToEmptyState() {
-  return replaceCompleteAppData(
-    await getResetStateWithPreservedMetadata(getEmptyAppState())
-  );
+  return resetAppData(getEmptyAppState());
 }
 
-export async function getAllCategories() {
+export async function getAllCategories({ seedDefaults = true } = {}) {
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
@@ -532,7 +685,7 @@ export async function getAllCategories() {
       const records = request.result || [];
 
       if (records.length === 0) {
-        resolve(null);
+        resolve(seedDefaults ? null : []);
         return;
       }
 

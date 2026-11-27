@@ -2,14 +2,36 @@
 
 Run this before tagging or sharing a local MVP build.
 
+## Validation and manual Pages release
+
+- Pull requests and updates to `main` run **Validate FinPath** with Node 22,
+  locked `npm ci`, source diff checks, lint, `npm test`, production build,
+  artifact and tracked-file checks, and the Chromium backup, reset and
+  pre-restore suites with disposable synthetic profiles. Validation has
+  read-only repository permissions.
+- After reviewing the changes and validating the exact merged commit, the
+  repository owner opens **Actions → Deploy FinPath to GitHub Pages → Run
+  workflow**, selects `main`, and enters the full lowercase SHA of the reviewed
+  commit. The workflow requires that SHA to match the commit selected at
+  dispatch. If main advanced, review the new head before dispatching again.
+- The owner must also initiate any rerun. Deployment builds the exact dispatched
+  SHA with the lockfile, lint and Node tests. It uploads the existing
+  `budget-planner/dist` Pages structure for the `github-pages` environment.
+  Check the Actions summary and `/BudgetApp/pages-debug.txt` for the published
+  SHA after an authorized release. Any existing GitHub environment rules apply.
+- Before authorizing a release, run the synthetic Chromium reset and backup
+  suites from the same built revision. Other engines, mobile, large-backup
+  recovery and actual owner-data recovery remain unverified.
+
 ## Static Checks
 
 - [ ] `npm.cmd run lint`
+- [ ] `npm.cmd test`
 - [ ] `npm.cmd run build`
 - [ ] `git diff --check`
 - [ ] `npm.cmd run preview`
 - [ ] Update `APP_VERSION` in `src/data/releaseNotes.js`.
-- [ ] Update `APP_VERSION` in `src/data/migrations.js` for backup metadata.
+- [ ] Confirm app metadata uses the shared `APP_VERSION`.
 - [ ] Update `RELEASE_NOTES` highlights in `src/data/releaseNotes.js`.
 
 The production build should split larger pages and chart code into separate
@@ -105,8 +127,8 @@ imports before release.
 ## Data Management
 
 - [ ] Export Backup downloads JSON.
-- [ ] Export creates a versioned FinPath backup with `exportVersion`, `schemaVersion`, `exportedAt`, `appName`, `source`, and `data`.
-- [ ] Backup includes `appVersion` and `appDataVersion`.
+- [ ] Export creates a FinPath full backup with `formatVersion`, `databaseVersion`, `exportedAt`, `appName`, all 11 `stores` and an integrity digest.
+- [ ] The archived `appMetadata` store preserves the original version and Last Entry fields where present.
 - [ ] Backup includes transfers.
 - [ ] Backup includes savings buckets and savings bucket adjustments.
 - [ ] Data Health shows Last backup.
@@ -131,7 +153,7 @@ imports before release.
 - [ ] Import blocks invalid JSON.
 - [ ] Import warns on older backups with missing optional collections.
 - [ ] Import preserves IDs for accounts, categories, scheduled items, buckets, transfers, budgets, and planner entry keys.
-- [ ] Import requires overwrite confirmation before local data is replaced.
+- [ ] Import prepares the complete pre-restore backup. Download and save it, then confirm before local data is replaced.
 - [ ] Exported backup can be re-imported successfully.
 - [ ] Import warning says current local data will be replaced.
 - [ ] Valid backup import works.
@@ -252,9 +274,11 @@ imports before release.
 
 ## GitHub Pages Deployment
 
-- [ ] Push to `main`.
-- [ ] Confirm GitHub Actions workflow passes.
-- [ ] Confirm Pages deployment completes.
+- [ ] Confirm Validate FinPath passes for the reviewed pull request.
+- [ ] Record the approved revision on `main` after merge.
+- [ ] The repository owner dispatches **Deploy FinPath to GitHub Pages** from
+  `main` with the exact reviewed SHA after separately approving production release.
+- [ ] Confirm Pages deployment completes for that SHA.
 - [ ] Open https://jsnwilmot.github.io/BudgetApp/.
 - [ ] Confirm app shell loads.
 - [ ] Confirm PWA manifest loads.

@@ -14,9 +14,8 @@ This is the stable FinPath web/PWA release. It runs in the browser, can be
 installed as a PWA in supported browsers, stores user data locally, and does not
 require login, cloud sync, bank connections, or a server.
 
-Current phase status: FinPath is stable for web/PWA daily use. Phase 2W
-finalizes release labeling, documentation, backup safety reminders, deployment
-notes, and post-deploy testing while keeping `/BudgetApp/` unchanged.
+Phase A adds data recovery safeguards and owner-controlled deployments to the
+existing web/PWA at `/BudgetApp/`.
 
 New installs start with clearly fictional demo data so the app can be explored
 without setup. Use `Settings > Data Management` to reset back to demo data or
@@ -67,9 +66,10 @@ stronger local data ownership.
 
 Use `Settings > Data Management`.
 
-- `Export Backup` downloads a local JSON backup file with app metadata, app
-  version, data version, settings, planner entries, accounts, scheduled items,
-  categories, transfers, budgets, savings buckets, and adjustments.
+- `Export Backup` saves a versioned snapshot of all 11 IndexedDB stores,
+  including inactive and soft-deleted records and the original keys and values.
+  If a stored value is unsupported, the export reports the problem instead of
+  downloading an incomplete backup.
 - Planner Last Entry is stored as one optional app metadata reference, not as
   separate flags on every planner entry.
 - To mark Last Entry, open a Planner amount cell, check Mark as last entry in
@@ -77,8 +77,12 @@ Use `Settings > Data Management`.
   grid.
 - The app records the last successful backup export and recommends a new backup
   if no backup exists or the last one is older than 30 days.
-- `Import Backup` previews the backup counts, then replaces current local data
-  after confirmation.
+- `Import Backup` validates and previews the incoming file. FinPath prepares
+  a complete `finpath-pre-restore-*.json` backup of your current data. Download
+  it, check that you saved it, and confirm before importing. An unsuccessful
+  backup or a change to the current database blocks replacement. A failed
+  import leaves the previous local data in place. Older logical JSON backups
+  still import and may omit stored records.
 - `Repair Local Data` normalizes records and fills safe missing fields without
   deleting user records.
 - `Reset to Demo Data` requires typing `DEMO` and restores fictional sample
@@ -86,21 +90,19 @@ Use `Settings > Data Management`.
 - `Factory Reset to Empty App` requires typing `DELETE`, clears user/demo
   records from this browser/device, and keeps only safe defaults needed to keep
   the app usable.
+- Both reset modes finish only after all 11 stores commit. If a reset fails,
+  the previous data stays in place. See [Data Safety](DATA_SAFETY.md).
 
 Keep backup files somewhere you control, especially before browser cleanup or
 device changes. Export a backup before deploying or installing a major update.
 
 ## Data Portability
 
-FinPath backup files are versioned JSON exports designed for web/PWA restore
-and future desktop migration. Current full backups include:
-
-- `appName`, `appVersion`, `exportVersion`, `schemaVersion`, `exportedAt`,
-  `source`, and `basePath`.
-- `settings`, `accounts`, `categories`, `transactions`, `scheduledItems`,
-  `plannerEntries`, `manualAdjustments`, `savingsBuckets`,
-  `savingsBucketAdjustments`, `transfers`, and `budgets`.
-- Compatibility aliases such as `budgetTargets` for the current web app.
+Complete FinPath backup files are versioned JSON exports. They include
+`appName`, `format`, `formatVersion`, `databaseVersion`, `exportedAt`,
+the complete `stores` inventory, and an `integrity` digest. A shared validator
+checks that complete exports can be read by the restore path before a file is
+offered for download.
 
 Exports preserve existing record IDs exactly, including account IDs, category
 IDs, scheduled item IDs, savings bucket IDs, transfer IDs, budget IDs, and
@@ -259,6 +261,11 @@ Live URL: https://jsnwilmot.github.io/BudgetApp/
 - Deployment: GitHub Actions
 - Workflow: `.github/workflows/deploy-pages.yml`
 
+Pull requests targeting `main` run locked installation, lint, Node tests,
+production build, diff checks, and synthetic Chromium recovery and reset
+regressions in `.github/workflows/validate.yml`. These checks also run after
+updates to `main`. Production publishing requires a separate owner dispatch.
+
 The Vite base path is configured as `/BudgetApp/` so production assets, the PWA
 manifest, service worker, and icons load correctly from GitHub Pages.
 
@@ -281,11 +288,14 @@ Final deploy steps:
 
 1. Export a fresh backup from `Settings > Data Management`.
 2. Run `npm.cmd run lint`.
-3. Run `npm.cmd run build`.
-4. Run `git diff --check`.
-5. Run production preview and open `/BudgetApp/`.
-6. Commit and push to `main`.
-7. Confirm the GitHub Pages workflow completes.
+3. Run `npm.cmd test` and `npm.cmd run build`.
+4. Run `git diff --check` and check the production preview at `/BudgetApp/`.
+5. Review the pull request and its validation results. Record the reviewed
+   revision on `main` after the approved merge.
+6. When ready to publish, the repository owner opens **Deploy FinPath to
+   GitHub Pages** in Actions, selects `main`, and supplies the full SHA of
+   that reviewed revision. If `main` has moved, stop and review its new revision.
+7. Confirm the workflow published the recorded SHA.
 8. Open https://jsnwilmot.github.io/BudgetApp/.
 9. Hard refresh or open an incognito/private window if stale cached content
    appears. Clear site data only after exporting a backup.
