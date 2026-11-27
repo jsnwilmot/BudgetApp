@@ -95,12 +95,24 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Switch report period or month and confirm totals update.
 - [ ] Check Reports empty state after Factory Reset to Empty App if practical.
 - [ ] Backup export still downloads JSON.
-- [ ] Backup JSON includes `appName`, `exportVersion`, `schemaVersion`, `exportedAt`, `source`, `basePath`, and `data`.
-- [ ] Backup JSON includes `transfers`, `savingsBucketAdjustments`, `plannerEntries`, `settings`, and `budgets`.
-- [ ] Backup JSON preserves `appMetadata.plannerLastEntryMarker` when a Planner Last Entry cell is selected.
+- [ ] Complete backup JSON includes `appName`, `formatVersion`, `databaseVersion`,
+  `exportedAt`, `stores`, and `integrity`.
+- [ ] The `appMetadata` store preserves the Last Entry marker when one is selected.
 - [ ] Backup import preview still opens for a valid backup.
 - [ ] Backup import shows warnings for older backups where applicable.
-- [ ] Backup import requires confirmation before replacing local data.
+- [ ] Backup import prepares a full safety copy. Check that downloading it
+  alone leaves Import disabled. Save the file, acknowledge it, and confirm.
+- [ ] Cancel after downloading a safety copy and check that no stored records
+  or backup reminder metadata changed. If the data changes after the download,
+  check that import requests a fresh safety copy.
+- [ ] Export includes all 11 stores, including empty stores and soft-deleted
+  records, and a restore in a second disposable profile matches the raw source.
+- [ ] The import preview clearly identifies a complete database backup or a
+  legacy logical backup. Invalid full backups do not offer confirmation.
+- [ ] In a disposable profile, a failed import shows an error, leaves all 11
+  stores unchanged, and keeps the same data after reopening the browser.
+  Run `python3 test/browser/atomic_import.py` and
+  `python3 test/browser/pre_restore.py` after building the app.
 - [ ] Settings still shows app version, data version, last backup, and backup status.
 
 ## Responsive Layout
@@ -170,3 +182,13 @@ npm.cmd run build
 cd ..
 git diff --check
 ```
+
+## Atomic Reset Checks
+
+- [ ] With synthetic data, confirm `DEMO` and `DELETE` separately. Verify all
+  11 stores, saved backup and onboarding timestamps, and application state after
+  reopening.
+- [ ] Run `python3 test/browser/atomic_reset.py` against the production build
+  using local Playwright and Chromium. Verify that an injected error after an
+  earlier store write aborts either reset, preserves each raw store, and shows
+  an error without a success message.

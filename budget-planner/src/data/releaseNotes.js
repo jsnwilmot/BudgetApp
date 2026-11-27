@@ -1,21 +1,15 @@
-export const APP_VERSION = '2.0.0-web-final';
+export const APP_VERSION = '2.1.0';
 
 export const RELEASE_NOTES = {
   version: APP_VERSION,
   title: "What's New",
-  date: '2026-05-24',
+  date: '2026-11-27',
   highlights: [
-    'Finalized FinPath web/PWA release.',
-    'Confirmed local-first backup, import preview, and Data Health tools.',
-    'Confirmed Reports, transfers, savings movement, budgets, and planner QA coverage.',
-    'Improved Savings Buckets with current projected balances, validated bucket balances, and read-only validated planner transfer activity.',
-    'Fixed Reports bucket balances so they use current bucket projection data instead of only starting balances.',
-    'Fixed Reports transfer summaries so planned, validated, manual, and adjustment-based savings movement are clearly separated.',
-    'Improved missing-account alerts with clearer copy and deduplication.',
-    'Added account assignment to scheduled income, expenses, and debts, with missing-account alerts opening the source scheduled item.',
-    'Kept non-danger alert dismissals after refresh and prevented update notices from covering status messages.',
-    'Hardened IndexedDB replacement writes and removed stale full-app localStorage diagnostics.',
-    'Confirmed mobile and PWA release readiness.',
-    'Prepared the app for stable daily use before future desktop migration.',
+    'Complete backups include all 11 database stores, including soft-deleted records.',
+    'Backup imports and restores commit together across all stores.',
+    'Demo and factory resets preserve your previous records if a reset fails.',
+    'Complete exports and restores use the same validation rules for keys and stored values.',
+    'Before importing a backup, FinPath prepares a complete copy of your current data and asks you to confirm you saved it.',
+    'Pull requests run automated validation. Publishing to GitHub Pages requires a separate owner action for a reviewed commit.',
   ],
 };

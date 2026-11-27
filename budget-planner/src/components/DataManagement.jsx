@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import {
-  createBackupSnapshot,
   getBackupFileName,
   validateBackupFile
 } from "../services/backupService";
+import { createFullBackup, isFullBackup, validateFullBackup } from "../services/fullBackup";
+import { PreRestoreDataChangedError, readBackupSnapshot } from "../data/db";
 import {
   getDataHealthSummary
 } from "../data/migrations";
@@ -279,9 +280,15 @@ export default function DataManagement({
   onShowHelp
 }) {
   const fileInputRef = useRef(null);
+  const importSelection = useRef(0);
+  const importing = useRef(false);
 
   const [pendingImport, setPendingImport] = useState(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [safetyBackup, setSafetyBackup] = useState(null);
+  const [preparingSafetyBackup, setPreparingSafetyBackup] = useState(false);
+  const [backupDownloadRequested, setBackupDownloadRequested] = useState(false);
+  const [backupSaved, setBackupSaved] = useState(false);
   const [demoConfirmation, setDemoConfirmation] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -316,21 +323,22 @@ export default function DataManagement({
   async function handleExportBackup() {
     clearMessages();
 
-    const { storageKey, data } = getCurrentAppData();
-    const backup = createBackupSnapshot({
-      storageKey,
-      ...data
-    });
-
-    downloadTextFile({
-      content: JSON.stringify(backup, null, 2),
-      filename: getBackupFileName(),
-      mimeType: "application/json;charset=utf-8"
-    });
+    let backup;
+    try {
+      backup = await createFullBackup(await readBackupSnapshot());
+      downloadTextFile({
+        content: JSON.stringify(backup, null, 2),
+        filename: getBackupFileName(),
+        mimeType: "application/json;charset=utf-8"
+      });
+    } catch (error) {
+      setErrorMessage(error.message || "Complete backup export failed.");
+      return;
+    }
 
     try {
       if (typeof onBackupExported === "function") {
-        await onBackupExported(backup.metadata.createdAt);
+        await onBackupExported(backup.exportedAt);
       }
     } catch (error) {
       console.error(error);
@@ -338,10 +346,11 @@ export default function DataManagement({
       return;
     }
 
-    setSuccessMessage("Backup exported successfully. Keep this file somewhere safe.");
+    setSuccessMessage("Complete database backup downloaded. Keep it somewhere safe.");
   }
 
   function handleChooseImportFile() {
+    if (importing.current) return;
     clearMessages();
 
     if (fileInputRef.current) {
@@ -351,7 +360,12 @@ export default function DataManagement({
   }
 
   function handleImportBackup(event) {
+    if (importing.current) return;
     clearMessages();
+    const selection = ++importSelection.current;
+    setPendingImport(null);
+    setShowImportConfirm(false);
+    clearSafetyBackup();
 
     const file = event.target.files?.[0];
 
@@ -366,72 +380,146 @@ export default function DataManagement({
 
     const reader = new FileReader();
 
-    reader.onload = () => {
+    reader.onload = async () => {
+      if (selection !== importSelection.current) return;
+      let parsedBackup;
       try {
-        const parsedBackup = JSON.parse(reader.result);
-        const validation = validateBackupFile(parsedBackup);
+        parsedBackup = JSON.parse(reader.result);
+      } catch {
+        setErrorMessage("The selected file is not valid JSON.");
+        return;
+      }
 
+      if (isFullBackup(parsedBackup)) {
+        try {
+          const validation = await validateFullBackup(parsedBackup);
+          if (selection !== importSelection.current) return;
+          setPendingImport({
+            fullBackup: true,
+            data: parsedBackup,
+            previewMetadata: validation.metadata,
+            storeCounts: validation.storeCounts,
+            warnings: validation.warnings
+          });
+        } catch (error) {
+          if (selection === importSelection.current) setErrorMessage(error.message);
+          return;
+        }
+      } else {
+        const validation = validateBackupFile(parsedBackup);
         if (!validation.valid) {
           setErrorMessage(validation.message);
           return;
         }
-
         setPendingImport({
-          ...parsedBackup,
           data: validation.data,
           summary: validation.summary,
           previewMetadata: validation.metadata,
-          warnings: validation.warnings || [],
-          referenceWarningCounts: validation.referenceWarningCounts || {}
+          warnings: validation.warnings || []
         });
-        setShowImportConfirm(true);
-      } catch {
-        setErrorMessage("The selected file is not valid JSON.");
       }
+
+      setShowImportConfirm(true);
+      void prepareSafetyBackup(selection);
     };
 
     reader.onerror = () => {
-      setErrorMessage("The backup file could not be read.");
+      if (selection === importSelection.current) setErrorMessage("The backup file could not be read.");
     };
 
     reader.readAsText(file);
   }
 
+  function clearSafetyBackup() {
+    setSafetyBackup(null);
+    setPreparingSafetyBackup(false);
+    setBackupDownloadRequested(false);
+    setBackupSaved(false);
+  }
+
+  async function prepareSafetyBackup(selection) {
+    clearMessages();
+    clearSafetyBackup();
+    setPreparingSafetyBackup(true);
+    try {
+      const archive = await createFullBackup(await readBackupSnapshot());
+      if (selection !== importSelection.current) return;
+      setSafetyBackup({
+        archive,
+        filename: `finpath-pre-restore-${archive.exportedAt.replace(/[:.]/g, "-")}.json`,
+        content: JSON.stringify(archive)
+      });
+    } catch (error) {
+      if (selection === importSelection.current) {
+        setErrorMessage(`Could not create the pre-restore backup. ${error.message}`);
+      }
+    } finally {
+      if (selection === importSelection.current) setPreparingSafetyBackup(false);
+    }
+  }
+
+  function downloadSafetyBackup() {
+    if (!safetyBackup || importing.current) return;
+    clearMessages();
+    setBackupDownloadRequested(false);
+    setBackupSaved(false);
+    try {
+      downloadTextFile({
+        content: safetyBackup.content,
+        filename: safetyBackup.filename,
+        mimeType: "application/json;charset=utf-8"
+      });
+      setBackupDownloadRequested(true);
+    } catch (error) {
+      setErrorMessage(`Could not start the pre-restore backup download. ${error.message}`);
+    }
+  }
+
   async function confirmImportBackup() {
+    if (importing.current) return;
     clearMessages();
 
-    if (!pendingImport) {
-      setErrorMessage("No backup file is ready to import.");
+    if (!pendingImport || !backupDownloadRequested || !backupSaved || !safetyBackup) {
+      setErrorMessage("Download and confirm that you saved the pre-restore backup before importing.");
       return;
     }
 
-    const backupData = pendingImport.data;
-    const dataToRestore = { ...backupData };
-
-    delete dataToRestore.storageKey;
+    const { data, fullBackup = false } = pendingImport;
+    importing.current = true;
 
     try {
       if (typeof onImportData !== "function") {
         throw new Error("onImportData is required");
       }
 
-      await onImportData(dataToRestore);
+      await onImportData(data, fullBackup, safetyBackup.archive);
     } catch (error) {
-      console.error(error);
-      setErrorMessage("Backup import failed.");
+      if (error instanceof PreRestoreDataChangedError) {
+        clearSafetyBackup();
+        setErrorMessage(error.message);
+      } else {
+        console.error(error);
+        setErrorMessage(fullBackup ? "Complete database restore failed." : "Backup import failed.");
+      }
       return;
+    } finally {
+      importing.current = false;
     }
 
     setPendingImport(null);
     setShowImportConfirm(false);
-    setSuccessMessage("Backup imported successfully.");
+    clearSafetyBackup();
+    setSuccessMessage(fullBackup ? "Complete database backup restored successfully." : "Backup imported successfully.");
 
     reloadApp();
   }
 
   function cancelImportBackup() {
+    if (importing.current) return;
+    importSelection.current++;
     setPendingImport(null);
     setShowImportConfirm(false);
+    clearSafetyBackup();
     setSuccessMessage("");
     setErrorMessage("Import cancelled. Your current data was not changed.");
   }
@@ -906,8 +994,14 @@ export default function DataManagement({
             <div className="mt-4 rounded-xl border border-amber-300 bg-white p-4">
               <p className="text-sm font-medium text-slate-800">
                 Importing this file will replace your current FinPath data on
-                this device. Export a backup first if you want to keep your
-                current data. The app will reload after import.
+                this device. FinPath prepares a complete safety backup for you to
+                save before replacement. The app will reload after import.
+              </p>
+
+              <p className="mt-2 text-sm text-slate-700">
+                {pendingImport?.fullBackup
+                  ? "Complete database backup (all 11 stores). Integrity check passed."
+                  : "Legacy logical backup. It may omit stored records and is not a complete database snapshot."}
               </p>
 
               {pendingImport?.previewMetadata ? (
@@ -938,13 +1032,13 @@ export default function DataManagement({
                 </div>
               ) : null}
 
-              {pendingImport?.summary ? (
+              {pendingImport?.storeCounts || pendingImport?.summary ? (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <p className="text-sm font-semibold text-slate-900">
                     This backup contains:
                   </p>
                   <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                    {getCountRows(pendingImport.summary).map((row) => (
+                    {(pendingImport.storeCounts || getCountRows(pendingImport.summary)).map((row) => (
                       <div
                         key={row.label}
                         className="flex items-center justify-between gap-3"
@@ -976,11 +1070,34 @@ export default function DataManagement({
                 </div>
               ) : null}
 
+              <div className="mt-4 rounded-xl border border-slate-200 p-3">
+                <p className="text-sm text-slate-700">
+                  Save and keep the pre-restore backup before you continue.
+                  FinPath cannot verify that your browser saved the file.
+                </p>
+                {safetyBackup ? (
+                  <button type="button" onClick={downloadSafetyBackup} className="mt-2 min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold">
+                    Download Safety Backup
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => prepareSafetyBackup(importSelection.current)} disabled={preparingSafetyBackup} className="mt-2 min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold disabled:opacity-50">
+                    {preparingSafetyBackup ? "Preparing Safety Backup…" : "Prepare Safety Backup"}
+                  </button>
+                )}
+                {backupDownloadRequested && (
+                  <label className="mt-2 flex min-h-11 items-center gap-2 text-sm text-slate-800">
+                    <input type="checkbox" checked={backupSaved} onChange={(event) => setBackupSaved(event.target.checked)} />
+                    I saved and will keep the pre-restore backup.
+                  </label>
+                )}
+              </div>
+
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={confirmImportBackup}
-                  className="min-h-11 w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 sm:w-auto"
+                  disabled={!backupSaved}
+                  className="min-h-11 w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 sm:w-auto"
                 >
                   Import Backup
                 </button>

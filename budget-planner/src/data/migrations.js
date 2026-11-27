@@ -8,9 +8,11 @@ import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
 } from './seedData';
+import { APP_VERSION } from './releaseNotes';
+
+export { APP_VERSION } from './releaseNotes';
 
 export const APP_DATA_VERSION = 2;
-export const APP_VERSION = '2.0.0-web-final';
 export const BACKUP_APP_NAME = 'BudgetApp';
 export const EXPORT_APP_NAME = 'FinPath';
 export const BACKUP_REMINDER_DAYS = 30;

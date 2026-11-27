@@ -1,0 +1,86 @@
+name: Validate FinPath
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: budget-planner
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check source diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          if [[ "$BASE_SHA" =~ ^0{40}$ ]]; then
+            BASE_SHA=$(git hash-object -t tree /dev/null)
+          fi
+          git diff --check "$BASE_SHA" HEAD
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: budget-planner/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run Node tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chromium test tools
+        run: |
+          python -m pip install playwright==1.62.0
+          python -m playwright install --with-deps chromium
+
+      - name: Run synthetic Chromium regressions
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          chromium=$(python - <<'PY'
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as playwright:
+              print(playwright.chromium.executable_path)
+          PY
+          )
+          python test/browser/atomic_import.py --chromium "$chromium"
+          python test/browser/full_backup.py --chromium "$chromium"
+          python test/browser/atomic_reset.py --chromium "$chromium"
+          python test/browser/pre_restore.py --chromium "$chromium"
+
+      - name: Check build output and tracked files
+        run: |
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          git diff --exit-code
