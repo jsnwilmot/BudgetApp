@@ -19,7 +19,7 @@ const {
 const { buildReportRowsFromPlannerData, buildReportTransferSummary } =
   await import('../src/logic/reportLogic.js');
 const { buildTransactionsFromAppData } = await import('../src/logic/transactionLogic.js');
-const { capturePlannerSource, preserveLegacyPlannerSource } =
+const { capturePlannerSource, getSavedPlannerEntriesBeforeAnchor, preserveLegacyPlannerSource } =
   await import('../src/logic/plannerHistory.js');
 const { normalizePlannerEntriesRecord } = await import('../src/data/migrations.js');
 hooks.deregister();
@@ -99,6 +99,36 @@ test('CP-02 and CP-04: actual and line-item amounts, dates and annotations survi
   assert.deepEqual(data.rows.map((row) => row.amountsByPeriod[first]), [1150, 44.75]);
   assert.equal(balance(data, 'validated-chequing'), 70.25);
   assert.deepEqual(plannerEntries, withEntries(rentActual, powerActual));
+});
+
+test('D-F1: pre-anchor records are discoverable without altering anchored financial calculations', () => {
+  const original = entry(rent);
+  const saved = entry(rent, {
+    entryKey: 'rent__2025-11-05', payPeriodDate: '2025-11-05',
+    plannedAmount: 1300, actualAmount: 82.75, useActual: true,
+    notes: 'Synthetic receipt', lineItems: [{ id: 'charge', amount: 82.75 }],
+  });
+  const legacy = { entryKey: 'retired__2023-10-25', plannedAmount: 40, validated: true };
+  const sameYear = { ...saved, entryKey: 'rent__2026-01-14', payPeriodDate: '2026-01-14' };
+  const inconsistent = { ...saved, entryKey: 'wrong-source__2025-11-05' };
+  const invalid = { ...legacy, entryKey: 'retired__2025-02-29' };
+  const plannerEntries = withEntries(original, saved, sameYear, legacy, inconsistent, invalid);
+  const before = structuredClone(plannerEntries);
+  assert.deepEqual(getSavedPlannerEntriesBeforeAnchor(plannerEntries, first), [
+    { id: 'retired', date: '2023-10-25', key: legacy.entryKey, entry: legacy },
+    { id: 'rent', date: '2025-11-05', key: saved.entryKey, entry: saved },
+    { id: 'rent', date: '2026-01-14', key: sameYear.entryKey, entry: sameYear },
+  ]);
+  assert.deepEqual(getSavedPlannerEntriesBeforeAnchor(plannerEntries, 'invalid-anchor'), []);
+  assert.deepEqual(getSavedPlannerEntriesBeforeAnchor(withEntries(original), first), []);
+
+  const inputs = { ...defaults, scheduledItems: [rent], throughYear: 2025 };
+  const current = buildPlannerRows({ ...inputs, plannerEntries: withEntries(original) });
+  const withHistory = buildPlannerRows({ ...inputs, plannerEntries });
+  assert.deepEqual(withHistory, current);
+  assert.deepEqual(getDashboardSummary(withHistory), getDashboardSummary(current));
+  assert.equal(balance(withHistory, 'validated-chequing'), 65);
+  assert.deepEqual(plannerEntries, before);
 });
 
 test('the existing cadence carries confirmed December and January amounts across the year boundary', () => {

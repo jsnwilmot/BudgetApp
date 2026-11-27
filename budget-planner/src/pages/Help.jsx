@@ -366,7 +366,10 @@ export default function Help() {
           Choose a Planner year or use Previous Year and Next Year above the
           grid. Scroll within the grid to see its periods. Today returns to
           the current pay period, even when it started in the previous year.
-          Years before your original anchor have no pay-period starts.
+          If that year contains saved entries dated before your Planner start,
+          open them in Saved entries before the Planner start to see their
+          amounts, notes, and source details. These records are read-only and
+          excluded from Planner totals.
         </p>
         <p>
           Your forecast setting still controls how many months the Dashboard

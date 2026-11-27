@@ -12,6 +12,21 @@ export function getPlannerEntryIdentity(key, entry) {
   return { id, date };
 }
 
+export function getSavedPlannerEntriesBeforeAnchor(plannerEntries, anchor) {
+  if (!isValidDateString(anchor)) return [];
+
+  const history = [];
+  for (const [key, entry] of Object.entries(plannerEntries)) {
+    const identity = getPlannerEntryIdentity(key, entry);
+    if (identity && identity.date < anchor) {
+      history.push({ ...identity, key, entry });
+    }
+  }
+  return history.sort((left, right) =>
+    left.date.localeCompare(right.date) || left.key.localeCompare(right.key)
+  );
+}
+
 export function getSavedAmount(value) {
   if (typeof value !== 'number' &&
       (typeof value !== 'string' || !value.trim())) return undefined;

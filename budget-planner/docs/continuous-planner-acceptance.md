@@ -109,6 +109,7 @@ hosted check results.
 | CP-15 | PARTIAL | All five forecast settings passed the independent on-demand year and forecast comparisons in Node. The full browser journey used the 3-month setting. |
 | CP-17 | PASS | Partitioning by start year gives each 7-, 14-, 28-, and 30-day start one date and one year. |
 | CP-22, CP-23 | PASS | The 2029 view carries the reference balances from the original anchor. Returning to 2026 retains the $1,200 validated rent, $65 Chequing, and the marker. The weekly fixture also returns from 2026 to 2016 with at most 11 mounted columns at the sampled positions. |
+| D-F1 / CP-23, CP-40, CP-42 | See PR | Saved pre-anchor entries are inspectable separately from the calculated grid. Synthetic regression covers original keys, confirmed amounts, source uncertainty, Last Entry, empty years, refresh, and full and legacy restore. Exact-SHA results are recorded in PR #59. |
 | CP-27 | PARTIAL | Desktop mouse and keyboard controls, native selector focus and keyboard changes, and emulated touch buttons. The native touch picker on a physical device was not run. |
 | CP-28, CP-29, CP-30, CP-31 | PASS | Current-period default and repeated Today positioning, exact preservation through year switches, year-labeled headers, and forecast-scope explanation. |
 | CP-32 | PASS | Chromium viewport checks at 375px, 414px, 768px, and desktop. The grid scrolls internally. |

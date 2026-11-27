@@ -80,6 +80,7 @@ jobs:
           python test/browser/historical_integrity.py --chromium "$chromium"
           python test/browser/continuous_planner.py --chromium "$chromium"
           python test/browser/year_navigation.py --chromium "$chromium"
+          python test/browser/pre_anchor_history.py --chromium "$chromium"
 
       - name: Check build output and tracked files
         run: |

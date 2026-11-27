@@ -92,9 +92,12 @@ Planner opens at the current pay period. Use **Previous Year**, **Planner
 year**, or **Next Year** to display a calendar year, then scroll inside the
 grid. **Today** returns to the current pay period and scrolls to its column.
 Each period belongs to its start year, so Today can return to December when
-the current period spans January 1. Years before the anchor show an empty
-state. FinPath calculates future years on demand and keeps the grid limited
-to the selected year.
+the current period spans January 1. If a selected year contains saved entries
+dated before the Planner start, open them in the read-only history section.
+They are outside the calculated pay periods and excluded from Planner totals.
+Years with no pay periods or saved entries show the empty-state guidance.
+FinPath calculates future years on demand and keeps the grid limited to the
+selected year.
 
 The 3-, 6-, 12-, 18-, or 24-month setting controls the regular forecast from
 the current pay period. The Dashboard chart and forecast alerts use that

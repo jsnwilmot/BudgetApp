@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import AlertList from '../components/AlertList';
+import SavedPlannerHistory from '../components/SavedPlannerHistory';
 import { isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { getEntryKey, formatCurrency, getPlannerPeriodType } from '../logic/projectionLogic';
-import { getConfirmedAmount } from '../logic/plannerHistory';
+import { getConfirmedAmount, getSavedPlannerEntriesBeforeAnchor } from '../logic/plannerHistory';
 import { getPayPeriodsForYear } from '../logic/dateLogic';
 
 const ITEM_WIDTH = 224;
@@ -245,8 +246,11 @@ export default function Planner({
   const year = selectedYear ?? currentYear;
   const anchor = plannerData.payPeriods[0]?.date;
   const anchorYear = anchor ? Number(anchor.slice(0, 4)) : localYear;
+  const savedHistory = useMemo(() => getSavedPlannerEntriesBeforeAnchor(plannerEntries, anchor),
+    [plannerEntries, anchor]);
+  const oldestSavedYear = savedHistory.length ? Number(savedHistory[0].date.slice(0, 4)) : anchorYear;
   const rollingEndYear = Number(plannerData.calculationEndDate.slice(0, 4));
-  const firstYear = Math.max(1000, Math.min(anchorYear, localYear, year) - 1);
+  const firstYear = Math.max(1000, Math.min(anchorYear, oldestSavedYear, localYear, year) - 1);
   const lastYear = Math.min(9999, Math.max(rollingEndYear, localYear + 1, year + 1));
   const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
   const requestedYear = year >= anchorYear && `${year}-12-31` > plannerData.calculationEndDate ? year : null;
@@ -624,6 +628,11 @@ export default function Planner({
           )}
         </div>
       </section>
+      <SavedPlannerHistory
+        records={savedHistory.filter(({ date }) => date.startsWith(`${year}-`))}
+        marker={plannerLastEntryMarker}
+        currency={currency}
+      />
     </div>
   );
 }

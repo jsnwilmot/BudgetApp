@@ -70,6 +70,11 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] With a 3-month forecast, select full 2027, then a farther year and a
   year before the anchor. Check carry-forward, the empty state, and the
   separate 3-month Dashboard forecast.
+- [ ] In a disposable database with saved entries dated before the Planner
+  start, select the saved year and open the historical details. Verify the
+  amount, original key, validation, Last Entry, notes, line items, and any
+  source warning. Confirm the records are read-only, the year has no
+  fabricated pay periods, and the Dashboard and Planner totals stay the same.
 - [ ] At 375px and 414px, check that year controls wrap and the table scrolls
   inside its region. Open a marked historical cell and confirm its year,
   validated amount, notes, and line items. A saved draft excluded from totals
