@@ -78,6 +78,7 @@ jobs:
           python test/browser/atomic_reset.py --chromium "$chromium"
           python test/browser/pre_restore.py --chromium "$chromium"
           python test/browser/historical_integrity.py --chromium "$chromium"
+          python test/browser/continuous_planner.py --chromium "$chromium"
 
       - name: Check build output and tracked files
         run: |

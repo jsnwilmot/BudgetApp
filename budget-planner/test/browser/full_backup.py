@@ -62,9 +62,12 @@ def fingerprint(snapshot):
     return sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()
 
 
-def open_settings(chromium, executable, profile, origin, records=None, empty=False):
-    context, page = boot(chromium, executable, profile, origin)
+def open_settings(chromium, executable, profile, origin, records=None, empty=False,
+                  *, configure_clock=None, timezone_id=None):
+    context, page = boot(chromium, executable, profile, origin, timezone_id=timezone_id)
     try:
+        if configure_clock is not None:
+            configure_clock(page)
         if records is not None:
             page.goto(origin + "/probe")
             page.evaluate(SEED_EMPTY if empty else SEED_FULL, {

@@ -25,6 +25,7 @@ export default function CellEditor({
   }
 
   const entry = plannerEntries[selectedCell.entryKey] || {};
+  const historyWarning = selectedCell.row.historyWarningsByPeriod?.[selectedCell.period.date];
   const currency = settings?.currency || 'CAD';
   const displayedSource = getPlannerPeriodSource(selectedCell.row, selectedCell.period.date);
   const isLineItemCell = Boolean(displayedSource.allowLineItems || entry.lineItems?.length);
@@ -195,6 +196,13 @@ export default function CellEditor({
           Close
         </button>
       </div>
+
+      {historyWarning?.source === 'Source unverified' && (
+        <p className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          FinPath could not verify the original account, category, or savings bucket for this older entry.
+          {historyWarning.amount ? '' : ' The saved amount is preserved.'}
+        </p>
+      )}
 
       <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className="text-sm text-slate-500">

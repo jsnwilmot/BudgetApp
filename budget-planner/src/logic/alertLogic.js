@@ -135,9 +135,7 @@ export function getLowBalanceAlerts({
   warningThreshold = 100,
   dangerThreshold = 0,
 } = {}) {
-  const payPeriods = Array.isArray(plannerData?.payPeriods)
-    ? plannerData.payPeriods
-    : [];
+  const payPeriods = plannerData?.forecastPayPeriods ?? plannerData?.payPeriods ?? [];
   const projectedChequingRow = plannerData?.projectionRows?.find(
     (row) => row.id === 'projected-chequing'
   );

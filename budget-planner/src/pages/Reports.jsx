@@ -402,6 +402,8 @@ export default function Reports({
     () =>
       buildSavingsBucketProjection({
         payPeriods: plannerData?.payPeriods || [],
+        forecastPayPeriods: plannerData?.forecastPayPeriods,
+        today: plannerData?.today,
         rows: plannerData?.rows || [],
         savingsBuckets,
         savingsBucketAdjustments,
@@ -410,7 +412,9 @@ export default function Reports({
       }),
     [
       plannerData?.payPeriods,
+      plannerData?.forecastPayPeriods,
       plannerData?.rows,
+      plannerData?.today,
       plannerEntries,
       savingsBucketAdjustments,
       savingsBuckets,

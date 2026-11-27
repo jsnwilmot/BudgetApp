@@ -1,4 +1,5 @@
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const shortDateFormatter = new Intl.DateTimeFormat('en-CA', { month: 'short', day: '2-digit' });
 
 export function parseLocalDate(dateString) {
   if (typeof dateString !== 'string') {
@@ -46,10 +47,7 @@ export function formatShortDate(dateString) {
     return 'Invalid date';
   }
 
-  return date.toLocaleDateString('en-CA', {
-    month: 'short',
-    day: '2-digit',
-  });
+  return shortDateFormatter.format(date);
 }
 
 
@@ -65,7 +63,11 @@ export function addDays(date, days) {
 
 export function addMonths(date, months) {
   const nextDate = new Date(date);
-  nextDate.setMonth(nextDate.getMonth() + months);
+  const monthDay = nextDate.getDate();
+  nextDate.setMonth(nextDate.getMonth() + months, 1);
+  const lastDay = new Date(nextDate);
+  lastDay.setMonth(lastDay.getMonth() + 1, 0);
+  nextDate.setDate(Math.min(monthDay, lastDay.getDate()));
   return nextDate;
 }
 
@@ -73,36 +75,54 @@ export function daysBetween(startDate, endDate) {
   return Math.round((endDate - startDate) / MS_PER_DAY);
 }
 
-export function generatePayPeriods(anchorDateString, frequencyDays, monthsToProject) {
-  const anchorDate = parseLocalDate(anchorDateString);
-  const safeFrequencyDays = Number(frequencyDays);
-  const safeMonthsToProject = Number(monthsToProject);
-
-  if (
-    Number.isNaN(anchorDate.getTime()) ||
-    !Number.isFinite(safeFrequencyDays) ||
-    safeFrequencyDays <= 0 ||
-    !Number.isFinite(safeMonthsToProject) ||
-    safeMonthsToProject <= 0
-  ) {
-    return [];
-  }
-
-  const endDate = addMonths(anchorDate, monthsToProject);
+function generatePayPeriods(anchorDate, frequencyDays, endDate) {
   const payPeriods = [];
 
   let currentDate = anchorDate;
 
   while (currentDate <= endDate) {
+    const date = formatDateKey(currentDate);
     payPeriods.push({
-      date: formatDateKey(currentDate),
-      label: formatShortDate(formatDateKey(currentDate)),
+      date,
+      label: shortDateFormatter.format(currentDate),
     });
 
-    currentDate = addDays(currentDate, safeFrequencyDays);
+    currentDate = addDays(currentDate, frequencyDays);
   }
 
   return payPeriods;
+}
+
+export function getPlannerPeriods(anchorDateString, frequencyDays, forecastMonths, today) {
+  const anchor = parseLocalDate(anchorDateString);
+  const localDate = parseLocalDate(today);
+  if (!Number.isFinite(anchor.getTime()) || !Number.isFinite(localDate.getTime()) ||
+      !Number.isInteger(frequencyDays) || frequencyDays <= 0 ||
+      !Number.isInteger(forecastMonths) || forecastMonths <= 0) {
+    return {
+      payPeriods: [], forecastPayPeriods: [], currentPayPeriod: null,
+      calculationEndDate: '', forecastEndDate: '',
+    };
+  }
+
+  const offset = Math.floor(daysBetween(anchor, localDate) / frequencyDays);
+  const forecastStart = addDays(anchor, Math.max(0, offset) * frequencyDays);
+  const forecastEnd = addMonths(forecastStart, forecastMonths);
+  // December's next-year coverage becomes the current-year coverage in January.
+  const coverageYear = localDate.getFullYear() + (localDate.getMonth() === 11 ? 1 : 0);
+  const calendarEnd = new Date(coverageYear, 11, 31);
+  const calculationEnd = forecastEnd > calendarEnd ? forecastEnd : calendarEnd;
+  const payPeriods = generatePayPeriods(anchor, frequencyDays, calculationEnd);
+  const forecastEndDate = formatDateKey(forecastEnd);
+  const forecastPayPeriods = payPeriods.slice(Math.max(0, offset))
+    .filter((period) => period.date <= forecastEndDate);
+  return {
+    payPeriods,
+    forecastPayPeriods,
+    currentPayPeriod: offset < 0 ? null : (payPeriods[offset] ?? null),
+    calculationEndDate: formatDateKey(calculationEnd),
+    forecastEndDate,
+  };
 }
 
 export function getMonthDate(year, monthIndex, day) {
