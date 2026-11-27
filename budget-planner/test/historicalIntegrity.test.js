@@ -37,7 +37,7 @@ const accounts = [
 const settings = {
   payPeriodAnchorDate: first, payFrequencyDays: 14, projectionMonths: 12,
 };
-const defaults = { settings, accounts, manualAdjustments: [] };
+const defaults = { settings, accounts, manualAdjustments: [], today: first };
 
 function entry(item, details = {}) {
   return {

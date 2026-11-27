@@ -2,9 +2,9 @@ import {
   appSettings as defaultAppSettings,
 } from '../data/seedData';
 import {
-  findPreviousPayPeriod,
-  formatDateKey,
-  generatePayPeriods,
+  addDays,
+  getLocalToday,
+  getPlannerPeriods,
   parseLocalDate,
 } from './dateLogic';
 import {
@@ -101,53 +101,16 @@ function normalizeProjectionSettings(settings = {}) {
   };
 }
 
-function findSamePayPeriod(payPeriods, dueDate) {
-  const dueDateKey = formatDateKey(dueDate);
-  const matchingPeriod = [...payPeriods].reverse().find((period) => {
-    return period.date <= dueDateKey;
-  });
-
-  return matchingPeriod || payPeriods[0];
-}
-
-function isSameCalendarMonth(leftDate, rightDate) {
-  return (
-    leftDate.getFullYear() === rightDate.getFullYear() &&
-    leftDate.getMonth() === rightDate.getMonth()
-  );
-}
-
-function findAssignedPayPeriod(item, payPeriods, occurrenceDate, settings) {
-  if (payPeriods.length === 0 || Number.isNaN(occurrenceDate.getTime())) {
-    return null;
+function findAssignedPayPeriod(payPeriods, occurrence, assignPrevious) {
+  let first = 0;
+  let end = payPeriods.length;
+  while (first < end) {
+    const mid = Math.floor((first + end) / 2);
+    const date = payPeriods[mid].date;
+    if (date < occurrence || (!assignPrevious && date === occurrence)) first = mid + 1;
+    else end = mid;
   }
-
-  const firstPeriodDate = parseLocalDate(payPeriods[0].date);
-  const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
-
-  if (occurrenceDate < firstPeriodDate) {
-    if (item.frequency === 'monthly' && isSameCalendarMonth(occurrenceDate, firstPeriodDate)) {
-      return payPeriods[0];
-    }
-
-    return null;
-  }
-
-  if (occurrenceDate > lastPeriodDate) {
-    return null;
-  }
-
-  if (item.frequency === 'monthly') {
-    return getMonthlyBillAssignmentRule(settings) === 'same-pay-period'
-      ? findSamePayPeriod(payPeriods, occurrenceDate)
-      : findPreviousPayPeriod(payPeriods, occurrenceDate);
-  }
-
-  if (item.frequency === 'yearly') {
-    return findPreviousPayPeriod(payPeriods, occurrenceDate);
-  }
-
-  return findSamePayPeriod(payPeriods, occurrenceDate);
+  return payPeriods[Math.max(0, first - 1)];
 }
 
 function buildScheduledItemPlacements(item, payPeriods, settings) {
@@ -159,28 +122,23 @@ function buildScheduledItemPlacements(item, payPeriods, settings) {
 
   const firstPeriodDate = parseLocalDate(payPeriods[0].date);
   const lastPeriodDate = parseLocalDate(payPeriods[payPeriods.length - 1].date);
+  const assignPrevious = item.frequency === 'yearly' ||
+    (item.frequency === 'monthly' && getMonthlyBillAssignmentRule(settings) === 'previous-pay-period');
   const occurrenceRangeStart =
     item.frequency === 'monthly'
       ? new Date(firstPeriodDate.getFullYear(), firstPeriodDate.getMonth(), 1)
       : firstPeriodDate;
+  // Finish the last pay period before applying the horizon cutoff. A due date
+  // on the next start can belong to the last period under the previous rule.
+  const occurrenceRangeEnd = addDays(lastPeriodDate, settings.payFrequencyDays - (assignPrevious ? 0 : 1));
   const occurrences = getScheduledItemOccurrences(
     item,
     occurrenceRangeStart,
-    lastPeriodDate
+    occurrenceRangeEnd
   );
 
   occurrences.forEach((occurrence) => {
-    const occurrenceDate = parseLocalDate(occurrence);
-    const assignedPeriod = findAssignedPayPeriod(
-      item,
-      payPeriods,
-      occurrenceDate,
-      settings
-    );
-
-    if (!assignedPeriod) {
-      return;
-    }
+    const assignedPeriod = findAssignedPayPeriod(payPeriods, occurrence, assignPrevious);
 
     placements.set(
       assignedPeriod.date,
@@ -224,13 +182,16 @@ export function buildPlannerRows({
   savingsBucketAdjustments = [],
   transfers = [],
   plannerEntries = {},
+  today = getLocalToday(),
 }) {
   const normalizedSettings = normalizeProjectionSettings(settings);
-  const payPeriods = generatePayPeriods(
+  const periods = getPlannerPeriods(
     normalizedSettings.payPeriodAnchorDate,
     normalizedSettings.payFrequencyDays,
-    normalizedSettings.projectionMonths
+    normalizedSettings.projectionMonths,
+    today
   );
+  const { payPeriods } = periods;
   const savedScheduleIds = new Set();
   for (const [key, entry] of Object.entries(plannerEntries)) {
     const identity = getPlannerEntryIdentity(key, entry);
@@ -309,7 +270,9 @@ export function buildPlannerRows({
   });
 
   return {
-    payPeriods,
+    ...periods,
+    today,
+    forecastMonths: normalizedSettings.projectionMonths,
     rows,
     projectionRows,
   };
@@ -623,8 +586,8 @@ function calculateScheduledAccountEffects(
 }
 
 export function getDashboardSummary(plannerData) {
-  const { payPeriods, rows, projectionRows } = plannerData;
-  const nextPeriod = payPeriods[0];
+  const { forecastPayPeriods = plannerData.payPeriods, rows, projectionRows, today } = plannerData;
+  const nextPeriod = forecastPayPeriods.find((period) => !today || period.date >= today);
 
   if (!nextPeriod) {
     return {
@@ -648,10 +611,10 @@ export function getDashboardSummary(plannerData) {
   const savingsRow = projectionRows.find((row) => row.id === 'projected-savings');
   const transferRow = projectionRows.find((row) => row.id === 'total-transfers');
 
-  const finalPeriod = payPeriods[payPeriods.length - 1];
+  const finalPeriod = forecastPayPeriods.at(-1);
   const finalPeriodDate = finalPeriod?.date || nextPeriod.date;
 
-  const chequingValues = Object.values(chequingRow?.amountsByPeriod || {});
+  const chequingValues = forecastPayPeriods.map((period) => chequingRow?.amountsByPeriod?.[period.date] || 0);
   const lowestChequing = Math.min(...chequingValues);
 
   return {
@@ -670,16 +633,8 @@ export function getDashboardSummary(plannerData) {
   };
 }
 
-export function getCurrentPayPeriod(payPeriods = [], today = formatDateKey(new Date())) {
-  if (!Array.isArray(payPeriods) || payPeriods.length === 0) {
-    return null;
-  }
-
-  return (
-    [...payPeriods].reverse().find((period) => period.date <= today) ||
-    payPeriods[0] ||
-    null
-  );
+export function getCurrentPayPeriod(payPeriods = [], today = getLocalToday()) {
+  return payPeriods.findLast((period) => period.date <= today) ?? null;
 }
 
 function isPeriodThroughCurrent(periodDate, currentPayPeriodDate) {
@@ -735,10 +690,12 @@ export function buildSavingsBucketProjection({
   savingsBucketAdjustments = [],
   transfers = [],
   plannerEntries = {},
+  today = getLocalToday(),
+  forecastPayPeriods = payPeriods,
 }) {
-  const currentPayPeriod = getCurrentPayPeriod(payPeriods);
+  const currentPayPeriod = getCurrentPayPeriod(payPeriods, today);
   const currentPayPeriodDate = currentPayPeriod?.date || '';
-  const finalPeriodDate = payPeriods[payPeriods.length - 1]?.date || '';
+  const finalPeriodDate = forecastPayPeriods.at(-1)?.date || '';
 
   return savingsBuckets.map((bucket) => {
     let balance = Number(bucket.startingAmount) || 0;

@@ -68,6 +68,7 @@ export default function Dashboard({
   onOpenHelp,
 }) {
   const summary = getDashboardSummary(plannerData);
+  const { forecastMonths, forecastPayPeriods } = plannerData;
   const currency = settings?.currency || 'CAD';
   const formatDashboardCurrency = (value) => formatCurrency(value, currency);
 
@@ -79,7 +80,7 @@ export default function Dashboard({
     (row) => row.id === 'projected-savings'
   );
 
-  const chartData = plannerData.payPeriods.map((period) => ({
+  const chartData = forecastPayPeriods.map((period) => ({
     date: formatShortDate(period.date),
     chequing: chequingRow?.amountsByPeriod?.[period.date] || 0,
     savings: savingsRow?.amountsByPeriod?.[period.date] || 0,
@@ -250,13 +251,13 @@ export default function Dashboard({
           tone="good"
         />
         <StatCard
-          label="Lowest Chequing, 12 Months"
+          label={`Lowest Chequing, ${forecastMonths} Months`}
           value={formatDashboardCurrency(summary.lowestChequing)}
           helper="Used to spot cash-flow risk"
           tone={lowestTone}
         />
         <StatCard
-          label="Projected Savings, 12 Months"
+          label={`Projected Savings, ${forecastMonths} Months`}
           value={formatDashboardCurrency(summary.projectedSavingsEnd)}
           helper="Projected end balance"
           tone="good"
@@ -266,7 +267,7 @@ export default function Dashboard({
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4">
           <h3 className="text-lg font-bold text-slate-950">
-            12-Month Account Projection
+            {forecastMonths}-Month Account Projection
           </h3>
           <p className="text-sm text-slate-500">
             Chequing and savings projected from planned income, expenses, and transfers.

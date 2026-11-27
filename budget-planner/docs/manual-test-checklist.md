@@ -58,13 +58,21 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
   and check that the app offers an end date or deactivation instead.
 - [ ] Open a confirmed cell with saved line items or notes after editing its
   schedule. Check the original source, forecast labels and amounts.
-- [ ] Use synthetic records to confirm that a legacy entry with a saved amount
-  and unknown source shows Source unverified. Confirm a missing amount is
-  flagged and excluded from validated totals.
-- [ ] Shorten the projection range so a marked period is hidden, then restore
-  the original range. The same cell shows its saved marker.
+- [ ] Open a legacy cell with a known amount and uncertain source. Confirm the
+  editor explains the uncertainty. Check that the grid flags missing amounts
+  and conflicting sources, and that validated totals exclude them.
+- [ ] Before the December extension, choose a marked future period beyond the
+  3-month range. Shorten the forecast to 3 months and restore the original
+  range. The same cell shows its saved marker.
 - [ ] Run `python3 test/browser/historical_integrity.py` against the production
   build. Verify schedule-edit rollback and exact history backup recovery.
+- [ ] Run `python3 test/browser/continuous_planner.py` against the production
+  build. Confirm that a synthetic 3-month Dashboard forecast stays at 3 months
+  when Planner adds the whole of 2027 at local midnight on December 1.
+- [ ] Check January 1 coverage, December-to-January carry-forward, and exact
+  storage equality after a local date change and Chromium reopening.
+- [ ] Scroll the synthetic ten-year Planner to both ends and confirm old and
+  future dates remain reachable while only a window of columns is rendered.
 - [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.

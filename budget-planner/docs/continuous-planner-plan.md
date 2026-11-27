@@ -7,7 +7,7 @@
 
 ## 1. Problem and approved product decision
 
-Today's pay-period Planner is finite. The current code generates periods from `settings.payPeriodAnchorDate` through `addMonths(anchor, projectionMonths)`, where `projectionMonths` is 3, 6, 12, 18 or 24. It does **not** extend when today's date advances. The current view cannot navigate independently to a different year. Simply moving the anchor can hide saved entries and corrupt account/bucket carry-forward assumptions. See `src/logic/dateLogic.js`, `src/logic/projectionLogic.js`, `src/pages/Planner.jsx`, `src/pages/Settings.jsx`, and `src/logic/plannerLastEntryMarker.js`.
+Before the rolling horizon, Planner ended at `addMonths(anchor, projectionMonths)`. Phase C introduces continuous calculations and a bounded, scrollable grid. Year selection is a separate implementation phase. Moving the anchor can still hide saved entries and change carry-forward calculations. See `src/logic/dateLogic.js`, `src/logic/projectionLogic.js`, and `src/pages/Planner.jsx`.
 
 **Approved direction:**
 - The Planner has no calendar-year expiry and needs no annual reset.

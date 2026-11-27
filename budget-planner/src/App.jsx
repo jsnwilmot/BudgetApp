@@ -79,7 +79,8 @@ import {
   normalizePlannerLastEntryMarker,
 } from './logic/plannerLastEntryMarker';
 import { buildExportPlannerRows, buildPlannerRows } from './logic/projectionLogic';
-import { getCurrentMonthKey } from './logic/dateLogic';
+import { parseLocalDate } from './logic/dateLogic';
+import useLocalToday from './hooks/useLocalToday';
 import { normalizeScheduledItem } from './logic/scheduledItemLogic';
 import { buildTransactionsFromAppData } from './logic/transactionLogic';
 
@@ -198,6 +199,7 @@ function hasNoUserRecords({
 }
 
 export default function App() {
+  const today = useLocalToday();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [transactionNavigationState, setTransactionNavigationState] =
     useState(null);
@@ -360,6 +362,7 @@ export default function App() {
       savingsBucketAdjustments,
       transfers,
       plannerEntries,
+      today,
     });
   }, [
     plannerEntries,
@@ -369,6 +372,7 @@ export default function App() {
     manualAdjustments,
     savingsBucketAdjustments,
     transfers,
+    today,
   ]);
 
   const alertTransactions = useMemo(
@@ -381,6 +385,7 @@ export default function App() {
         savingsBuckets,
         accounts,
         categories,
+        currentDate: parseLocalDate(today),
       }),
     [
       accounts,
@@ -390,6 +395,7 @@ export default function App() {
       transfers,
       savingsBuckets,
       scheduledItems,
+      today,
     ]
   );
 
@@ -458,9 +464,9 @@ export default function App() {
         budgetTargets,
         transactions: alertTransactions,
         categories,
-        selectedMonth: getCurrentMonthKey(),
+        selectedMonth: today.slice(0, 7),
       }),
-    [alertTransactions, budgetTargets, categories]
+    [alertTransactions, budgetTargets, categories, today]
   );
 
   const activeAlerts = useMemo(

@@ -6,7 +6,6 @@ import {
   buildValidatedPlannerBucketActivities,
   buildSavingsBucketProjection,
   formatCurrency,
-  getCurrentPayPeriod,
 } from '../logic/projectionLogic';
 import { createNewTransfer } from '../logic/transferLogic';
 
@@ -459,6 +458,8 @@ export default function SavingsBuckets({
   const bucketProjection = useMemo(() => {
     return buildSavingsBucketProjection({
       payPeriods: plannerData.payPeriods,
+      forecastPayPeriods: plannerData.forecastPayPeriods,
+      today: plannerData.today,
       rows: plannerData.rows,
       savingsBuckets,
       savingsBucketAdjustments,
@@ -499,10 +500,10 @@ export default function SavingsBuckets({
     });
   }, [plannerActivities, transfers]);
 
-  const currentPayPeriod = getCurrentPayPeriod(plannerData.payPeriods);
+  const currentPayPeriod = plannerData.currentPayPeriod;
   const currentPayPeriodDate = currentPayPeriod?.date || '';
 
-  const finalPeriod = plannerData.payPeriods[plannerData.payPeriods.length - 1];
+  const finalPeriod = plannerData.forecastPayPeriods.at(-1);
   const finalPeriodDate = finalPeriod?.date || '';
 
   const projectedSavingsRow = plannerData.projectionRows.find(

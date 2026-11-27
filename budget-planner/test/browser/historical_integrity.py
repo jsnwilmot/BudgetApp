@@ -1,6 +1,7 @@
 """Verify confirmed history and atomic schedule updates in disposable Chromium."""
 
 import argparse
+from datetime import datetime, timezone
 from functools import partial
 from http.server import ThreadingHTTPServer
 import json
@@ -12,12 +13,17 @@ from threading import Thread
 from playwright.sync_api import expect, sync_playwright
 
 from atomic_import import DATE, StaticHandler, fixture, legacy_backup, use_import
-from full_backup import census, open_settings, restore
+from full_backup import census, open_settings as open_profile, restore
 
 
 RENT = "Synthetic rent"
 RENT_ID = "Old-bill"
 RENT_KEY = f"{RENT_ID}__{DATE}"
+
+
+def open_settings(*args):
+    return open_profile(*args, timezone_id="UTC", configure_clock=lambda page:
+                        page.clock.set_fixed_time(datetime(2026, 11, 27, 12, tzinfo=timezone.utc)))
 
 
 def rent_records():
@@ -223,7 +229,9 @@ def verify_rollback(chromium, executable, profile, origin):
 
 def verify_marker(chromium, executable, profile, origin):
     records = rent_records()
-    date = "2026-11-04"
+    # This marker is within the long forecast and beyond the short rolling
+    # forecast before the December extension activates.
+    date = "2027-07-14"
     field = {"plannerItemId": RENT_ID, "occurrenceId": date, "cellKey": f"{RENT_ID}__{date}"}
     records["appMetadata"][0]["plannerLastEntryMarker"] = field
     context, page = open_settings(chromium, executable, profile, origin, records)
@@ -271,7 +279,12 @@ def verify_legacy(chromium, executable, profile, origin):
         assert "scheduledItemSnapshot" not in saved
         assert saved["plannedAmount"] == ["scalar", 1200]
         open_planner(page)
-        expect(rent_row(page).get_by_role("cell").nth(0)).to_contain_text("Source unverified")
+        first_cell = rent_row(page).get_by_role("cell").nth(0)
+        expect(first_cell).to_contain_text("1,200.00")
+        expect(first_cell).not_to_contain_text("Source unverified")
+        first_cell.get_by_role("button").click()
+        expect(page.get_by_text("FinPath could not verify the original account", exact=False)).to_be_visible()
+        page.get_by_role("button", name="Close", exact=True).click()
         assert census(page) == before
         open_schedules(page)
         edit_rent(page, amount=1700)

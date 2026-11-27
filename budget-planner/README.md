@@ -76,16 +76,30 @@ deletion when the schedule has validated Planner history. Set an end date
 or deactivate the schedule to retain that history.
 
 Older validated cells use their saved amount when available. A source missing
-from an older entry is shown as **Source unverified**. The current schedule,
+from an older entry is explained when you open the cell. The current schedule,
 or the schedule observed immediately before a recorded edit, supplies
-provisional classification for those amounts. A missing confirmed amount or a
-conflicting stored source is flagged and omitted from calculated amounts.
-Opening Planner leaves saved records intact.
+provisional classification for those amounts. The grid flags missing amounts
+and source conflicts, which are excluded from totals. Opening Planner leaves
+saved records intact.
 
-The configured projection range still controls which periods you can see.
 Complete backups preserve optional history fields with their original keys.
 The Transactions list continues to show upcoming scheduled transactions and
 separately recorded activity.
+
+## Rolling Planner and Forecast
+
+FinPath calculates balances from the original pay-period anchor using the
+configured cadence. The Planner grid scrolls through the available periods
+and renders a limited set of columns for longer histories. The calculation
+includes the current year and, beginning December 1, all pay periods that
+start in the following year. Coverage carries forward in January.
+
+The 3-, 6-, 12-, 18-, or 24-month setting controls the regular forecast from
+the current pay period. The Dashboard chart and forecast alerts use that
+window. The longer Planner calculation uses the same carried-forward
+balances. FinPath checks the local date at midnight and when you return to
+the app. These checks leave saved records and the anchor intact. Dedicated
+year navigation is still planned.
 
 ## Backup And Restore
 
@@ -853,7 +867,7 @@ regularly and before any browser cleanup or deployment change.
 
 ## Future Roadmap
 
-- **Priority, planned only:** Continuous Planner with rolling projections and calendar-year navigation. View the entire next year by December 1 and retain prior years without resetting the original pay-period anchor. Execution: [product/technical plan](docs/continuous-planner-plan.md), [acceptance matrix](docs/continuous-planner-acceptance.md), and [tracking epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3). **Not yet implemented.**
+- **Priority:** Dedicated calendar-year navigation for the Continuous Planner is planned. See the [product/technical plan](docs/continuous-planner-plan.md), [acceptance matrix](docs/continuous-planner-acceptance.md), and [tracking epic #3](https://github.com/jsnwilmot/BudgetApp/issues/3).
 - Desktop SQLite storage.
 - Further performance tuning after desktop packaging.
 - More automated test coverage.
