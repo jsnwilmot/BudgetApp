@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { getLastEntrySaveAction, isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
-import { formatCurrency, getLineItemTotal, sumLineItems } from '../logic/projectionLogic';
+import { formatCurrency, getLineItemTotal, getPlannerPeriodSource, sumLineItems } from '../logic/projectionLogic';
+import { getSavedAmount } from '../logic/plannerHistory';
 
 function createLineItem() {
   return {
@@ -25,7 +26,8 @@ export default function CellEditor({
 
   const entry = plannerEntries[selectedCell.entryKey] || {};
   const currency = settings?.currency || 'CAD';
-  const isLineItemCell = Boolean(selectedCell.row.item?.allowLineItems);
+  const displayedSource = getPlannerPeriodSource(selectedCell.row, selectedCell.period.date);
+  const isLineItemCell = Boolean(displayedSource.allowLineItems || entry.lineItems?.length);
   const isLastEntryCell = isPlannerCellMarked(
     plannerLastEntryMarker,
     selectedCell.row.id,
@@ -37,7 +39,9 @@ export default function CellEditor({
     entry.actualAmount !== null &&
     entry.actualAmount !== '';
   const actualAmount =
-    entry.actualAmount ?? selectedCell.effectiveAmount ?? selectedCell.plannedAmount;
+    entry.actualAmount ?? (entry.validated
+      ? ''
+      : selectedCell.effectiveAmount ?? selectedCell.plannedAmount);
   const shouldPrefillLineItem =
     isLineItemCell &&
     !hasSavedLineItems &&
@@ -60,7 +64,7 @@ export default function CellEditor({
     const useActual = formData.get('useActual') === 'on';
     const validated = formData.get('validated') === 'on';
     const markAsLastEntry = formData.get('lastEntry') === 'on';
-    const actualAmountValue = Number(formData.get('actualAmount'));
+    const actualAmountValue = getSavedAmount(formData.get('actualAmount'));
     const notes = String(formData.get('notes') || '');
 
     onSave(
@@ -69,9 +73,7 @@ export default function CellEditor({
         scheduledItemId: selectedCell.row.id,
         payPeriodDate: selectedCell.period.date,
         plannedAmount: selectedCell.plannedAmount,
-        actualAmount: Number.isNaN(actualAmountValue)
-          ? selectedCell.plannedAmount
-          : actualAmountValue,
+        actualAmount: actualAmountValue ?? '',
         useActual,
         validated,
         notes,
@@ -79,6 +81,7 @@ export default function CellEditor({
         updatedAt: new Date().toISOString(),
       },
       {
+        displayedSource,
         lastEntryAction: getLastEntrySaveAction({
           wasMarked: isLastEntryCell,
           shouldBeMarked: markAsLastEntry,
@@ -122,6 +125,7 @@ export default function CellEditor({
         updatedAt: new Date().toISOString(),
       },
       {
+        displayedSource,
         lastEntryAction: getLastEntrySaveAction({
           wasMarked: isLastEntryCell,
           shouldBeMarked: markAsLastEntry,
@@ -176,7 +180,7 @@ export default function CellEditor({
             {isLineItemCell ? 'Edit Line Items' : 'Edit Planner Cell'}
           </p>
           <h3 className="mt-1 break-words text-xl font-bold text-slate-950">
-            {selectedCell.row.name}
+            {displayedSource.name ?? selectedCell.row.name}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
             Pay period: {selectedCell.period.label}
@@ -197,12 +201,11 @@ export default function CellEditor({
           {isLineItemCell ? 'Current cell total' : 'Planned amount'}
         </p>
         <p className="mt-1 text-2xl font-bold text-slate-950">
-          {formatCurrency(
-            isLineItemCell
-              ? getLineItemTotal(entry, selectedCell.effectiveAmount)
-              : selectedCell.plannedAmount,
-            currency
-          )}
+          {isLineItemCell
+            ? formatCurrency(getLineItemTotal(entry, selectedCell.effectiveAmount), currency)
+            : selectedCell.plannedAmount === undefined
+              ? 'Unavailable'
+              : formatCurrency(selectedCell.plannedAmount, currency)}
         </p>
       </div>
 

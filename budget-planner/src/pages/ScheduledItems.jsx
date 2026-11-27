@@ -806,7 +806,7 @@ export default function ScheduledItems({
       setErrorMessage('');
     } catch (error) {
       console.error(error);
-      setErrorMessage('Could not delete scheduled item.');
+      setErrorMessage(error.message || 'Could not delete scheduled item.');
       setMessage('');
     }
   }
@@ -823,7 +823,7 @@ export default function ScheduledItems({
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
             Manage the planned items that generate the pay period planner.
-            Inactive items stay saved but do not affect projections.
+            Inactive items keep their confirmed history and stop generating forecasts.
           </p>
         </div>
 

@@ -62,6 +62,31 @@ There is no cloud account, server database, or automatic sync in this MVP. The
 planned long-term direction is a desktop app with app-managed SQLite storage for
 stronger local data ownership.
 
+## Confirmed Planner History
+
+Mark a Planner cell as validated to keep the planned amount, actual amount, or
+line-item total you confirmed for that pay period. FinPath also saves its
+scheduled item ID, financial type, account, category, and savings bucket.
+Editing the schedule changes its forecasts. Confirmed cells retain their saved
+amounts and source details.
+
+Inactive schedules stop forecasting and display their saved cells. Ended
+schedules stop generating occurrences after the end date. FinPath blocks
+deletion when the schedule has validated Planner history. Set an end date
+or deactivate the schedule to retain that history.
+
+Older validated cells use their saved amount when available. A source missing
+from an older entry is shown as **Source unverified**. The current schedule,
+or the schedule observed immediately before a recorded edit, supplies
+provisional classification for those amounts. A missing confirmed amount or a
+conflicting stored source is flagged and omitted from calculated amounts.
+Opening Planner leaves saved records intact.
+
+The configured projection range still controls which periods you can see.
+Complete backups preserve optional history fields with their original keys.
+The Transactions list continues to show upcoming scheduled transactions and
+separately recorded activity.
+
 ## Backup And Restore
 
 Use `Settings > Data Management`.
