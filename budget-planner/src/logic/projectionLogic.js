@@ -13,12 +13,28 @@ import {
   normalizeScheduledItem,
 } from './scheduledItemLogic';
 import { getTransferAccountEffects } from './transferLogic';
+import {
+  getConfirmedAmount,
+  getPlannerEntryIdentity,
+  getSavedAmount,
+  getSavedPlannerSource,
+  isConfirmedPlannerSource,
+} from './plannerHistory';
 import { formatCurrency } from '../utils/currency';
 
 export { formatCurrency };
 
 export function getEntryKey(scheduledItemId, payPeriodDate) {
   return `${scheduledItemId}__${payPeriodDate}`;
+}
+
+export function getPlannerPeriodSource(row, date) {
+  return row.sourcesByPeriod?.[date] ?? row.item ?? row;
+}
+
+export function getPlannerPeriodType(row, date) {
+  const source = row.sourcesByPeriod?.[date];
+  return source ? getProjectionType(source.type) : row.type;
 }
 
 export function sumLineItems(lineItems = []) {
@@ -215,29 +231,56 @@ export function buildPlannerRows({
     normalizedSettings.payFrequencyDays,
     normalizedSettings.projectionMonths
   );
+  const savedScheduleIds = new Set();
+  for (const [key, entry] of Object.entries(plannerEntries)) {
+    const identity = getPlannerEntryIdentity(key, entry);
+    if (identity) savedScheduleIds.add(identity.id);
+  }
 
   const rows = scheduledItems
     .map((item) => normalizeScheduledItem(item))
-    .filter((item) => item.active)
+    .filter((item) => item.active || savedScheduleIds.has(String(item.id)))
     .map((item) => {
-      const placements = buildScheduledItemPlacements(
+      const placements = item.active ? buildScheduledItemPlacements(
         item,
         payPeriods,
         normalizedSettings
-      );
+      ) : new Map();
       const plannedByPeriod = {};
       const amountsByPeriod = {};
+      const sourcesByPeriod = {};
+      const historyWarningsByPeriod = {};
 
       payPeriods.forEach((period) => {
-        const plannedAmount = (placements.get(period.date) || 0) * item.amount;
+        const date = period.date;
+        const key = getEntryKey(item.id, date);
+        const entry = plannerEntries[key];
+        const plannedAmount = (placements.get(date) || 0) * item.amount;
+        if (entry?.validated) {
+          const identity = getPlannerEntryIdentity(key, entry);
+          const source = getSavedPlannerSource(entry, item.id);
+          const sourceConflict = !identity || (entry.scheduledItemSnapshot != null && !source);
+          const amount = getConfirmedAmount(entry);
+          plannedByPeriod[date] = getSavedAmount(entry.plannedAmount);
+          amountsByPeriod[date] = sourceConflict ? 0 : (amount ?? 0);
+          if (source && identity) sourcesByPeriod[date] = source;
+          const sourceVerified = source && isConfirmedPlannerSource(entry) && !entry.historicalSourceNeedsReview;
+          const sourceWarning = sourceConflict ? 'Source conflict' : sourceVerified ? '' : 'Source unverified';
+          const amountWarning = amount === undefined ? 'Amount needs review' : '';
+          if (sourceWarning || amountWarning) {
+            historyWarningsByPeriod[date] = { source: sourceWarning, amount: amountWarning };
+          }
+          return;
+        }
 
-        plannedByPeriod[period.date] = plannedAmount;
-        amountsByPeriod[period.date] = getEffectiveAmount(
+        const forecastAllowed = item.active && (!item.endDate || date <= item.endDate);
+        plannedByPeriod[date] = forecastAllowed ? plannedAmount : getSavedAmount(entry?.plannedAmount);
+        amountsByPeriod[date] = forecastAllowed ? getEffectiveAmount(
           item,
-          period.date,
+          date,
           plannedAmount,
           plannerEntries
-        );
+        ) : 0;
       });
 
       return {
@@ -250,6 +293,8 @@ export function buildPlannerRows({
         item,
         plannedByPeriod,
         amountsByPeriod,
+        sourcesByPeriod,
+        historyWarningsByPeriod,
       };
     });
 
@@ -272,15 +317,15 @@ export function buildPlannerRows({
 
 export function calculatePeriodTotals(rows, periodDate) {
   const income = rows
-    .filter((row) => row.type === 'income')
+    .filter((row) => getPlannerPeriodType(row, periodDate) === 'income')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
   const expensesOnly = rows
-    .filter((row) => row.type === 'expense')
+    .filter((row) => getPlannerPeriodType(row, periodDate) === 'expense')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
   const transfers = rows
-    .filter((row) => row.type === 'transfer')
+    .filter((row) => getPlannerPeriodType(row, periodDate) === 'transfer')
     .reduce((total, row) => total + (row.amountsByPeriod[periodDate] || 0), 0);
 
   const expenses = expensesOnly + transfers;
@@ -339,14 +384,15 @@ function calculateScheduledAccountEffects(
         ? getValidatedRowAmount(row, periodDate, plannerEntries)
         : Number(row.amountsByPeriod[periodDate]) || 0;
 
-      if (row.type === 'transfer') {
+      const type = getPlannerPeriodType(row, periodDate);
+      if (type === 'transfer') {
         effects.chequing -= amount;
         effects.savings += amount;
         return effects;
       }
 
-      const accountType = accountTypeById.get(row.accountId);
-      const signedAmount = row.type === 'income' ? amount : -amount;
+      const accountType = accountTypeById.get(getPlannerPeriodSource(row, periodDate).accountId);
+      const signedAmount = type === 'income' ? amount : -amount;
 
       if (!accountType || accountType === 'chequing') {
         effects.chequing += signedAmount;
@@ -656,37 +702,30 @@ export function buildValidatedPlannerBucketActivities({
   rows = [],
   plannerEntries = {},
 }) {
-  return rows
-    .filter((row) => row.type === 'transfer' && row.item?.bucketId)
-    .flatMap((row) => {
-      return payPeriods
-        .map((period) => {
-          const entryKey = getEntryKey(row.id, period.date);
-          const entry = plannerEntries[entryKey];
-          const amount = Number(row.amountsByPeriod?.[period.date]) || 0;
+  return rows.flatMap((row) => payPeriods.flatMap(({ date }) => {
+    const entry = plannerEntries[getEntryKey(row.id, date)];
+    const amount = Number(row.amountsByPeriod?.[date]) || 0;
+    const source = getPlannerPeriodSource(row, date);
+    const bucketId = source.bucketId ?? source.savingsBucketId;
+    if (getPlannerPeriodType(row, date) !== 'transfer' || !bucketId ||
+        !entry?.validated || amount === 0) return [];
 
-          if (!entry?.validated || amount === 0) {
-            return null;
-          }
-
-          return {
-            id: `planner-transfer-${row.id}-${period.date}`,
-            source: 'planner',
-            readOnly: true,
-            date: period.date,
-            payPeriodDate: period.date,
-            fromAccountId: null,
-            toAccountId: null,
-            bucketId: row.item.bucketId,
-            transferType: 'validated_planner_transfer',
-            direction: 'to_savings_bucket',
-            amount,
-            validated: true,
-            notes: String(entry.notes || '').trim(),
-          };
-        })
-        .filter(Boolean);
-    });
+    return [{
+      id: `planner-transfer-${row.id}-${date}`,
+      source: 'planner',
+      readOnly: true,
+      date,
+      payPeriodDate: date,
+      fromAccountId: null,
+      toAccountId: null,
+      bucketId,
+      transferType: 'validated_planner_transfer',
+      direction: 'to_savings_bucket',
+      amount,
+      validated: true,
+      notes: String(entry.notes || '').trim(),
+    }];
+  }));
 }
 
 export function buildSavingsBucketProjection({
@@ -725,15 +764,16 @@ export function buildSavingsBucketProjection({
     const validatedBalanceByPeriod = {};
 
     payPeriods.forEach((period) => {
-      const transferIn = rows
-        .filter((row) => row.type === 'transfer')
-        .filter((row) => row.item?.bucketId === bucket.id)
+      const bucketRows = rows.filter((row) => {
+        const source = getPlannerPeriodSource(row, period.date);
+        return getPlannerPeriodType(row, period.date) === 'transfer' &&
+          (source.bucketId ?? source.savingsBucketId) === bucket.id;
+      });
+      const transferIn = bucketRows
         .reduce((total, row) => {
           return total + (Number(row.amountsByPeriod[period.date]) || 0);
         }, 0);
-      const validatedTransferIn = rows
-        .filter((row) => row.type === 'transfer')
-        .filter((row) => row.item?.bucketId === bucket.id)
+      const validatedTransferIn = bucketRows
         .reduce((total, row) => {
           return total + getValidatedPlannerAmount(row, period.date, plannerEntries);
         }, 0);

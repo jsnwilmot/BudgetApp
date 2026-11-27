@@ -49,6 +49,22 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] Closing Edit Planner Cell without saving does not change the existing Last Entry marker.
 - [ ] Planner Last Entry remains selected after refresh, navigation away from Planner, and reopening the PWA if practical.
 - [ ] Planner Last Entry does not change validation, amount values, account balances, budgets, reports, recurrence, transactions, or planner sorting.
+- [ ] With synthetic data, start Chequing at $1,265 and validate a $1,200
+  planned rent cell with Use actual amount unchecked. Edit the schedule to
+  $1,700. The confirmed period remains $1,200, Validated Chequing remains $65,
+  and future forecasts use $1,700.
+- [ ] End or deactivate the rent schedule. Confirm the saved cells remain
+  accessible and totals retain validated amounts. Try deleting the schedule
+  and check that the app offers an end date or deactivation instead.
+- [ ] Open a confirmed cell with saved line items or notes after editing its
+  schedule. Check the original source, forecast labels and amounts.
+- [ ] Use synthetic records to confirm that a legacy entry with a saved amount
+  and unknown source shows Source unverified. Confirm a missing amount is
+  flagged and excluded from validated totals.
+- [ ] Shorten the projection range so a marked period is hidden, then restore
+  the original range. The same cell shows its saved marker.
+- [ ] Run `python3 test/browser/historical_integrity.py` against the production
+  build. Verify schedule-edit rollback and exact history backup recovery.
 - [ ] Multiple misc expense rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Multiple misc payment rows in the same pay period can be added, edited, deleted, and reflected immediately in totals.
 - [ ] Add transaction-related activity works by adding a supported source record, such as a manual adjustment or transfer, and confirming it appears in Transactions.

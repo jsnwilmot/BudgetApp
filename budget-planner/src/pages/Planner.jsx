@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import AlertList from '../components/AlertList';
 import { isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
-import { getEntryKey, formatCurrency } from '../logic/projectionLogic';
+import { getEntryKey, formatCurrency, getPlannerPeriodType } from '../logic/projectionLogic';
+import { getConfirmedAmount } from '../logic/plannerHistory';
 import { getLocalToday } from '../logic/dateLogic';
 
 function getRowClass(type) {
@@ -119,16 +120,22 @@ function PlannerRow({
   onCellClick,
 }) {
   const editable = ['income', 'expense', 'transfer'].includes(row.type);
+  const endDate = row.item?.endDate;
+  const inactive = row.item?.active === false;
 
   return (
     <tr className={getRowClass(row.type)}>
       <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
         {row.name}
+        {inactive || endDate ? (
+          <span className="block text-xs font-normal text-slate-600">
+            {inactive ? 'Inactive' : `${endDate < getLocalToday() ? 'Ended' : 'Ends'} ${endDate}`}
+          </span>
+        ) : null}
       </th>
 
       {payPeriods.map((period) => {
-        const amount = row.amountsByPeriod[period.date] || 0;
-        const plannedAmount = row.plannedByPeriod?.[period.date] || 0;
+        const plannedAmount = row.plannedByPeriod?.[period.date];
         const entryKey = getEntryKey(row.id, period.date);
         const entry = plannerEntries[entryKey];
 
@@ -136,7 +143,14 @@ function PlannerRow({
         const validated = Boolean(entry?.validated);
         const hasNote = Boolean(entry?.notes?.trim());
         const hasLineItems = Boolean(entry?.lineItems?.length);
-        const canEdit = editable;
+        const forecastAllowed = !inactive && (!endDate || period.date <= endDate);
+        const canEdit = editable && (forecastAllowed || Boolean(entry));
+        const savedDraft = entry && !validated && !forecastAllowed;
+        const warnings = row.historyWarningsByPeriod?.[period.date];
+        const amount = savedDraft || warnings?.source === 'Source conflict'
+          ? (getConfirmedAmount(entry) ?? 0)
+          : row.amountsByPeriod[period.date] || 0;
+        const historicalType = getPlannerPeriodType(row, period.date);
         const lastEntrySelected = isPlannerCellMarked(
           plannerLastEntryMarker,
           row.id,
@@ -184,7 +198,7 @@ function PlannerRow({
                   <MessageSquareText size={14} className="text-blue-600" />
                 ) : null}
 
-                {validated ? (
+                {validated && !warnings?.amount && warnings?.source !== 'Source conflict' ? (
                   <CheckCircle2 size={14} className="text-emerald-600" />
                 ) : changed || hasLineItems ? (
                   <Pencil size={13} className="text-amber-600" />
@@ -200,6 +214,12 @@ function PlannerRow({
                 {amount === 0 ? '—' : formatCurrency(amount, currency)}
               </span>
             )}
+            {warnings || savedDraft || historicalType !== row.type ? (
+              <span className="block text-xs font-normal text-slate-600">
+                {[warnings?.amount, warnings?.source, savedDraft && 'Saved draft',
+                  historicalType !== row.type && getTypeLabel(historicalType)].filter(Boolean).join(' · ')}
+              </span>
+            ) : null}
           </td>
         );
       })}

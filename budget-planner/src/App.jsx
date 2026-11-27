@@ -628,7 +628,7 @@ export default function App() {
 
   const handleSaveCell = useCallback(async (entryKey, entry, options = {}) => {
     try {
-      const savedEntry = await savePlannerEntry(entryKey, entry);
+      const savedEntry = await savePlannerEntry(entryKey, entry, options.displayedSource);
       const nextMarker = applyPlannerLastEntrySaveAction({
         currentMarker: appMetadata.plannerLastEntryMarker,
         rowId: entry.scheduledItemId,
@@ -699,7 +699,14 @@ export default function App() {
 
   const handleSaveScheduledItem = useCallback(async (updatedItem) => {
     try {
-      const savedItem = await saveScheduledItem(updatedItem);
+      const { item: savedItem, historicalEntries } = await saveScheduledItem(updatedItem);
+
+      if (historicalEntries.length) {
+        setPlannerEntries((currentEntries) => ({
+          ...currentEntries,
+          ...normalizePlannerEntriesRecord(historicalEntries),
+        }));
+      }
 
       setScheduledItems((currentItems) => {
         const itemExists = currentItems.some((item) => item.id === savedItem.id);

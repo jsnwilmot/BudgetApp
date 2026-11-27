@@ -345,6 +345,22 @@ export default function Help() {
         </p>
       </HelpCard>
 
+      <HelpCard title="Confirmed Planner History">
+        <p>
+          Mark a cell as validated to keep the amount and source you confirmed
+          for that pay period. Changing its scheduled item updates forecasts.
+          Inactive or ended schedules keep their saved cells within the
+          projection range. Deactivate a schedule or set an end date when it
+          has confirmed history you want to keep.
+        </p>
+        <p>
+          Source unverified means an older cell uses available schedule details
+          provisionally. Amount needs review means a confirmed amount could not
+          be established. FinPath leaves missing amounts and conflicting sources
+          out of totals. Complete backups include the saved historical details.
+        </p>
+      </HelpCard>
+
       <HelpCard title="Planner Last Entry">
         <p>
           Open a Planner amount cell, select Mark as last entry in the Edit

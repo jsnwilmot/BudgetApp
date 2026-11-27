@@ -8,6 +8,7 @@ import {
   appSettings as defaultAppSettings,
   categories as defaultCategories,
 } from './seedData';
+import { getSavedAmount } from '../logic/plannerHistory';
 import { APP_VERSION } from './releaseNotes';
 
 export { APP_VERSION } from './releaseNotes';
@@ -360,11 +361,11 @@ export function normalizePlannerEntriesRecord(entries = {}) {
       actualAmount:
         entry.actualAmount === '' || entry.actualAmount === undefined
           ? entry.actualAmount
-          : safeNumber(entry.actualAmount, 0),
+          : safeBoolean(entry.validated) ? getSavedAmount(entry.actualAmount) : safeNumber(entry.actualAmount, 0),
       lineItems: safeArray(entry.lineItems).map((lineItem) => ({
         ...(isPlainObject(lineItem) ? lineItem : {}),
         id: lineItem?.id || `line-item-${crypto.randomUUID()}`,
-        amount: safeNumber(lineItem?.amount, 0),
+        amount: safeBoolean(entry.validated) ? getSavedAmount(lineItem?.amount) : safeNumber(lineItem?.amount, 0),
       })),
       useActual: safeBoolean(entry.useActual, false),
       validated: safeBoolean(entry.validated, false),

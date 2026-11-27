@@ -8,7 +8,13 @@ import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import {
   isValidDateString,
   normalizeScheduledItem,
+  scheduledItemTypes,
 } from '../logic/scheduledItemLogic';
+import {
+  capturePlannerSource,
+  getPlannerEntryIdentity,
+  preserveLegacyPlannerSource,
+} from '../logic/plannerHistory';
 import { normalizeTransfer } from '../logic/transferLogic';
 import {
   APP_DATA_VERSION,
@@ -23,6 +29,7 @@ import {
   normalizePlannerEntriesRecord,
   normalizeSavingsBucketAdjustmentRecord,
   normalizeSavingsBucketRecord,
+  safeBoolean,
   sortCategories as sortCategoryRecords,
 } from './migrations';
 
@@ -894,32 +901,51 @@ export async function getAllPlannerEntries() {
   });
 }
 
-export async function savePlannerEntry(entryKey, entry) {
+export async function savePlannerEntry(entryKey, entry, displayedSource) {
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.plannerEntries, 'readwrite');
+    const transaction = db.transaction([STORES.scheduledItems, STORES.plannerEntries], 'readwrite');
     const store = transaction.objectStore(STORES.plannerEntries);
+    let record;
+    let error;
+    transaction.oncomplete = () => resolve(record);
+    transaction.onabort = () => reject(error ?? transaction.error ?? new Error('Failed to save planner entry.'));
 
-    const record = {
-      ...entry,
-      entryKey,
-      updatedAt: new Date().toISOString(),
+    // Serialize confirmation with schedule deletion and preserve the source the
+    // user saw in the editor, even if the current schedule has since changed.
+    const source = transaction.objectStore(STORES.scheduledItems).get(entry.scheduledItemId);
+    const existing = store.get(entryKey);
+    existing.onsuccess = () => {
+      try {
+        const previous = existing.result;
+        if (!source.result) throw new Error('This scheduled item was removed. Reopen the Planner.');
+        if (!getPlannerEntryIdentity(entryKey, previous ?? entry)) {
+          throw new Error('The saved Planner entry has conflicting identity information.');
+        }
+        record = { ...previous, ...entry, entryKey, updatedAt: new Date().toISOString() };
+        const previouslyValidated = safeBoolean(previous?.validated);
+        if (previouslyValidated) {
+          // An ordinary save must not turn a missing legacy planned amount
+          // into a confirmed zero or refresh a known amount from the schedule.
+          if (Object.hasOwn(previous, 'plannedAmount')) record.plannedAmount = previous.plannedAmount;
+          else delete record.plannedAmount;
+        }
+        if (record.validated && record.scheduledItemSnapshot == null) {
+          if (displayedSource?.id !== entry.scheduledItemId ||
+              !scheduledItemTypes.includes(displayedSource?.type)) {
+            throw new Error('This Planner cell has no reliable scheduled source. Reopen the Planner.');
+          }
+          record.scheduledItemSnapshot = capturePlannerSource(displayedSource);
+          record.scheduledItemSnapshotProvenance = previouslyValidated
+            ? 'unverified-current-source' : 'captured-at-entry-save';
+        }
+        store.put(record);
+      } catch (cause) {
+        error = cause;
+        transaction.abort();
+      }
     };
-
-    const request = store.put(record);
-
-    request.onerror = () => {
-      reject(new Error('Failed to save planner entry.'));
-    };
-
-    resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      value: record,
-      errorMessage: 'Failed to save planner entry.',
-    });
   });
 }
 
@@ -964,31 +990,58 @@ export async function getAllScheduledItems() {
   });
 }
 
-export async function saveScheduledItem(item) {
+async function writeScheduleWithHistory(id, mutate) {
   const db = await openDatabase();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.scheduledItems, 'readwrite');
-    const store = transaction.objectStore(STORES.scheduledItems);
+    const transaction = db.transaction([STORES.scheduledItems, STORES.plannerEntries], 'readwrite');
+    const schedules = transaction.objectStore(STORES.scheduledItems);
+    const planner = transaction.objectStore(STORES.plannerEntries);
+    let result;
+    let error;
+    transaction.oncomplete = () => resolve(result);
+    transaction.onabort = () => reject(error ?? transaction.error ?? new Error('Scheduled item update failed.'));
 
-    const record = {
-      ...normalizeScheduledItem(item),
-      updatedAt: new Date().toISOString(),
+    const current = schedules.get(id);
+    const prefix = `${id}__`;
+    const history = planner.getAll(IDBKeyRange.bound(prefix, `${prefix}\uffff`));
+    history.onsuccess = () => {
+      try {
+        const confirmed = history.result.filter((entry) =>
+          safeBoolean(entry.validated) &&
+          entry.entryKey.slice(0, entry.entryKey.lastIndexOf('__')) === String(id));
+        result = mutate(current.result, confirmed, schedules, planner);
+      } catch (cause) {
+        error = cause;
+        transaction.abort();
+      }
     };
+  });
+}
 
-    const request = store.put(record);
-
-    request.onerror = () => {
-      reject(new Error('Failed to save scheduled item.'));
-    };
-
-    resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      value: record,
-      errorMessage: 'Failed to save scheduled item.',
-    });
+export async function saveScheduledItem(item) {
+  const record = { ...normalizeScheduledItem(item), updatedAt: new Date().toISOString() };
+  return writeScheduleWithHistory(record.id, (current, entries, schedules, planner) => {
+    const historicalEntries = [];
+    if (current && scheduledItemTypes.includes(current.type)) {
+      const previous = normalizeScheduledItem(current);
+      const historyFields = [
+        'amount', 'type', 'name', 'active', 'frequency', 'startDate', 'endDate', 'dueDay',
+        'dueMonth', 'accountId', 'categoryId', 'bucketId', 'toAccountId', 'allowLineItems',
+      ];
+      if (historyFields.some((field) => previous[field] !== record[field])) {
+        for (const entry of entries) {
+          if (!getPlannerEntryIdentity(entry.entryKey, entry)) continue;
+          const snapshot = preserveLegacyPlannerSource(entry, previous);
+          if (snapshot !== entry) {
+            planner.put(snapshot);
+            historicalEntries.push(snapshot);
+          }
+        }
+      }
+    }
+    schedules.put(record);
+    return { item: record, historicalEntries };
   });
 }
 
@@ -1292,23 +1345,11 @@ export async function deleteTransfer(id) {
 }
 
 export async function deleteScheduledItem(id) {
-  const db = await openDatabase();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORES.scheduledItems, 'readwrite');
-    const store = transaction.objectStore(STORES.scheduledItems);
-    const request = store.delete(id);
-
-    request.onerror = () => {
-      reject(new Error('Failed to delete scheduled item.'));
-    };
-
-    resolveOnTransactionComplete({
-      transaction,
-      resolve,
-      reject,
-      errorMessage: 'Failed to delete scheduled item.',
-    });
+  return writeScheduleWithHistory(id, (_current, entries, schedules) => {
+    if (entries.length) {
+      throw new Error('This scheduled item has validated Planner history. Deactivate it or set an end date to keep that history.');
+    }
+    schedules.delete(id);
   });
 }
 

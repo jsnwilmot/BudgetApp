@@ -1,4 +1,4 @@
-import { getEntryKey } from "./projectionLogic";
+import { getEntryKey, getPlannerPeriodSource, getPlannerPeriodType } from "./projectionLogic";
 import { getTransferBucketEffect } from "./transferLogic";
 import { normalizeNumber } from "../utils/numbers";
 
@@ -307,14 +307,9 @@ function itemMatchesReportFilter(
   );
 }
 
-function getBucketIdFromPlannerRow(row = {}) {
-  return (
-    row.item?.bucketId ||
-    row.item?.savingsBucketId ||
-    row.bucketId ||
-    row.savingsBucketId ||
-    null
-  );
+function getBucketIdFromPlannerRow(row, periodDate) {
+  const source = getPlannerPeriodSource(row, periodDate);
+  return source.bucketId ?? source.savingsBucketId ?? null;
 }
 
 function buildBucketNameMap(savingsBuckets = []) {
@@ -329,12 +324,12 @@ function getBucketName(bucketId, bucketNameMap) {
   return bucketId ? bucketNameMap.get(bucketId) || bucketId : "No bucket";
 }
 
-function isSavingsPlannerTransfer(row = {}, accounts = []) {
-  if (row.type !== "transfer") {
+function isSavingsPlannerTransfer(row, periodDate, accounts) {
+  if (getPlannerPeriodType(row, periodDate) !== "transfer") {
     return false;
   }
 
-  if (getBucketIdFromPlannerRow(row)) {
+  if (getBucketIdFromPlannerRow(row, periodDate)) {
     return true;
   }
 
@@ -344,9 +339,7 @@ function isSavingsPlannerTransfer(row = {}, accounts = []) {
       .map((account) => account.id)
   );
 
-  return Boolean(
-    row.item?.toAccountId && savingsAccountIds.has(row.item.toAccountId)
-  );
+  return savingsAccountIds.has(getPlannerPeriodSource(row, periodDate).toAccountId);
 }
 
 function getPlannerAmount(row = {}, periodDate) {
@@ -426,7 +419,7 @@ export function buildReportTransferSummary({
 
   selectedPeriods.forEach((period) => {
     plannerRows
-      .filter((row) => isSavingsPlannerTransfer(row, accounts))
+      .filter((row) => isSavingsPlannerTransfer(row, period.date, accounts))
       .forEach((row) => {
         const amount = getPlannerAmount(row, period.date);
 
@@ -436,7 +429,7 @@ export function buildReportTransferSummary({
 
         const entry = plannerEntries[getEntryKey(row.id, period.date)];
         const validated = Boolean(entry?.validated);
-        const bucketId = getBucketIdFromPlannerRow(row);
+        const bucketId = getBucketIdFromPlannerRow(row, period.date);
 
         summary.plannedToSavings += amount;
 
@@ -579,37 +572,43 @@ export function buildReportRowsFromPlannerData(plannerData) {
   );
 
   return payPeriods.map((period) => {
+    const expenseRows = plannerRows.filter(
+      (row) => getPlannerPeriodType(row, period.date) === "expense"
+    );
+    const periodLabel = (row) => ({
+      id: row.id,
+      name: getPlannerPeriodSource(row, period.date).name ?? row.name,
+    });
     const income = plannerRows
-      .filter((row) => row.type === "income")
+      .filter((row) => getPlannerPeriodType(row, period.date) === "income")
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
-    const expenses = plannerRows
-      .filter((row) => row.type === "expense")
-      .filter((row) => !isMiscExpenseRow(row) && !isMiscPaymentRow(row))
+    const expenses = expenseRows
+      .filter((row) => !isMiscExpenseRow(periodLabel(row)) && !isMiscPaymentRow(periodLabel(row)))
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
-    const miscPayments = plannerRows
-      .filter(isMiscPaymentRow)
+    const miscPayments = expenseRows
+      .filter((row) => isMiscPaymentRow(periodLabel(row)))
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
-    const miscExpenses = plannerRows
-      .filter(isMiscExpenseRow)
+    const miscExpenses = expenseRows
+      .filter((row) => isMiscExpenseRow(periodLabel(row)))
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
       );
 
     const transfersIn = plannerRows
-      .filter((row) => row.type === "transfer")
+      .filter((row) => getPlannerPeriodType(row, period.date) === "transfer")
       .reduce(
         (total, row) => total + getProjectedAmount(row, period.date),
         0
