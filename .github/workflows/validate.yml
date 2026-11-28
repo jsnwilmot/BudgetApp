@@ -81,6 +81,7 @@ jobs:
           python test/browser/continuous_planner.py --chromium "$chromium"
           python test/browser/year_navigation.py --chromium "$chromium"
           python test/browser/pre_anchor_history.py --chromium "$chromium"
+          python test/browser/planner_cadence.py --chromium "$chromium"
 
       - name: Check build output and tracked files
         run: |

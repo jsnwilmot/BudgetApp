@@ -70,6 +70,13 @@ Use this checklist after visual, documentation, PWA, or release-note changes.
 - [ ] With a 3-month forecast, select full 2027, then a farther year and a
   year before the anchor. Check carry-forward, the empty state, and the
   separate 3-month Dashboard forecast.
+- [ ] In a disposable database, validate entries on June 3 and June 17 with
+  a June 3, 2026 anchor and 14-day frequency. Save an anchor of June 4 and
+  confirm the warning counts two newly excluded entries. Try 28-day
+  frequency and confirm it counts one. Reopen Planner and verify both
+  entries and their totals. With a validated weekly-only entry, verify Reset
+  to Defaults refuses the change. Changing only the forecast should save.
+  Run `python3 test/browser/planner_cadence.py` against the production build.
 - [ ] In a disposable database with saved entries dated before the Planner
   start, select the saved year and open the historical details. Verify the
   amount, original key, validation, Last Entry, notes, line items, and any

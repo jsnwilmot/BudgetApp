@@ -105,6 +105,7 @@ hosted check results.
 
 | ID | Status | Evidence |
 | --- | --- | --- |
+| CP-12 | See correction PR | The Settings guard covers save and reset, counts only newly excluded validated keys for refusal, and reports already excluded history separately. Synthetic Node and Chromium tests exercise permitted saves, zero-write refusals, and complete and legacy restore. |
 | CP-14, CP-16 | PASS | Full 2027 with a 3-month forecast on November 30 by direct selection, at the December extension, and on January 1. January 1 Today returns to the period that started December 30. Rollover and navigation leave all 11 stores intact. |
 | CP-15 | PARTIAL | All five forecast settings passed the independent on-demand year and forecast comparisons in Node. The full browser journey used the 3-month setting. |
 | CP-17 | PASS | Partitioning by start year gives each 7-, 14-, 28-, and 30-day start one date and one year. |

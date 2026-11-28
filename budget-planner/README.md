@@ -107,6 +107,12 @@ calculation forward at midnight and when you return to the app. Beginning
 December 1, the rolling range includes the following year. Viewing and
 switching years leave saved records and the Last Entry marker intact.
 
+FinPath blocks **Save Settings** and **Reset to Defaults** if a new anchor
+or frequency would exclude validated entries that fit the current schedule.
+The warning gives the affected count. Keep the current schedule or choose
+an anchor and frequency that include those dates. Changing the forecast
+range, currency, or monthly bill placement alone is still allowed.
+
 ## Backup And Restore
 
 Use `Settings > Data Management`.

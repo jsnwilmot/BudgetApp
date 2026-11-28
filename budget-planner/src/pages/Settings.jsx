@@ -5,6 +5,7 @@ import {
   getCurrentAppVersion
 } from "../data/migrations";
 import { isValidDateString } from "../logic/scheduledItemLogic";
+import { PlannerCadenceChangeError } from "../logic/plannerCadence";
 
 const currencyOptions = ["CAD", "USD"];
 const payFrequencyOptions = [7, 14, 28, 30];
@@ -74,7 +75,7 @@ function buildProjectionChangeWarnings(formState, settings) {
 
   if (formState.payPeriodAnchorDate !== settings.payPeriodAnchorDate) {
     warnings.push(
-      "Changing the anchor date may move planner entries to different pay periods."
+      "The anchor date sets the first calculated pay period. Saved entries keep their original dates."
     );
   }
 
@@ -91,6 +92,21 @@ function buildProjectionChangeWarnings(formState, settings) {
   }
 
   return warnings;
+}
+
+function settingsErrorMessage(error, fallback) {
+  if (error instanceof PlannerCadenceChangeError) {
+    const { newlyStranded, alreadyOffCadence } = error.impact;
+    const entries = newlyStranded === 1 ? "entry" : "entries";
+    const earlier = alreadyOffCadence === 1
+      ? " 1 other validated entry is already outside the current schedule."
+      : alreadyOffCadence > 1
+        ? ` ${alreadyOffCadence} other validated entries are already outside the current schedule.`
+        : "";
+    return `${fallback} ${newlyStranded} validated Planner ${entries} would fall outside the new pay-period schedule. Those entries would be excluded from totals.${earlier} Keep the current anchor and frequency, or choose values that keep those entries in the Planner.`;
+  }
+  console.error(error);
+  return fallback;
 }
 
 export default function Settings({
@@ -139,8 +155,7 @@ export default function Settings({
       setMessage("Settings saved. Planner projections have been updated.");
       setErrorMessage("");
     } catch (error) {
-      console.error(error);
-      setErrorMessage("Could not save settings.");
+      setErrorMessage(settingsErrorMessage(error, "Could not save settings."));
       setMessage("");
     }
   }
@@ -158,8 +173,7 @@ export default function Settings({
       setMessage("Settings reset to defaults.");
       setErrorMessage("");
     } catch (error) {
-      console.error(error);
-      setErrorMessage("Could not reset settings.");
+      setErrorMessage(settingsErrorMessage(error, "Could not reset settings."));
       setMessage("");
     }
   }

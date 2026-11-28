@@ -53,13 +53,13 @@ import {
   resetBudgetTargets,
   resetCategoriesToDefaults,
   saveAccount,
-  saveAppSettings,
   saveAppMetadata,
   saveLastBackupAt,
   saveBudgetTarget,
   saveManualAdjustment,
   saveCategory,
   savePlannerEntry,
+  savePlannerSettings,
   saveSavingsBucket,
   saveSavingsBucketAdjustment,
   saveScheduledItem,
@@ -1136,13 +1136,14 @@ export default function App() {
   }, []);
 
   const handleSaveSettings = useCallback(async (updatedSettings) => {
+    setStatusMessage('');
     const validation = validateAppSettings(updatedSettings);
 
     if (!validation.valid) {
       throw new Error(validation.errors.join(' '));
     }
 
-    const savedSettings = await saveAppSettings(updatedSettings);
+    const savedSettings = await savePlannerSettings(updatedSettings);
     setSettings(savedSettings);
     setStatusMessage('Settings saved. Planner projections updated.');
     return savedSettings;
@@ -1150,6 +1151,7 @@ export default function App() {
   }, []);
 
   const handleResetSettings = useCallback(async () => {
+    setStatusMessage('');
     const defaultSettings = await resetAppSettings();
     setSettings(defaultSettings);
     setStatusMessage('Settings reset to defaults.');

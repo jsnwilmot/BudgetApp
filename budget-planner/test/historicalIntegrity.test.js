@@ -21,6 +21,9 @@ const { buildReportRowsFromPlannerData, buildReportTransferSummary } =
 const { buildTransactionsFromAppData } = await import('../src/logic/transactionLogic.js');
 const { capturePlannerSource, getSavedPlannerEntriesBeforeAnchor, preserveLegacyPlannerSource } =
   await import('../src/logic/plannerHistory.js');
+const { getPlannerCadenceImpact, hasSamePlannerCadence } =
+  await import('../src/logic/plannerCadence.js');
+const { appSettings: defaultSettings } = await import('../src/data/seedData.js');
 const { normalizePlannerEntriesRecord } = await import('../src/data/migrations.js');
 hooks.deregister();
 
@@ -133,6 +136,75 @@ test('D-F1: pre-anchor records are discoverable without altering anchored financ
   assert.deepEqual(getDashboardSummary(withHistory), getDashboardSummary(current));
   assert.equal(balance(withHistory, 'validated-chequing'), 65);
   assert.deepEqual(plannerEntries, before);
+});
+
+function cadenceEntry(id, date, validated = true) {
+  return { entryKey: `${id}__${date}`, scheduledItemId: id, payPeriodDate: date, validated };
+}
+
+const cadenceEntries = [
+  cadenceEntry('rent', '2026-06-03'),
+  cadenceEntry('synthetic__utilities', '2026-06-17', 'true'),
+  cadenceEntry('income', '2026-06-17'),
+  cadenceEntry('prior', '2025-11-05'),
+  cadenceEntry('off-cadence', '2026-06-10'),
+  cadenceEntry('draft', '2026-07-01', 'false'),
+  cadenceEntry('duplicate', '2026-07-01', false),
+  { entryKey: 'legacy__2026-07-01', validated: true },
+];
+
+test('CP-12 counts distinct saved keys and separates already excluded history from newly stranded history', () => {
+  const [, duplicate] = cadenceEntries;
+  const entries = [
+    ...cadenceEntries,
+    duplicate,
+    { ...duplicate, entryKey: 'conflict__2026-06-17' },
+    { ...cadenceEntry('wrong-date', '2026-06-17'), payPeriodDate: '2026-06-03' },
+    cadenceEntry('bad-date', '2025-02-29'),
+  ];
+  const before = structuredClone(entries);
+  assert.deepEqual(getPlannerCadenceImpact(entries, settings, { ...settings, payPeriodAnchorDate: '2026-06-04' }),
+    { alreadyOffCadence: 2, newlyStranded: 4 });
+  assert.deepEqual(getPlannerCadenceImpact(entries, settings, { ...settings, payPeriodAnchorDate: second }),
+    { alreadyOffCadence: 2, newlyStranded: 1 });
+  assert.deepEqual(entries, before);
+});
+
+test('CP-12 checks wider, narrower and default cadence against the current cadence', () => {
+  const weekly = { ...settings, payFrequencyDays: 7 };
+  const fourWeeks = { ...settings, payFrequencyDays: 28 };
+  assert.deepEqual(getPlannerCadenceImpact(cadenceEntries, settings, weekly),
+    { alreadyOffCadence: 2, newlyStranded: 0 });
+  assert.deepEqual(getPlannerCadenceImpact(cadenceEntries, weekly, defaultSettings),
+    { alreadyOffCadence: 1, newlyStranded: 1 });
+  assert.deepEqual(getPlannerCadenceImpact(cadenceEntries, settings, fourWeeks),
+    { alreadyOffCadence: 2, newlyStranded: 2 });
+  assert.deepEqual(getPlannerCadenceImpact(cadenceEntries.filter((entry) => entry.scheduledItemId !== 'off-cadence'),
+    weekly, defaultSettings), { alreadyOffCadence: 1, newlyStranded: 0 });
+});
+
+test('CP-12 permits identical cadence, unrelated settings, empty history and drafts', () => {
+  const unrelated = { ...settings, payFrequencyDays: '14', currency: 'USD', projectionMonths: 3,
+    monthlyBillAssignmentRule: 'same-pay-period' };
+  assert.equal(hasSamePlannerCadence(settings, unrelated), true);
+  assert.deepEqual(getPlannerCadenceImpact(cadenceEntries, settings, unrelated),
+    { alreadyOffCadence: 2, newlyStranded: 0 });
+  const changed = { ...settings, payPeriodAnchorDate: '2026-06-04' };
+  assert.equal(hasSamePlannerCadence(settings, changed), false);
+  for (const entries of [[], [cadenceEntry('draft', '2026-06-03', false)]]) {
+    assert.deepEqual(getPlannerCadenceImpact(entries, settings, changed),
+      { alreadyOffCadence: 0, newlyStranded: 0 });
+  }
+});
+
+test('CP-12 matches local pay-period starts across daylight saving time and when the anchor moves later', () => {
+  const beforeClockChange = { payPeriodAnchorDate: '2026-10-28', payFrequencyDays: 14 };
+  const afterClockChange = { ...beforeClockChange, payPeriodAnchorDate: '2026-11-11' };
+  const entries = [cadenceEntry('first', '2026-10-28'), cadenceEntry('second', '2026-11-11')];
+  assert.deepEqual(getPlannerCadenceImpact(entries, beforeClockChange, afterClockChange),
+    { alreadyOffCadence: 0, newlyStranded: 1 });
+  assert.deepEqual(getPlannerCadenceImpact(entries, afterClockChange, beforeClockChange),
+    { alreadyOffCadence: 1, newlyStranded: 0 });
 });
 
 test('the existing cadence carries confirmed December and January amounts across the year boundary', () => {
