@@ -378,6 +378,12 @@ export default function Help() {
           Last Entry marker. A saved draft can remain visible with a notice
           that it is excluded from totals.
         </p>
+        <p>
+          Save Settings and Reset to Defaults refuse an anchor or frequency
+          change that would exclude validated entries from Planner totals.
+          The warning gives the affected count. Keep the current anchor and
+          frequency or choose values that include those saved dates.
+        </p>
       </HelpCard>
 
       <HelpCard title="Planner Last Entry">

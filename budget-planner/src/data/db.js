@@ -6,6 +6,9 @@ import {
 } from './seedData';
 import { normalizeBudgetTarget } from '../logic/budgetLogic';
 import {
+  getPlannerCadenceImpact, hasSamePlannerCadence, PlannerCadenceChangeError,
+} from '../logic/plannerCadence';
+import {
   isValidDateString,
   normalizeScheduledItem,
   scheduledItemTypes,
@@ -354,8 +357,38 @@ export async function saveAppSettings(settings) {
   });
 }
 
+export async function savePlannerSettings(settings) {
+  const proposed = normalizeAppSettings(settings);
+  const db = await openDatabase();
+  // Read committed settings and history together. A refusal stays read-only.
+  const impact = await new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.appSettings, STORES.plannerEntries], 'readonly');
+    let result;
+    resolveOnTransactionComplete({
+      transaction,
+      resolve,
+      reject,
+      value: () => result,
+      errorMessage: 'Failed to check validated Planner entries.',
+    });
+    const request = transaction.objectStore(STORES.appSettings).get(SETTINGS_ID);
+    request.onsuccess = () => {
+      const current = normalizeAppSettings(request.result);
+      if (hasSamePlannerCadence(current, proposed)) return;
+
+      const entries = transaction.objectStore(STORES.plannerEntries).getAll();
+      entries.onsuccess = () => {
+        result = getPlannerCadenceImpact(entries.result, current, proposed);
+      };
+    };
+  });
+
+  if (impact?.newlyStranded) throw new PlannerCadenceChangeError(impact);
+  return saveAppSettings(proposed);
+}
+
 export async function resetAppSettings() {
-  return saveAppSettings(defaultAppSettings);
+  return savePlannerSettings(defaultAppSettings);
 }
 
 export async function getAppMetadata() {
