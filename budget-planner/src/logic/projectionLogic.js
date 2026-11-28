@@ -183,13 +183,15 @@ export function buildPlannerRows({
   transfers = [],
   plannerEntries = {},
   today = getLocalToday(),
+  throughYear,
 }) {
   const normalizedSettings = normalizeProjectionSettings(settings);
   const periods = getPlannerPeriods(
     normalizedSettings.payPeriodAnchorDate,
     normalizedSettings.payFrequencyDays,
     normalizedSettings.projectionMonths,
-    today
+    today,
+    throughYear
   );
   const { payPeriods } = periods;
   const savedScheduleIds = new Set();

@@ -1,14 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ListChecks, MessageSquareText, Pencil } from 'lucide-react';
 import AlertList from '../components/AlertList';
+import SavedPlannerHistory from '../components/SavedPlannerHistory';
 import { isPlannerCellMarked } from '../logic/plannerLastEntryMarker';
 import { getEntryKey, formatCurrency, getPlannerPeriodType } from '../logic/projectionLogic';
-import { getConfirmedAmount } from '../logic/plannerHistory';
+import { getConfirmedAmount, getSavedPlannerEntriesBeforeAnchor } from '../logic/plannerHistory';
+import { getPayPeriodsForYear } from '../logic/dateLogic';
 
 const ITEM_WIDTH = 224;
+const COMPACT_ITEM_WIDTH = 144;
 const PERIOD_WIDTH = 144;
 const FULL_GRID_LIMIT = 48;
 const OVERSCAN = 4;
+const navigationClass = 'min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-teal-700 disabled:opacity-50';
 
 function getRowClass(type) {
   if (type === 'income') return 'bg-emerald-50';
@@ -116,7 +120,7 @@ function PlannerRow({
 
   return (
     <tr className={getRowClass(row.type)}>
-      <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
+      <th scope="row" className="sticky left-0 z-30 break-words border border-slate-200 bg-inherit px-3 py-2 text-left text-sm">
         {row.name}
         {inactive || endDate ? (
           <span className="block text-xs font-normal text-slate-600">
@@ -145,7 +149,8 @@ function PlannerRow({
           : row.amountsByPeriod[period.date] || 0;
         const historicalType = getPlannerPeriodType(row, period.date);
         const cellDetails = [warnings?.amount, sourceConflict && 'Source conflict. Excluded from totals.',
-          savedDraft && 'Saved draft', historicalType !== row.type && getTypeLabel(historicalType)].filter(Boolean);
+          savedDraft && 'Saved draft. Excluded from totals.',
+          historicalType !== row.type && getTypeLabel(historicalType)].filter(Boolean);
         const lastEntrySelected = isPlannerCellMarked(
           plannerLastEntryMarker,
           row.id,
@@ -176,11 +181,9 @@ function PlannerRow({
                 }
                 className="group flex w-full items-center justify-end gap-2 rounded-lg px-2 py-1 hover:bg-white"
                 title={hasNote ? entry.notes : 'Edit planned amount'}
-                aria-label={
-                  lastEntrySelected
-                    ? `${row.name}, ${period.label}, ${amountLabel}. Marked as Last Entry.`
-                    : undefined
-                }
+                aria-label={`${row.name}, ${period.label} ${period.date.slice(0, 4)}, ${amountLabel}.${
+                  lastEntrySelected ? ' Marked as Last Entry.' : ''
+                }`}
               >
                 <span>
                   {amount === 0 ? '—' : formatCurrency(amount, currency)}
@@ -225,6 +228,7 @@ function PlannerRow({
 
 export default function Planner({
   plannerData,
+  buildPlannerThroughYear,
   plannerEntries,
   plannerLastEntryMarker,
   settings,
@@ -232,9 +236,27 @@ export default function Planner({
   onCellClick,
 }) {
   const gridScrollRef = useRef(null);
-  const positionedCadence = useRef(null);
-  const [viewport, setViewport] = useState({ first: 0, count: 8 });
-  const { payPeriods, currentPayPeriod, today } = plannerData;
+  const positionedView = useRef(null);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [todayRequest, setTodayRequest] = useState(0);
+  const [viewport, setViewport] = useState({ first: 0, count: 8, itemWidth: ITEM_WIDTH });
+  const { currentPayPeriod, today } = plannerData;
+  const localYear = Number(today.slice(0, 4));
+  const currentYear = Number((currentPayPeriod?.date ?? today).slice(0, 4));
+  const year = selectedYear ?? currentYear;
+  const anchor = plannerData.payPeriods[0]?.date;
+  const anchorYear = anchor ? Number(anchor.slice(0, 4)) : localYear;
+  const savedHistory = useMemo(() => getSavedPlannerEntriesBeforeAnchor(plannerEntries, anchor),
+    [plannerEntries, anchor]);
+  const oldestSavedYear = savedHistory.length ? Number(savedHistory[0].date.slice(0, 4)) : anchorYear;
+  const rollingEndYear = Number(plannerData.calculationEndDate.slice(0, 4));
+  const firstYear = Math.max(1000, Math.min(anchorYear, oldestSavedYear, localYear, year) - 1);
+  const lastYear = Math.min(9999, Math.max(rollingEndYear, localYear + 1, year + 1));
+  const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
+  const requestedYear = year >= anchorYear && `${year}-12-31` > plannerData.calculationEndDate ? year : null;
+  const viewData = useMemo(() => requestedYear ? buildPlannerThroughYear(requestedYear) : plannerData,
+    [buildPlannerThroughYear, plannerData, requestedYear]);
+  const payPeriods = useMemo(() => getPayPeriodsForYear(viewData.payPeriods, year), [viewData, year]);
   const periodCount = payPeriods.length;
   const firstVisible = Math.min(viewport.first, Math.max(0, periodCount - 1));
   const leading = periodCount > FULL_GRID_LIMIT ? Math.max(0, firstVisible - OVERSCAN) : 0;
@@ -244,12 +266,14 @@ export default function Planner({
   const trailing = periodCount - end;
   const visiblePeriods = payPeriods.slice(leading, end);
   const renderedColumns = visiblePeriods.length + Number(leading > 0) + Number(trailing > 0);
-  const cadence = `${payPeriods[0]?.date ?? ''}|${payPeriods[1]?.date ?? ''}`;
-  const currentIndex = payPeriods.indexOf(currentPayPeriod);
+  const positionKey = `${year}|${payPeriods[0]?.date ?? ''}|${payPeriods[1]?.date ?? ''}|${todayRequest}`;
+  const currentIndex = selectedYear === null
+    ? payPeriods.findIndex(({ date }) => date === currentPayPeriod?.date)
+    : 0;
   const currency = settings?.currency || 'CAD';
-  const incomeRows = plannerData.rows.filter((row) => row.type === 'income');
-  const expenseRows = plannerData.rows.filter((row) => row.type === 'expense');
-  const transferRows = plannerData.rows.filter((row) => row.type === 'transfer');
+  const incomeRows = viewData.rows.filter((row) => row.type === 'income');
+  const expenseRows = viewData.rows.filter((row) => row.type === 'expense');
+  const transferRows = viewData.rows.filter((row) => row.type === 'transfer');
   const currentSummary = getCurrentPeriodSummary({
     plannerData,
     plannerEntries,
@@ -257,17 +281,18 @@ export default function Planner({
   });
   function updateViewport(grid) {
     const first = Math.floor(grid.scrollLeft / PERIOD_WIDTH);
-    const count = Math.max(1, Math.ceil((grid.clientWidth - ITEM_WIDTH) / PERIOD_WIDTH) + 1);
-    setViewport((previous) => previous.first === first && previous.count === count
-      ? previous : { first, count });
+    const itemWidth = grid.clientWidth < 480 ? COMPACT_ITEM_WIDTH : ITEM_WIDTH;
+    const count = Math.max(1, Math.ceil((grid.clientWidth - itemWidth) / PERIOD_WIDTH) + 1);
+    setViewport((previous) => previous.first === first && previous.count === count && previous.itemWidth === itemWidth
+      ? previous : { first, count, itemWidth });
   }
 
   useLayoutEffect(() => {
-    if (positionedCadence.current !== cadence) {
-      positionedCadence.current = cadence;
+    if (positionedView.current !== positionKey) {
+      positionedView.current = positionKey;
       gridScrollRef.current.scrollLeft = Math.max(0, currentIndex) * PERIOD_WIDTH;
     }
-  }, [cadence, currentIndex]);
+  }, [positionKey, currentIndex]);
 
   useEffect(() => {
     const grid = gridScrollRef.current;
@@ -276,6 +301,11 @@ export default function Planner({
     return () => observer.disconnect();
   }, []);
 
+  function showToday() {
+    setSelectedYear(null);
+    setTodayRequest((request) => request + 1);
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -283,7 +313,7 @@ export default function Planner({
           Pay Period Planner
         </p>
         <h2 className="text-2xl font-bold text-slate-950 sm:text-3xl">
-          Biweekly budget grid
+          Pay-period budget grid
         </h2>
         <p className="mt-1 text-sm text-slate-500">
           Click a planned amount to enter the actual value, add a note, mark it
@@ -292,8 +322,8 @@ export default function Planner({
         </p>
         {plannerData.calculationEndDate && (
           <p className="mt-1 text-sm text-slate-500">
-            Scroll through pay periods calculated through {plannerData.calculationEndDate}.
             Your regular forecast is {plannerData.forecastMonths} months.
+            Rolling calculations extend through {plannerData.calculationEndDate}.
           </p>
         )}
       </div>
@@ -418,6 +448,34 @@ export default function Planner({
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="space-y-3 border-b border-slate-200 p-4">
+          <h3 className="text-lg font-semibold text-slate-950" aria-live="polite">Planner for {year}</h3>
+          <div role="group" aria-label="Planner year navigation" className="flex flex-wrap items-end gap-2">
+            <button type="button" className={navigationClass} disabled={year === 1000}
+              onClick={() => setSelectedYear(year - 1)}>
+              Previous Year
+            </button>
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+              Planner year
+              <select className={navigationClass} value={year}
+                onChange={(event) => setSelectedYear(Number(event.target.value))}>
+                {years.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <button type="button" className={navigationClass} disabled={year === 9999}
+              onClick={() => setSelectedYear(year + 1)}>
+              Next Year
+            </button>
+            <button type="button" className={navigationClass} onClick={showToday}>Today</button>
+          </div>
+          {periodCount > 0 && (
+            <p className="text-sm text-slate-600">
+              Unvalidated amounts are projections.
+              {payPeriods.at(-1).date > plannerData.forecastEndDate &&
+                ' This year extends beyond your regular forecast.'}
+            </p>
+          )}
+        </div>
         <div
           ref={gridScrollRef}
           role="region"
@@ -426,20 +484,25 @@ export default function Planner({
           onScroll={(event) => updateViewport(event.currentTarget)}
           className="max-h-[72vh] overflow-auto"
         >
+          {periodCount === 0 ? (
+            <p className="p-4 text-sm text-slate-600">
+              No pay periods start in {year}.{anchor && ` Your Planner starts on ${anchor}.`}
+            </p>
+          ) : (
           <table
             aria-colcount={periodCount + 1}
             className="table-fixed border-separate border-spacing-0"
-            style={{ width: ITEM_WIDTH + periodCount * PERIOD_WIDTH }}
+            style={{ width: viewport.itemWidth + periodCount * PERIOD_WIDTH }}
           >
             <colgroup>
-              <col style={{ width: ITEM_WIDTH }} />
+              <col style={{ width: viewport.itemWidth }} />
               {leading > 0 && <col style={{ width: leading * PERIOD_WIDTH }} />}
               {visiblePeriods.map((period) => <col key={period.date} style={{ width: PERIOD_WIDTH }} />)}
               {trailing > 0 && <col style={{ width: trailing * PERIOD_WIDTH }} />}
             </colgroup>
             <thead>
               <tr>
-                <th className="sticky left-0 top-0 z-40 min-w-56 border border-slate-200 bg-slate-900 px-3 py-3 text-left text-sm font-bold text-white">
+                <th scope="col" className="sticky left-0 top-0 z-40 border border-slate-200 bg-slate-900 px-3 py-3 text-left text-sm font-bold text-white">
                   Item
                 </th>
 
@@ -447,6 +510,7 @@ export default function Planner({
                 {visiblePeriods.map((period, index) => (
                   <th
                     key={period.date}
+                    scope="col"
                     aria-colindex={leading + index + 2}
                     className="sticky top-0 z-30 min-w-36 border border-slate-200 bg-slate-900 px-3 py-3 text-right text-sm font-bold text-white"
                   >
@@ -459,7 +523,7 @@ export default function Planner({
 
             <tbody>
               <tr className="bg-emerald-100">
-                <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-emerald-100 px-3 py-2 text-left text-sm font-bold text-emerald-950">
+                <th className="sticky left-0 z-30 border border-slate-200 bg-emerald-100 px-3 py-2 text-left text-sm font-bold text-emerald-950">
                   Income
                 </th>
                 <td
@@ -486,7 +550,7 @@ export default function Planner({
               ))}
 
               <tr className="bg-blue-100">
-              <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-blue-100 px-3 py-2 text-left text-sm font-bold text-blue-950">
+              <th className="sticky left-0 z-30 border border-slate-200 bg-blue-100 px-3 py-2 text-left text-sm font-bold text-blue-950">
                 Expenses
               </th>
               <td
@@ -511,7 +575,7 @@ export default function Planner({
               ))}
 
                 <tr className="bg-slate-200">
-                  <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-slate-200 px-3 py-2 text-left text-sm font-bold text-slate-950">
+                  <th className="sticky left-0 z-30 border border-slate-200 bg-slate-200 px-3 py-2 text-left text-sm font-bold text-slate-950">
                     Transfers to Savings
                   </th>
                   <td
@@ -536,7 +600,7 @@ export default function Planner({
               ))}
 
             <tr className="bg-white">
-              <th className="sticky left-0 z-30 min-w-56 border border-slate-200 bg-white px-3 py-2 text-left text-sm font-bold text-slate-950">
+              <th className="sticky left-0 z-30 border border-slate-200 bg-white px-3 py-2 text-left text-sm font-bold text-slate-950">
                 Totals and Account Projection
               </th>
               <td
@@ -545,7 +609,7 @@ export default function Planner({
               />
             </tr>
 
-              {plannerData.projectionRows.map((row) => (
+              {viewData.projectionRows.map((row) => (
                 <PlannerRow
                   key={row.id}
                   row={row}
@@ -561,8 +625,14 @@ export default function Planner({
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </section>
+      <SavedPlannerHistory
+        records={savedHistory.filter(({ date }) => date.startsWith(`${year}-`))}
+        marker={plannerLastEntryMarker}
+        currency={currency}
+      />
     </div>
   );
 }

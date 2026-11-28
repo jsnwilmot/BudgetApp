@@ -44,7 +44,12 @@ def encoded_fields(snapshot, store, key):
 
 def open_planner(page):
     page.get_by_role("button", name="Planner", exact=True).click()
-    expect(page.get_by_role("heading", name="Biweekly budget grid")).to_be_visible()
+    expect(page.get_by_role("heading", name="Pay-period budget grid")).to_be_visible()
+
+
+def select_year(page, year):
+    page.get_by_role("combobox", name="Planner year", exact=True).select_option(str(year))
+    expect(page.get_by_role("heading", name=f"Planner for {year}", exact=True)).to_be_visible()
 
 
 def open_schedules(page):
@@ -250,20 +255,26 @@ def verify_marker(chromium, executable, profile, origin):
         }""")
         open_planner(page)
         marker = page.get_by_role("button", name=re.compile("Marked as Last Entry."))
+        expect(marker).to_have_count(0)
+        select_year(page, 2027)
         expect(marker).to_have_count(1)
-        for months, expected in (("3", 0), ("12", 1)):
+        for months in ("3", "12"):
             page.get_by_role("button", name="Settings", exact=True).click()
             page.get_by_role("combobox", name="Projection range", exact=True).select_option(months)
             page.get_by_role("button", name="Save Settings", exact=True).click()
             expect(page.get_by_text("Settings saved. Planner projections have been updated.", exact=True)).to_be_visible()
             open_planner(page)
-            expect(marker).to_have_count(expected)
+            expect(marker).to_have_count(0)
+            select_year(page, 2027)
+            expect(marker).to_have_count(1)
             current = census(page)
             assert {key: value for key, value in current["stores"].items() if key != "appSettings"} == {
                 key: value for key, value in original["stores"].items() if key != "appSettings"
             }
         assert page.evaluate("window.metadataWrites") == []
-        print("PASS E: Last Entry leaves and reappears in the range with zero metadata writes", flush=True)
+        page.get_by_role("button", name="Today", exact=True).click()
+        expect(marker).to_have_count(0)
+        print("PASS E: Last Entry survives year and forecast changes with zero metadata writes", flush=True)
     finally:
         context.close()
 

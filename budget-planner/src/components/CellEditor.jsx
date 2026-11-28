@@ -184,7 +184,7 @@ export default function CellEditor({
             {displayedSource.name ?? selectedCell.row.name}
           </h3>
           <p className="mt-1 text-sm text-slate-500">
-            Pay period: {selectedCell.period.label}
+            Pay period: {selectedCell.period.label} {selectedCell.period.date.slice(0, 4)}
           </p>
         </div>
 

@@ -1,13 +1,13 @@
 # FinPath Continuous Planner and Year Navigation
 
-**Status:** Approved product direction; **planning only**, implementation not started.
+**Status:** The calendar-year view is implemented in the Phase D candidate. Review and release acceptance are separate.
 **Parent tracking issue:** [#3](https://github.com/jsnwilmot/BudgetApp/issues/3).
 **Target user experience:** From **December 1, 2026**, the full **2027** calendar-year Planner is selectable and calculated on demand. This is a product acceptance target, not a claim that it is already deployed.
 **Working rule:** No deployment, merging or data migration without review and explicit release approval.
 
 ## 1. Problem and approved product decision
 
-Before the rolling horizon, Planner ended at `addMonths(anchor, projectionMonths)`. Phase C introduces continuous calculations and a bounded, scrollable grid. Year selection is a separate implementation phase. Moving the anchor can still hide saved entries and change carry-forward calculations. See `src/logic/dateLogic.js`, `src/logic/projectionLogic.js`, and `src/pages/Planner.jsx`.
+Before the rolling horizon, Planner ended at `addMonths(anchor, projectionMonths)`. Phase C introduced continuous calculations and a bounded, scrollable grid. Phase D selects one calendar year of that chronology and calculates farther years on demand. Moving the anchor can still hide saved entries and change carry-forward calculations. See `src/logic/dateLogic.js`, `src/logic/projectionLogic.js`, and `src/pages/Planner.jsx`.
 
 **Approved direction:**
 - The Planner has no calendar-year expiry and needs no annual reset.

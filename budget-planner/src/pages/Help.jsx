@@ -361,17 +361,22 @@ export default function Help() {
         </p>
       </HelpCard>
 
-      <HelpCard title="Rolling Planner and Forecast">
+      <HelpCard title="Planner Years and Forecast">
         <p>
-          Scroll the Planner to see pay periods on your original cadence.
-          From December 1, the calculation includes all pay periods starting
-          in the following year and keeps that coverage into January.
-          FinPath extends the calculation as your local date changes.
+          Choose a Planner year or use Previous Year and Next Year above the
+          grid. Scroll within the grid to see its periods. Today returns to
+          the current pay period, even when it started in the previous year.
+          If that year contains saved entries dated before your Planner start,
+          open them in Saved entries before the Planner start to see their
+          amounts, notes, and source details. These records are read-only and
+          excluded from Planner totals.
         </p>
         <p>
           Your forecast setting still controls how many months the Dashboard
-          projects from the current pay period. Existing balances carry
-          forward from your original anchor. Year navigation is planned.
+          projects from the current pay period. Balances carry forward from
+          your original anchor. Switching years keeps saved entries and the
+          Last Entry marker. A saved draft can remain visible with a notice
+          that it is excluded from totals.
         </p>
       </HelpCard>
 

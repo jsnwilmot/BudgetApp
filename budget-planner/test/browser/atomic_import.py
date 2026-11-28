@@ -217,12 +217,14 @@ class StaticHandler(SimpleHTTPRequestHandler):
         pass
 
 
-def boot(chromium, executable, profile, origin, *, timezone_id=None):
+def boot(chromium, executable, profile, origin, *, timezone_id=None, viewport=None,
+         has_touch=False, service_workers="block"):
     context = chromium.launch_persistent_context(
-        profile, executable_path=executable, service_workers="block",
+        profile, executable_path=executable, service_workers=service_workers,
         headless=True, args=["--disable-background-networking"],
-        viewport={"width": 1400, "height": 1000},
+        viewport=viewport or {"width": 1400, "height": 1000},
         timezone_id=timezone_id,
+        has_touch=has_touch,
     )
     context.set_default_timeout(10000)
     context.route("**/*", lambda route: (
